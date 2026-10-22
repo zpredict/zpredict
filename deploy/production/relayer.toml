@@ -11,13 +11,16 @@ web_origin = "https://app.zpredict.site"
 # Markets resolve from mainnet; the escrow and deposits are on testnet.
 oracle_lightwalletd = "https://zec.rocks:443"
 escrow_lightwalletd = "https://testnet.zec.rocks:443"
-# 8 slots, 32 rows (default), all open markets in one run: ~6.3 s MPC on an M4 Pro. The
-# demo VPS measured ~23 s before account keys (#85, +7% AND gates: ~24.6 s estimated), so
-# the window is batch time + 2. Re-measured after account keys and the hourly market
-# (2026-10-22, two crossing judge orders): one batch ~37 s on the VPS, so 39.
+# 8 slots, 32 rows (default), all open markets in one run: ~6.2 s MPC on an M4 Pro, ~37 s
+# on the VPS (2026-10-22). 92% of it is preprocessing, which the relayers now do ahead of
+# the batch (#94), so a window with orders only runs the online part (~0.5 s M4, ~3 s
+# VPS) and an idle window is just a hello: the window no longer has to cover a batch.
+# Fill ≈ window/2 + online when a preprocessed run is ready (~7 s on the VPS), up to one
+# preprocessing (~33 s) more when an order lands right after another batch.
 batch_size = 8
-window_secs = 39
-expire_batches = 3
+window_secs = 5
+# Batches, not seconds: ~30 s for a browser's three POSTs to all arrive.
+expire_batches = 6
 judge = true
 judge_credit = 5000 # 25 units in half-ticks
 data_dir = "/data"
