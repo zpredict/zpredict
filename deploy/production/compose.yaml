@@ -20,7 +20,7 @@ x-relayer: &relayer
   mem_limit: 1200m
   memswap_limit: 1200m
   cpus: 2
-  read_only: true
+  # No read_only: compose copies env-sourced secrets into the container filesystem.
 
 services:
   r0:
