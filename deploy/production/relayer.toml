@@ -1,12 +1,12 @@
 # Hosted testnet relayers. One file for all three; compose.yaml sets ZPREDICT_INDEX per
-# container. Noise keys come from env via entrypoint.sh, never from this file.
+# container. Noise keys are compose secrets (from Coolify env), never in this file or git.
 index = 0
 network = "testnet"
 listen = "0.0.0.0:8080"
 # Static IPs on the internal `peers` network in compose.yaml (peers must be socket addresses).
 peers = ["10.0.250.10:9000", "10.0.250.11:9000", "10.0.250.12:9000"]
-key_file = "/run/zpredict/self.key"
-peer_keys = ["/run/zpredict/r0.pub", "/run/zpredict/r1.pub", "/run/zpredict/r2.pub"]
+key_file = "/run/secrets/relayer_key"
+peer_keys = ["/run/secrets/r0_pub", "/run/secrets/r1_pub", "/run/secrets/r2_pub"]
 web_origin = "https://app.zpredict.site"
 # Markets resolve from mainnet; the escrow and deposits are on testnet.
 oracle_lightwalletd = "https://zec.rocks:443"
