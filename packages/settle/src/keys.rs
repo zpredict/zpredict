@@ -43,6 +43,17 @@ pub fn escrow_keys(ak: &[u8; 32], network: &str) -> Result<EscrowKeys> {
     }
 }
 
+/// The Orchard full viewing key in an encoded escrow UFVK (any network).
+pub fn decode_fvk(ufvk: &str) -> Result<FullViewingKey> {
+    UnifiedFullViewingKey::decode(&Network::MainNetwork, ufvk)
+        .or_else(|_| UnifiedFullViewingKey::decode(&Network::TestNetwork, ufvk))
+        .or_else(|_| UnifiedFullViewingKey::decode(&regtest(), ufvk))
+        .map_err(|e| Error::Encoding(format!("{e:?}")))?
+        .orchard()
+        .cloned()
+        .ok_or_else(|| Error::Encoding("UFVK has no Orchard key".into()))
+}
+
 /// Regtest parameters. Encodings depend only on the network type, not the heights.
 pub fn regtest() -> LocalNetwork {
     let h = Some(1.into());
@@ -89,6 +100,7 @@ mod tests {
         assert!(keys.address.starts_with("uregtest1"));
         let ufvk = UnifiedFullViewingKey::decode(&regtest(), &keys.ufvk).unwrap();
         assert_eq!(ufvk.orchard().unwrap().to_bytes()[..32], ak);
+        assert_eq!(decode_fvk(&keys.ufvk).unwrap().to_bytes()[..32], ak);
         assert!(matches!(fvk_from_ak(&[0; 32]), Err(Error::InvalidAk)));
     }
 }

@@ -11,7 +11,7 @@ source "$(dirname "$0")/lib/env.sh"
 source "$RUN_DIR/escrow.env"
 export SSL_CERT_FILE=$RUN_DIR/frost/ca.pem
 
-AMOUNT=${PAYOUT_ZATS:-200000000}
+AMOUNT=${PAYOUT_ZATS:-2000000} # 2 units of the 5-unit deposit
 S=$RUN_DIR/spend
 F=$RUN_DIR/frost
 rm -rf "$S" "$RUN_DIR/payee"

@@ -17,6 +17,10 @@ pub enum Error {
     Signature(String),
     /// A malformed command-line argument.
     Usage(String),
+    /// A sealed secret could not be opened, or the store key is missing.
+    Store(String),
+    /// The chain backend (lightwalletd) failed.
+    Chain(String),
     Io(std::io::Error),
 }
 
@@ -30,6 +34,8 @@ impl fmt::Display for Error {
             Error::Sighash(e) => write!(f, "sighash: {e}"),
             Error::Signature(e) => write!(f, "signature: {e}"),
             Error::Usage(e) => write!(f, "{e}"),
+            Error::Store(e) => write!(f, "store: {e}"),
+            Error::Chain(e) => write!(f, "chain: {e}"),
             Error::Io(e) => write!(f, "io: {e}"),
         }
     }

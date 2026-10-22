@@ -23,6 +23,12 @@ LWD=127.0.0.1:9067
 ZEBRA_RPC=http://127.0.0.1:18232
 FROSTD=localhost:2744
 IDENTITY=$RUN_DIR/age.txt
+LWD_URL=http://$LWD # the Rust scanner's form of the same lightwalletd
+
+# Relayer secrets (escrow UFVK, memo keys, FROST key packages) are sealed under this
+# key, which lives only in the environment. A driver script sources this file first,
+# so every step it runs inherits the same key; to run steps by hand, export it once.
+export ZPREDICT_STORE_KEY=${ZPREDICT_STORE_KEY:-$(openssl rand -hex 32)}
 
 log() { printf '\n==> %s\n' "$*" >&2; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
