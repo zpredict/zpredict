@@ -13,7 +13,8 @@ use crate::{Error, io};
 /// Orders per batch; the Garble source hard-codes the same number.
 pub const N: usize = 16;
 /// Balance-table rows a relayer should use unless it has a reason not to. Any size
-/// works; each needs its own compile and costs ~9k AND gates per row.
+/// works; each needs its own compile and costs ~8k AND gates per row (timings in the
+/// crate docs).
 pub const DEFAULT_ROWS: usize = 32;
 
 const SOURCE: &str = include_str!("clear.garble.rs");
