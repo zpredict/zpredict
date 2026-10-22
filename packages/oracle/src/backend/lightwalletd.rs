@@ -72,6 +72,31 @@ impl Lightwalletd {
     }
 }
 
+impl Lightwalletd {
+    /// Full bytes of every transaction in block `height` that has Ironwood actions.
+    /// Compact blocks drop memos, so the escrow scanner fetches these in full.
+    pub fn ironwood_txs(&self, height: u32) -> Result<Vec<Vec<u8>>> {
+        let id = BlockId {
+            height: height.into(),
+            hash: vec![],
+        };
+        let b: CompactBlock = self.call("GetBlock", &id)?;
+        b.vtx
+            .into_iter()
+            .filter(|t| !t.ironwood_actions.is_empty())
+            .map(|t| {
+                let filter = TxFilter {
+                    block: None,
+                    index: 0,
+                    hash: t.txid,
+                };
+                let raw: RawTransaction = self.call("GetTransaction", &filter)?;
+                Ok(raw.data)
+            })
+            .collect()
+    }
+}
+
 impl Chain for Lightwalletd {
     fn tip(&self) -> Result<u32> {
         let id: BlockId = self.call("GetLatestBlock", &ChainSpec {})?;
