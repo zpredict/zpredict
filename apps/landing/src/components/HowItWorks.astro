@@ -94,15 +94,12 @@ const segments = (line: string) => line.split("**").map((text, i) => ({ text, ho
 		color: #61655a;
 		text-align: left;
 		cursor: pointer;
-		opacity: 0.55;
 		transition:
 			color 450ms ease,
-			opacity 450ms ease,
 			transform 450ms ease;
 	}
 	.step[aria-current="step"] {
 		color: var(--zp-ink);
-		opacity: 1;
 		transform: translateX(calc(14px * var(--content-scale)));
 	}
 	.marker {
@@ -186,7 +183,6 @@ const segments = (line: string) => line.split("**").map((text, i) => ({ text, ho
 			gap: 22px;
 		}
 		.step {
-			opacity: 1;
 			color: var(--zp-ink);
 			transform: none;
 		}
