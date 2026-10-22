@@ -15,7 +15,7 @@ use zpredict_circuit::{
     DEFAULT_POSITIONS, DEFAULT_ROWS, DEFAULT_SLOTS, DEFAULT_WITHDRAWALS, Outcome, and_gates,
     harness::{MARKETS, Rng, combine, expected, localhost, random_batch},
     net::TcpChannel,
-    program, resolve_program, run_party_on,
+    preprocess, program, resolve_program, run_party_with,
 };
 
 const PORT: u16 = 7200;
@@ -65,7 +65,7 @@ async fn main() {
         let shares: [Outcome; 3] = std::array::from_fn(|p| {
             let mut words = outs[p].split_whitespace();
             let [time, prices, withdrawn, hex] = [0; 4].map(|_| words.next().unwrap());
-            print!("party {p}: {time}  ");
+            print!("party {p}: {time} (pre+online)  ");
             let mut out = parse(hex, slots);
             out.prices = prices.split(',').map(|p| p.parse().ok()).collect();
             out.withdrawn = withdrawn.chars().map(|c| c == '1').collect();
@@ -82,11 +82,17 @@ async fn main() {
 }
 
 async fn party(p: usize, seed: u64, rows: usize, slots: usize) {
-    program(slots, rows, MARKETS.len(), DEFAULT_WITHDRAWALS); // compile now, not in the timing
+    // Compile now, not in the timing.
+    let prg = program(slots, rows, MARKETS.len(), DEFAULT_WITHDRAWALS);
     let batch = random_batch(&mut Rng(seed), slots, rows);
     let channel = TcpChannel::connect(p, &localhost(PORT)).await.unwrap();
-    let t = Instant::now(); // MPC only: excludes compile and waiting for peers
-    let out = run_party_on(&channel, p, &batch.public, &batch.shares(p))
+    // MPC only, excluding compile and waiting for peers: preprocessing (needs no
+    // inputs, so a relayer runs it before the batch closes), then the online part.
+    let t = Instant::now();
+    let pre = preprocess(&channel, p, prg).await.unwrap();
+    let pre_time = t.elapsed();
+    let t = Instant::now();
+    let out = run_party_with(&channel, p, &batch.public, &batch.shares(p), Some(pre))
         .await
         .unwrap();
     let bytes = out
@@ -103,7 +109,8 @@ async fn party(p: usize, seed: u64, rows: usize, slots: usize) {
         .iter()
         .map(|&w| if w { '1' } else { '0' })
         .collect();
-    println!("{:.2?} {} {withdrawn} {hex}", t.elapsed(), prices.join(","));
+    let time = format!("{pre_time:.2?}+{:.2?}", t.elapsed());
+    println!("{time} {} {withdrawn} {hex}", prices.join(","));
 }
 
 fn parse(hex: &str, slots: usize) -> Outcome {

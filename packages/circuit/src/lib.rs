@@ -72,6 +72,7 @@
 //! | slots | rows | AND gates | MPC per batch | compile | peak RSS     |
 //! |-------|------|-----------|---------------|---------|--------------|
 //! | 8     | 16   | 167,949   | 3.6 s         | 2.5 s   | 0.36 GB      |
+//! | 8     | 24   | 243,013   | 5.3 s         | 4.5 s   |              |
 //! | 8     | 32   | 290,543   | 6.3 s         | 6.8 s   | 0.63 GB      |
 //! | 16    | 16   | 490,829   | 10.5 s        | 14 s    | 0.7–1.0 GB   |
 //! | 16    | 32   | 622,597   | 13.5 s        | 21 s    | 1.0–1.4 GB   |
@@ -83,7 +84,16 @@
 //! [`DEFAULT_WITHDRAWALS`] = 2 withdrawal slots (~9k gates each) and 128-bit row keys
 //! (+21k gates, +0.4 s over id matching).
 //! A resolution run of [`DEFAULT_POSITIONS`] = 16 positions over 32 rows is 158,335 AND
-//! gates (~3.5 s by the same rate).
+//! gates (~3.5 s by the same rate). The 16- and 24-row rows of the table are from the
+//! account-key circuit (#94): 195,671 gates at 16 rows. Three market slots instead of four
+//! save only 1.5% (286,204 at 32 rows).
+//!
+//! **Preprocessing** (WRK17's input-independent phases) is ~92% of every run: 5.7 s of
+//! 6.2 s at 8 × 32, 4.8 of 5.3 s at 24 rows, 3.9 of 4.2 s at 16. [`preprocess`] does it
+//! before the inputs exist and [`run_party_with`] does the rest (inputs, evaluation,
+//! output: ~0.5 s), so a relayer can hold a run ready for the next batch. The split is in
+//! the vendored polytune (`vendor/polytune`); it changes nothing that is computed or sent.
+//! The bench prints both phases.
 //!
 //! # Trust
 //!
@@ -102,7 +112,8 @@ pub mod resolve;
 
 pub use error::Error;
 pub use io::{Outcome, Public, Shares};
-pub use party::{run_party, run_party_on};
+pub use party::{preprocess, run_party, run_party_on, run_party_with};
+pub use polytune::Preprocessed;
 pub use program::{
     DEFAULT_MARKETS, DEFAULT_ROWS, DEFAULT_SLOTS, DEFAULT_WITHDRAWALS, MAX_SLOTS, and_gates,
     eval_in_clear, program, resolve_program,
