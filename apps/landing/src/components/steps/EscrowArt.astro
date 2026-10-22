@@ -1,0 +1,53 @@
+---
+/** Template keyplate: a metal plate, a dark well and the key drawn twice in soft-light. */
+import Ring from "../ui/Ring.astro";
+---
+
+<Ring size={481} class="ring" />
+<div class="plate"></div>
+<div class="well"></div>
+<img class="key" src="/media/key.svg" alt="" />
+<img class="key" src="/media/key.svg" alt="" />
+
+<style>
+	.plate {
+		top: 100px;
+		width: 160px;
+		height: 160px;
+		border: 1px solid transparent;
+		border-radius: 34px;
+		background-image:
+			conic-gradient(from 180deg at 50% 50%, #8b8b8c 133.14deg, #171818 313.95deg),
+			linear-gradient(180deg, #000 0%, #666 100%);
+		background-origin: border-box;
+		background-clip: padding-box, border-box;
+	}
+	.well {
+		top: 114px;
+		width: 132px;
+		height: 132px;
+		border: 8px solid transparent;
+		border-radius: 26px;
+		background-image:
+			radial-gradient(
+				215px 224px at 8px -6px,
+				rgba(237, 237, 237, 0.2) 24.15%,
+				rgba(0, 0, 0, 0) 100%
+			),
+			linear-gradient(rgba(0, 0, 0, 0.77), rgba(0, 0, 0, 0.77)),
+			linear-gradient(
+				180deg,
+				rgba(87, 87, 87, 0.9) -77.56%,
+				rgba(12, 12, 12, 0.9) 165.38%
+			);
+		background-origin: border-box;
+		background-clip: padding-box, padding-box, border-box;
+	}
+	.key {
+		top: 149px;
+		width: 62px;
+		height: 62px;
+		transform: translateX(-50%) rotate(90deg);
+		mix-blend-mode: soft-light;
+	}
+</style>

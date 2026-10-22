@@ -1,0 +1,72 @@
+---
+import { type StepArt, steps } from "../data/steps";
+import EscrowArt from "./steps/EscrowArt.astro";
+import MpcArt from "./steps/MpcArt.astro";
+import OracleArt from "./steps/OracleArt.astro";
+import PayoutArt from "./steps/PayoutArt.astro";
+import SharesArt from "./steps/SharesArt.astro";
+import StepCard from "./steps/StepCard.astro";
+import Panel from "./ui/Panel.astro";
+import SectionHeading from "./ui/SectionHeading.astro";
+
+const arts: Record<StepArt, typeof EscrowArt> = {
+	escrow: EscrowArt,
+	shares: SharesArt,
+	mpc: MpcArt,
+	oracle: OracleArt,
+	payout: PayoutArt,
+};
+---
+
+<Panel id="how">
+	<SectionHeading lines={["How it", "works"]} />
+	<div class="grid">
+		{
+			steps.map((step) => {
+				const Art = arts[step.art];
+				return (
+					<StepCard
+						step={step}
+						noise={step.art === "mpc"}
+						class:list={["card", { "card--wide": step.wide }]}
+					>
+						<Art />
+					</StepCard>
+				);
+			})
+		}
+	</div>
+</Panel>
+
+<style>
+	/* 3 + 2 cards on desktop, 2 + 2 + 1 on tablet, one column on phones. */
+	.grid {
+		display: grid;
+		grid-template-columns: repeat(6, minmax(0, 1fr));
+		gap: var(--gap);
+	}
+	.card {
+		grid-column: span 2;
+	}
+	.card--wide {
+		grid-column: span 3;
+	}
+
+	@media (max-width: 1199.98px) {
+		.card {
+			grid-column: span 3;
+		}
+		.card:last-child {
+			grid-column: 2 / span 4;
+		}
+	}
+	@media (max-width: 799.98px) {
+		.grid {
+			grid-template-columns: 1fr;
+		}
+		.card,
+		.card:last-child {
+			grid-column: auto;
+		}
+	}
+</style>
