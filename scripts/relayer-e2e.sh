@@ -3,7 +3,8 @@
 # (3-party MPC over Noise, settlement on):
 #   DKG (sealed) -> two 25-unit tagged deposits -> each relayer scans them, credited once
 #   all three agree -> a YES and a NO order cross -> the market resolves on every node ->
-#   the resolution MPC pays the winner -> the winner withdraws to a fresh address ->
+#   the resolution MPC pays the winner -> each relayer's forged withdrawal for the winner
+#   is refused -> the winner withdraws to a fresh address ->
 #   relayers 0 and 1 verify-then-sign one batched payout -> mined -> the payee holds it.
 #   scripts/relayer-e2e.sh                full run
 #   SKIP_BUILD=1 scripts/relayer-e2e.sh   reuse built tools
@@ -114,9 +115,16 @@ until_ok 60 "signed outcome" bash -c "curl -sf http://127.0.0.1:4301/markets | j
 is 4150 balance "$TAG_B" || die "B after resolution: $(client balance "$TAG_B")"
 echo "A 5850 (3850 + 10 contracts x 1 unit), B 4150"
 
-log "A withdraws everything to a fresh shielded address"
 wallet payee init --name payee -i "$IDENTITY" -n regtest --activation-heights "$HEIGHTS" -s "$LWD" >/dev/null
 UA=$(wallet payee generate-address -p orchard 2>&1 | grep -o 'uregtest1[a-z0-9]*' | head -1)
+for p in 0 1 2; do
+  log "relayer $p impersonates A (its key share + A's id) to withdraw everything: refused"
+  F_W=$(client forge "$TAG_A" "$p" 5850 "$UA")
+  until_ok 120 "forged withdrawal $p settled" bash -c "[ \"\$(python3 -I '$REPO_ROOT/scripts/lib/relayer_client.py' withdrawal $F_W | cut -d' ' -f1)\" = refused ]"
+done
+is 5850 balance "$TAG_A" || die "A after forged withdrawals: $(client balance "$TAG_A")"
+
+log "A withdraws everything to a fresh shielded address"
 W=$(client withdraw "$TAG_A" 5850 "$UA")
 until_ok 300 "payout broadcast" bash -c "[ \"\$(python3 -I '$REPO_ROOT/scripts/lib/relayer_client.py' withdrawal $W | cut -d' ' -f1)\" = paid ]"
 read -r _ TXID <<<"$(client withdrawal "$W")"
