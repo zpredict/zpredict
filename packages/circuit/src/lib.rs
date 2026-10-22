@@ -26,16 +26,18 @@
 //!
 //! # Cost (N = 16)
 //!
-//! 311,528 AND gates. On one Apple-silicon laptop, three separate processes over
-//! localhost TCP: ~8.5 s per batch for the MPC (`cargo run --release --example bench`),
-//! plus ~6–11 s to compile the Garble program, once per process.
+//! 311,528 AND gates. Three separate processes over localhost TCP on an M4 Pro:
+//! 8.0–8.9 s per batch for the MPC (median 8.3 s, `cargo run --release --example bench`),
+//! plus ~10 s to compile the Garble program once per process. Each party sends about
+//! 0.5–0.6 GB per batch, so between hosts expect bandwidth to dominate (not yet measured).
+//! For comparison, N = 8 is 72,852 AND gates and ~1.9 s.
 //!
 //! # Trust
 //!
 //! polytune runs WRK17 authenticated garbling with distributed preprocessing (no trusted
 //! dealer). An honest relayer's shares stay private even if the other two collude and
-//! cheat; a cheater can only make the run abort. Not yet covered: balance checks (see
-//! the PR), and authentication of the TCP links (see [`net`]).
+//! cheat; a cheater can only make the run abort. Not yet covered: balance checks
+//! (zpredict/zpredict#41) and authentication of the TCP links (see [`net`]).
 
 mod error;
 pub mod harness;
