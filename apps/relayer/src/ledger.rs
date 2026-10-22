@@ -37,8 +37,8 @@ pub enum WithdrawalStatus {
 }
 
 pub struct Withdrawal {
-    /// This relayer's XOR share of the account id (`u64` LE).
-    pub share: [u8; 8],
+    /// This relayer's XOR share of the account key.
+    pub share: zpredict_core::Key,
     pub amount: u64,
     pub address: String,
     pub status: WithdrawalStatus,
@@ -92,7 +92,13 @@ impl Ledger {
     }
 
     /// Records a request; false if the id is taken.
-    pub fn request(&mut self, id: String, share: [u8; 8], amount: u64, address: String) -> bool {
+    pub fn request(
+        &mut self,
+        id: String,
+        share: zpredict_core::Key,
+        amount: u64,
+        address: String,
+    ) -> bool {
         if self.withdrawals.contains_key(&id) {
             return false;
         }
@@ -151,8 +157,8 @@ mod tests {
         l.apply_deposits(&["aa-0:7:1000".into()]);
         assert!(l.offered_deposits().is_empty());
 
-        assert!(l.request("w1".into(), [1; 8], 202, "ua".into()));
-        assert!(!l.request("w1".into(), [2; 8], 1, "x".into()));
+        assert!(l.request("w1".into(), [1; 16], 202, "ua".into()));
+        assert!(!l.request("w1".into(), [2; 16], 1, "x".into()));
         assert_eq!(l.offered_withdrawals(), vec!["w1:202:ua"]);
         assert_eq!(l.withdrawal("w1").unwrap().zats(), 200 * ZATS_PER_HALF_TICK);
         l.set("w1", WithdrawalStatus::Debited, None);

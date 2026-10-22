@@ -107,4 +107,4 @@ pub use program::{
     DEFAULT_MARKETS, DEFAULT_ROWS, DEFAULT_SLOTS, DEFAULT_WITHDRAWALS, MAX_SLOTS, and_gates,
     eval_in_clear, program, resolve_program,
 };
-pub use resolve::{DEFAULT_POSITIONS, Position, resolve_in_clear, run_resolution_on};
+pub use resolve::{DEFAULT_POSITIONS, Position, Table, resolve_in_clear, run_resolution_on};

@@ -64,6 +64,9 @@ impl State {
                 self.batch = self.batch.max(batch + 1);
             }
             Event::Credit { id, amount } => self.table.credit(id, amount),
+            Event::Key { id, share } => {
+                self.table.register(id, hex_array(&share));
+            }
             Event::Deposit {
                 note,
                 account,

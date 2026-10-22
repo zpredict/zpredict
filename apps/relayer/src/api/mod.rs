@@ -46,7 +46,7 @@ pub fn router(api: Api) -> Router {
         .route("/group-key", get(info::group_key))
         .route("/orders", post(orders::post))
         .route("/orders/{id}", get(orders::get))
-        .route("/accounts/{tag}", get(accounts::get))
+        .route("/accounts/{id}", get(accounts::get))
         .route("/judge/claim", post(judge::claim))
         .route("/withdrawals", post(withdrawals::post))
         .route("/withdrawals/{id}", get(withdrawals::get))
@@ -91,4 +91,14 @@ pub(crate) fn fail(code: StatusCode, msg: &str) -> Response {
 /// Lowercase hex of exactly `n` characters.
 pub(crate) fn is_hex(s: &str, n: usize) -> bool {
     s.len() == n && s.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+}
+
+/// An account id: hex16 of its u64 LE bytes.
+pub(crate) fn hex_id(s: &str) -> Option<u64> {
+    is_hex(s, 16).then(|| u64::from_le_bytes(crate::state::hex_array(s)))
+}
+
+/// A key share: hex32.
+pub(crate) fn hex_key(s: &str) -> Option<zpredict_core::Key> {
+    is_hex(s, 32).then(|| crate::state::hex_array(s))
 }

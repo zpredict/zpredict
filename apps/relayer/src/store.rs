@@ -48,7 +48,8 @@ pub enum Event {
         withdrawals: Vec<(String, bool)>,
     },
     /// This relayer's scanner found a confirmed deposit of `amount` half-ticks for
-    /// `account` in escrow note `note` (`<txid>-<action>`).
+    /// `account` in escrow note `note` (`<txid>-<action>`). A `Key` event for its memo
+    /// slot's key share comes first.
     Deposit {
         note: String,
         account: u64,
@@ -56,7 +57,7 @@ pub enum Event {
     },
     /// The scanner has read the escrow chain up to `height`.
     Scanned { height: u32 },
-    /// A withdrawal request: this relayer's share of the account id, the amount in
+    /// A withdrawal request: this relayer's share of the account key, the amount in
     /// half-ticks and the shielded address to pay.
     Withdrawal {
         id: String,
@@ -74,6 +75,9 @@ pub enum Event {
     },
     /// Relayer 0: account `id` was credited `amount` half-ticks (see `table.rs`).
     Credit { id: u64, amount: u64 },
+    /// This relayer's share (hex32) of account `id`'s key, from a deposit memo or a judge
+    /// claim (see `table.rs`: a different second share burns the key).
+    Key { id: u64, share: String },
     /// Relayers 1 and 2: zero-share rows appended for ids relayer 0 announced.
     Rows { ids: Vec<u64> },
     /// Relayer 0: the first `rows` table rows entered a batch; credit them via new rows.

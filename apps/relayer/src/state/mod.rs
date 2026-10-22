@@ -6,7 +6,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
-use zpredict_core::{BALANCE_LEN, FILL_LEN, ORDER_LEN};
+use zpredict_core::{FILL_LEN, Key, ORDER_LEN};
 use zpredict_oracle::Market;
 
 use crate::error::Result;
@@ -152,22 +152,20 @@ impl State {
         ids
     }
 
-    /// This relayer's balance share for an account tag (hex32; its first 8 bytes are
-    /// the account id, as in `Order::account`).
-    pub fn balance_share(&self, tag: &str) -> [u8; BALANCE_LEN] {
-        self.table.balance_share(tag_account(tag))
-    }
-
-    /// Deposit entry point (settle scanner, judge mode). Every relayer sees the amount
-    /// anyway (shared viewing key), so relayer 0 credits it (`table.rs`): into a fresh
-    /// row's `(A, 0, 0)` share, or as a public credit the next batch's circuit adds.
-    /// Relayers 1 and 2 learn both from relayer 0 at the next batch; here a no-op.
-    pub fn credit(&mut self, tag: &str, amount: u64) -> Result<()> {
-        if self.index != 0 {
-            return Ok(());
+    /// Judge-mode entry point: registers this relayer's key share for a new account, and
+    /// relayer 0 credits it `amount` (relayers 1 and 2 learn the row at the next batch).
+    /// Every relayer sees the amount anyway. False if the id is already known here: a
+    /// claim never tops up an existing account or replaces its key.
+    pub fn claim(&mut self, id: u64, share: Key, amount: u64) -> Result<bool> {
+        if self.table.has_key(id) || self.table.ids().contains(&id) {
+            return Ok(false);
         }
-        let id = tag_account(tag);
-        self.record(Event::Credit { id, amount })
+        let share = hex::encode(share);
+        self.record(Event::Key { id, share })?;
+        if self.index == 0 {
+            self.record(Event::Credit { id, amount })?;
+        }
+        Ok(true)
     }
 
     pub fn view_after(&self, after: u64, max: usize) -> Vec<ViewItem> {
@@ -206,13 +204,7 @@ impl State {
     }
 }
 
-/// The order's `account` field for a tag: its first 8 bytes, little-endian.
-pub fn tag_account(tag: &str) -> u64 {
-    let mut b = [0u8; 8];
-    hex::decode_to_slice(&tag[..16], &mut b).expect("tags are checked hex32");
-    u64::from_le_bytes(b)
-}
-
+/// `h` must be checked hex of exactly `2 * L` characters.
 pub(crate) fn hex_array<const L: usize>(h: &str) -> [u8; L] {
     let mut b = [0u8; L];
     hex::decode_to_slice(h, &mut b).expect("logged shares are valid hex");

@@ -10,7 +10,7 @@ use crate::state::{Shared, State, Status};
 #[tokio::test(flavor = "multi_thread")]
 async fn three_relayers_clear_expire_and_restart() {
     let r = relayers("e2e", 4, || InsecureLocalMatcher, false);
-    let ((ta, a), (tb, b)) = (funded(&r).await, funded(&r).await);
+    let (a, b) = (funded(&r).await, funded(&r).await);
     let (yes, no) = (order(1, Side::Yes, 60, 3, a), order(1, Side::No, 45, 3, b));
     let other = order(2, Side::No, 99, 3, b); // other market: must not cross
     submit(&r, &id(1), yes, &[0, 1, 2]).await;
@@ -33,11 +33,12 @@ async fn three_relayers_clear_expire_and_restart() {
     );
     // Each account paid its fill's actual cost; relayers 1 and 2 adopted both rows.
     assert_eq!(
-        (balance(&r, &ta).await, balance(&r, &tb).await),
+        (balance(&r, &a).await, balance(&r, &b).await),
         (5000 - 345, 5000 - 255)
     );
     for x in &r {
-        assert_eq!(x.batcher.state.lock().unwrap().table.ids(), vec![a, b]);
+        let ids = vec![account_id(&a), account_id(&b)];
+        assert_eq!(x.batcher.state.lock().unwrap().table.ids(), ids);
         let (_, m) = call(&x.http, "GET", "/markets", None).await;
         assert_eq!(
             (m[0]["lastPrice"].clone(), m[1].get("lastPrice")),
@@ -61,15 +62,15 @@ async fn three_relayers_clear_expire_and_restart() {
 
     // Restart relayers 0 and 1 from their event logs: same shares, statuses, table, view.
     for i in [0, 1] {
-        let before = snapshot(&r[i].batcher.state, &ta);
+        let before = snapshot(&r[i].batcher.state, account_id(&a));
         let dir = std::env::temp_dir().join(format!("zpredict-e2e-{i}-{}", std::process::id()));
         let markets = r[i].batcher.state.lock().unwrap().markets.clone();
         let reopened = State::open(i, markets, &dir).unwrap().shared();
-        assert_eq!(snapshot(&reopened, &ta), before);
+        assert_eq!(snapshot(&reopened, account_id(&a)), before);
     }
 }
 
-fn snapshot(s: &Shared, tag: &str) -> Value {
+fn snapshot(s: &Shared, account: u64) -> Value {
     let s = s.lock().unwrap();
     let status = |n| match s.order(&id(n)).map(|o| o.status) {
         Some(Status::Filled(f)) => hex::encode(f),
@@ -78,7 +79,8 @@ fn snapshot(s: &Shared, tag: &str) -> Value {
     let view = serde_json::to_value(s.view_after(0, 1000)).unwrap();
     // No `batch`: an idle window bumps it only in memory; peers resync it via the max.
     json!({"orders":[status(1), status(2), status(3), status(4)],
-        "balance": s.balance_share(tag), "rows": s.table.ids(), "view": view,
+        "balance": s.table.balance_share(account), "rows": s.table.ids(), "view": view,
+        "keys": s.table.key_shares(2, 2),
         "positions": s.positions().len()})
 }
 
@@ -86,7 +88,7 @@ fn snapshot(s: &Shared, tag: &str) -> Value {
 async fn batches_cap_at_slots_and_pad() {
     let r = relayers("cap", 2, || InsecureLocalMatcher, false);
     for n in 1..=3 {
-        submit(&r, &id(n), order(1, Side::Yes, 50, 1, 7), &[0, 1, 2]).await;
+        submit(&r, &id(n), order(1, Side::Yes, 50, 1, [7; 16]), &[0, 1, 2]).await;
     }
     assert_eq!(batch_all(&r).await[0], [id(1), id(2)]);
     assert_eq!(
