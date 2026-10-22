@@ -15,8 +15,8 @@ x-relayer: &relayer
     context: ../..
     dockerfile: deploy/production/relayer.Dockerfile
   restart: unless-stopped
-  # ponytail: 1 GiB cap per party is a guess for N = 16 polytune; measure with
-  # `docker stats` over a few batches and tighten.
+  # Measured on an M4 Pro (#66): peak RSS ~0.63 GB per party at batch_size 8 and 32
+  # rows (compile included); 16 slots peaks at 1.0-1.4 GB and would not fit this cap.
   mem_limit: 1g
   cpus: 2
   read_only: true
