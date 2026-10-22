@@ -1,0 +1,17 @@
+[package]
+name = "zpredict-oracle"
+description = "Resolver trait, market registry and chain access for zPredict outcomes"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+# In-memory `FixtureChain` for plugin tests.
+fixture = []
+
+[dependencies]
+prost = "0.14"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "http2", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

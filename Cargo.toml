@@ -1,6 +1,12 @@
 [workspace]
 resolver = "3"
-members = ["packages/core"]
+members = [
+    "packages/core",
+    "packages/oracle",
+    "packages/plugins/ironwood-pool",
+    "packages/plugins/nu7-activation",
+    "packages/plugins/shielded-actions",
+]
 
 [workspace.package]
 version = "0.1.0"
