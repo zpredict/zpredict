@@ -33,10 +33,15 @@ pub struct Config {
     pub peer_keys: [PathBuf; 3],
     /// The only origin CORS allows, e.g. `https://app.zpredict.site`.
     pub web_origin: String,
-    /// lightwalletd gRPC endpoint for heights and market resolution; the only third party
-    /// the relayer ever contacts. Unset = height stays 0 and markets stay as configured.
-    #[serde(default)]
-    pub lightwalletd: Option<String>,
+    /// lightwalletd for the chain the markets are about (mainnet): tip height for
+    /// `/health` and market progress, and the oracle resolvers. `""` turns polling off
+    /// (height stays 0, markets stay as configured).
+    #[serde(default = "default_oracle_lightwalletd")]
+    pub oracle_lightwalletd: String,
+    /// lightwalletd for the chain the escrow lives on (testnet or regtest), for deposit
+    /// scanning and settlement (`packages/settle`). Never used for market data.
+    #[serde(default = "default_escrow_lightwalletd")]
+    pub escrow_lightwalletd: String,
     /// Slots per MPC batch (N); must equal `zpredict_circuit::N` for the real matcher.
     pub batch_size: usize,
     pub window_secs: u64,
@@ -54,6 +59,14 @@ pub struct Config {
     #[serde(default)]
     pub insecure_matcher: bool,
     pub markets: Vec<Market>,
+}
+
+fn default_oracle_lightwalletd() -> String {
+    "https://zec.rocks:443".into()
+}
+
+fn default_escrow_lightwalletd() -> String {
+    "https://testnet.zec.rocks:443".into()
 }
 
 impl Config {
@@ -129,6 +142,23 @@ pub(crate) mod tests {
         let c = Config::parse(EXAMPLE, env.into_iter()).unwrap();
         assert_eq!(c.web_origin, "https://app.zpredict.site");
         assert_eq!((c.window_secs, c.judge), (30, false));
+    }
+
+    #[test]
+    fn oracle_and_escrow_chains_and_listen_from_env() {
+        let c = Config::parse(EXAMPLE, std::iter::empty()).unwrap();
+        assert_eq!(c.oracle_lightwalletd, "https://zec.rocks:443");
+        assert_eq!(c.escrow_lightwalletd, "https://testnet.zec.rocks:443");
+        let prod = include_str!("../../../deploy/production/relayer.toml");
+        let env = [
+            ("index".into(), "2".into()),
+            ("listen".into(), "127.0.0.1:3174".into()),
+            ("oracle_lightwalletd".into(), String::new()),
+        ];
+        let c = Config::parse(prod, env.into_iter()).unwrap();
+        assert_eq!((c.index, c.listen.port()), (2, 3174));
+        assert_eq!(c.oracle_lightwalletd, "", "empty turns oracle polling off");
+        assert_eq!(c.escrow_lightwalletd, "https://testnet.zec.rocks:443");
     }
 
     #[test]

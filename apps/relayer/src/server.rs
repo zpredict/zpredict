@@ -67,8 +67,10 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
     };
     let handle = tokio::runtime::Handle::current();
     tokio::task::spawn_blocking(move || handle.block_on(batch::run(b)));
-    if let Some(url) = c.lightwalletd.clone() {
-        let s = state.clone();
+    // Market progress and resolution read the oracle (mainnet) chain only. The escrow
+    // endpoint, `c.escrow_lightwalletd`, is for the settle scanner and payouts.
+    if !c.oracle_lightwalletd.is_empty() {
+        let (url, s) = (c.oracle_lightwalletd.clone(), state.clone());
         tokio::task::spawn_blocking(move || chain::poll(&url, s));
     }
 

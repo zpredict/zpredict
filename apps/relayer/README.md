@@ -21,17 +21,18 @@ A single relayer: `zpredict-relayer <config.toml>`. Key pair: `zpredict-relayer 
 
 ## Config
 
-TOML, one file per relayer (`config/r{0,1,2}.toml` are the local examples). Paths are relative to the file. Any top-level scalar can be overridden with `ZPREDICT_<KEY>`, e.g. `ZPREDICT_WEB_ORIGIN=https://app.zpredict.site`, `ZPREDICT_LIGHTWALLETD=https://testnet.zec.rocks:443`, `ZPREDICT_JUDGE=false`. Unknown keys are rejected.
+TOML, one file per relayer (`config/r{0,1,2}.toml` are the local examples). Paths are relative to the file. Any top-level scalar can be overridden with `ZPREDICT_<KEY>`, e.g. `ZPREDICT_WEB_ORIGIN=https://app.zpredict.site`, `ZPREDICT_ORACLE_LIGHTWALLETD=""` (offline), `ZPREDICT_JUDGE=false`. Unknown keys are rejected.
 
 | Key | Meaning |
 |---|---|
 | `index` | Party index 0, 1 or 2 |
 | `network` | `mainnet` / `testnet` / `regtest`; judge mode is refused on mainnet |
-| `listen` | HTTP API address |
+| `listen` | HTTP API bind address and port (production: `0.0.0.0:8080` in the container, published on loopback 3172–3174 for host nginx, see `deploy/production/`) |
 | `peers` | The three parties' Noise addresses in party order; this relayer listens on `peers[index]` |
 | `key_file`, `peer_keys` | Own private key, the three public keys (hex files from `keygen`) |
 | `web_origin` | The only origin CORS answers |
-| `lightwalletd` | Optional. Tip height and market resolution; the only outside host contacted |
+| `oracle_lightwalletd` | The chain the markets are about (default `https://zec.rocks:443`, mainnet): tip height in `/health` and market progress, and the oracle resolvers. `""` = offline |
+| `escrow_lightwalletd` | The chain the escrow lives on (default `https://testnet.zec.rocks:443`): deposit scanning and payouts (settle). Never used for market data |
 | `batch_size` | Slots per batch, N; must be 16 (`zpredict_circuit::N`) for the real matcher |
 | `window_secs` | Batch window; batches start on wall-clock multiples of it |
 | `expire_batches` | A pending order missing from the intersection this long becomes `unfilled` |
@@ -82,12 +83,12 @@ Every change is first appended to `data_dir/events.jsonl` (fsynced) and then app
 
 ## Privacy
 
-There are no access logs, no client addresses (the peer address is never read), and no cookies. Logs never contain request bodies. CORS answers only `web_origin`, bodies are capped at 1 KiB, and every response is `no-store`. A second share for the same orderId is refused (409). The relayer never forwards a share: peers exchange orderIds, table row ids (8-byte account ids, which every relayer already sees with each deposit) and MPC messages. The only outbound connections go to the two peers and the configured lightwalletd.
+There are no access logs, no client addresses (the peer address is never read), and no cookies. Logs never contain request bodies. CORS answers only `web_origin`, bodies are capped at 1 KiB, and every response is `no-store`. A second share for the same orderId is refused (409). The relayer never forwards a share: peers exchange orderIds, table row ids (8-byte account ids, which every relayer already sees with each deposit) and MPC messages. The only outbound connections go to the two peers and the two configured lightwalletd endpoints (oracle and escrow).
 
 ## Known gaps
 
 - **Market filter and public price (#49, circuit):** until they land, the real matcher can cross orders from different markets in one batch, and `lastPrice`/`history` stay empty. The relayer side is ready for both (see Matchers).
 - **Table size (#48):** a batch carries only the first 16 rows. Orders from accounts in later rows become dummies until the table grows.
 - **Top-up rows:** a credit to an account whose row has already been batched lands in a new row with the same id. The circuit spends only from the first row, and `/accounts` shows only the first row, so that money is held but not usable until the circuit merges rows with the same id or takes credits as an input.
-- **Outcome signatures:** markets resolve from lightwalletd, but `outcomeSig` waits for the FROST signer.
+- **Outcome signatures:** markets resolve from the oracle lightwalletd, but `outcomeSig` waits for the FROST signer.
 - **Crash between MPC and fsync:** a relayer that crashes in that gap re-pends orders its peers recorded as filled, and its balance shares go stale. They then expire on that relayer, and the sdk reports a disagreement for those orders.

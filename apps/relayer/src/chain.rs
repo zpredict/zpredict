@@ -1,6 +1,6 @@
-//! Chain tip and market status from the configured lightwalletd (the only outside host
-//! the relayer talks to): open → closed at `closeHeight`, → resolved once the market's
-//! plugin can resolve it against this relayer's own node.
+//! Chain tip and market status from the oracle lightwalletd: the chain the markets are
+//! about (mainnet), never the escrow chain. Markets go open → closed at `closeHeight`,
+//! → resolved once the market's plugin can resolve it against this relayer's own node.
 
 use std::time::Duration;
 
