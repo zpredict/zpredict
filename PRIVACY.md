@@ -18,7 +18,8 @@ secret. Each sealed file binds its label (`frost-key-share`, `ufvk`, `memo-key`,
 | Deposit-memo key (X25519, one per relayer) | that relayer | `r{i}-memo.sealed` | In memory while scanning (the relayer's scanner thread). The public half is served at `GET /memo-key` |
 | Escrow wallet (zcash-devtool / zcash_client_sqlite DB: UFVK, notes, witnesses) | the proving relayer | `escrow-wallet.sealed` | Unsealed only for one step (sync, build a payout, prove, send) into `/dev/shm` where it exists (tmpfs, RAM). Without `/dev/shm`, e.g. on macOS, it goes to `ESCROW_WALLET_DIR` or `$RUN_DIR/escrow`. It is sealed again and deleted when the step exits, including on error |
 | Relayer Noise key (MPC peering) | that relayer | Production: never on disk (env → tmpfs `/run/zpredict`). Local dev: `apps/relayer/config/keys/r{i}.key`, mode 0600, gitignored | While the relayer runs |
-| Account tag | the trader's browser | `localStorage` only | Only to the relayers. The deposit memo encrypts it to each one, and the balance query (`GET /accounts/:tag`) sends it to each over TLS. It's never on chain in clear |
+| Account tag (the account's credential) | the trader's browser | `localStorage` only | Never outside the browser. Relayer `i` gets only its share `sᵢ` (in its deposit-memo slot, a judge claim, and as `?key=` on its balance query) and fresh XOR shares inside orders and withdrawals; no relayer, and no two of them, can rebuild it. It's never on chain in clear |
+| Account key shares (`sᵢ` per account id) | relayer `i` | the relayer event log (`key` events) | In memory while the relayer runs; enters the MPC as that relayer's share of each row's key |
 
 `scripts/settle-e2e.sh` checks that every file under `$RUN_DIR/frost` is sealed and that no
 unsealed escrow wallet is left behind.
@@ -36,10 +37,10 @@ unsealed escrow wallet is left behind.
   payout PCZTs pass through files next to the wallet for one `zcash-devtool pczt combine`
   and are deleted right after.
 - **Withdrawal requests in the relayer event log**: amount, payout address and this
-  relayer's share of the account id. Amount and address are public to all relayers by
+  relayer's fresh share of the account tag. Amount and address are public to all relayers by
   design; the share alone says nothing about whose request it is.
-- **The relayer event log** (`data_dir`): order shares, fill shares and balance shares this
-  relayer already holds. These are XOR shares, so they reveal nothing alone, but anyone
+- **The relayer event log** (`data_dir`): order shares, fill shares, balance shares and
+  account key shares this relayer already holds. These are XOR shares, so they reveal nothing alone, but anyone
   holding all three relayers' logs can rebuild everything. That's the same 3-of-3 assumption
   as the MPC itself.
 - **Same-host DKG**: `settle-payout dkg` runs all three parties in one process, so for that
