@@ -1,4 +1,4 @@
-//! Test fixture: a 2-of-3 FROST escrow (trusted dealer) holding two 5-unit notes, and a
+//! Test fixture: a 2-of-3 FROST escrow (from the DKG) holding two 5-unit notes, and a
 //! payout PCZT built the way the wallet builds one: two payouts, change to the escrow's
 //! internal scope, Ironwood only, default padding, ZIP 317 fee.
 
@@ -11,13 +11,12 @@ use pczt::Pczt;
 use pczt::roles::{creator::Creator, io_finalizer::IoFinalizer};
 use rand::rand_core::UnwrapErr;
 use rand::rngs::SysRng;
-use rand_core::OsRng;
-use reddsa::frost::redpallas::keys::{self, IdentifierList, KeyPackage};
 use zcash_primitives::transaction::builder::{BuildConfig, Builder, BundlePadding};
 use zcash_primitives::transaction::fees::zip317::FeeRule;
 use zcash_protocol::memo::MemoBytes;
 use zcash_protocol::value::Zatoshis;
 
+use crate::dkg::dkg_local;
 use crate::payout::Payout;
 use crate::share::KeyShare;
 use crate::{UNIT_ZATS, keys::fvk_from_ak, keys::regtest};
@@ -31,21 +30,8 @@ pub struct Fixture {
 
 /// Fresh keys and a fresh PCZT; `to` can redirect the second payout's output.
 pub fn fixture(to: Option<orchard::Address>) -> Fixture {
-    let (secret, group) = keys::generate_with_dealer(3, 2, IdentifierList::Default, OsRng).unwrap();
-    let shares: Vec<KeyShare> = secret
-        .into_values()
-        .map(|s| KeyShare {
-            key: KeyPackage::try_from(s).unwrap(),
-            group: group.clone(),
-        })
-        .collect();
-    let ak: [u8; 32] = group
-        .verifying_key()
-        .serialize()
-        .unwrap()
-        .try_into()
-        .unwrap();
-    let fvk = fvk_from_ak(&ak).unwrap();
+    let shares = dkg_local().unwrap();
+    let fvk = fvk_from_ak(&shares[0].ak().unwrap()).unwrap();
 
     let deposit = 5 * UNIT_ZATS;
     let notes: Vec<Note> = (1u8..=2).map(|i| note(&fvk, deposit, i)).collect();
