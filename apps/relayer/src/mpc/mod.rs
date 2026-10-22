@@ -21,64 +21,50 @@ pub struct Cleared {
     pub fills: Vec<[u8; FILL_LEN]>,
     /// This relayer's XOR share of each table row's new balance.
     pub balances: Vec<[u8; BALANCE_LEN]>,
-    /// The run's public clearing price (YES half-ticks), identical at all three relayers.
-    pub price: Option<u16>,
+    /// Each market slot's public clearing price (YES half-ticks), in the order the
+    /// markets were passed; identical at all three relayers.
+    pub prices: Vec<Option<u16>>,
 }
 
 pub trait Matcher {
-    /// Order slots the circuit is built for; `None` = any. Table rows are configurable
-    /// (`table_rows`).
-    fn slots(&self) -> Option<usize>;
-
-    /// True when a run clears only `market` (other markets' slots come back as zero
-    /// records), so the batch loop runs once per open market and XORs the fill shares.
-    /// False: one run per window and `market` is ignored.
-    fn per_market(&self) -> bool;
-
-    /// Clears one batch. `orders[k]` / `accounts[r]` are this relayer's shares of slot
-    /// `k` / table row `r`. Padding is all-zero shares: price 0 orders (dummies) and
-    /// rows with balance 0. `credits[r]` (public, the same at all three relayers) is
-    /// added to row `r` before clearing.
+    /// Clears one batch for `markets` (exactly [`zpredict_circuit::DEFAULT_MARKETS`]
+    /// slots, `0` = unused; orders of other markets come back as zero records).
+    /// `orders[k]` / `accounts[r]` are this relayer's shares of slot `k` / table row
+    /// `r`. Padding is all-zero shares: price 0 orders (dummies) and rows with balance 0.
+    /// `credits[r]` (public, the same at all three relayers) is added to row `r` before
+    /// clearing.
     #[allow(async_fn_in_trait)] // runs on the batch thread via block_on; no Send needed
     async fn clear(
         &self,
         links: &Links,
-        market: u32,
+        markets: &[u32],
         credits: &[u64],
         orders: &[[u8; ORDER_LEN]],
         accounts: &[[u8; ACCOUNT_LEN]],
     ) -> Result<Cleared>;
 }
 
-/// The real matcher: one circuit run per market, with balance checks, credits and the
-/// public clearing price.
+/// The real matcher: one circuit run clears up to `DEFAULT_MARKETS` markets, with
+/// balance checks, credits and a public clearing price per market.
 pub struct Polytune;
 
 impl Matcher for Polytune {
-    fn slots(&self) -> Option<usize> {
-        Some(zpredict_circuit::N)
-    }
-
-    fn per_market(&self) -> bool {
-        true
-    }
-
     async fn clear(
         &self,
         links: &Links,
-        market: u32,
+        markets: &[u32],
         credits: &[u64],
         orders: &[[u8; ORDER_LEN]],
         accounts: &[[u8; ACCOUNT_LEN]],
     ) -> Result<Cleared> {
         let out =
-            zpredict_circuit::run_party_on(links, links.party, market, credits, orders, accounts)
+            zpredict_circuit::run_party_on(links, links.party, markets, credits, orders, accounts)
                 .await
                 .map_err(|e| Error::Mpc(e.to_string()))?;
         Ok(Cleared {
             fills: out.fills,
             balances: out.balances,
-            price: out.price,
+            prices: out.prices,
         })
     }
 }

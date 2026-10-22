@@ -42,7 +42,8 @@ pub struct Config {
     /// scanning and settlement (`packages/settle`). Never used for market data.
     #[serde(default = "default_escrow_lightwalletd")]
     pub escrow_lightwalletd: String,
-    /// Slots per MPC batch (N); must equal `zpredict_circuit::N` for the real matcher.
+    /// Order slots per MPC batch (N), shared by all open markets; 2..=21. Crossing costs
+    /// ~N² AND gates: 8 ≈ 5 s, 16 ≈ 13 s per window on an M4 Pro at 32 rows (#66).
     pub batch_size: usize,
     /// Balance-table rows per batch, i.e. funded accounts the deployment can hold. Each
     /// row costs ~8k AND gates: 32 ≈ 15 s, 64 ≈ 23 s per market per window (#48).
@@ -149,7 +150,7 @@ pub(crate) mod tests {
     #[test]
     fn example_parses_and_env_overrides() {
         let c = Config::parse(EXAMPLE, std::iter::empty()).unwrap();
-        assert_eq!((c.index, c.batch_size), (0, 16));
+        assert_eq!((c.index, c.batch_size), (0, 8));
         assert!(!c.markets.is_empty());
         let env = [
             ("web_origin".into(), "https://app.zpredict.site".into()),

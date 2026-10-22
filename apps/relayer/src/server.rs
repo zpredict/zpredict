@@ -27,19 +27,21 @@ pub async fn run(c: Config) -> Result<()> {
             "insecure_matcher needs a build with --features dev-insecure".into(),
         ));
     }
-    // Compile the Garble program now, not inside the first batch (~25 s at 32 rows).
-    let _ = zpredict_circuit::program(c.table_rows);
+    // Compile the Garble program now, not inside the first batch (~6 s at 8 slots and
+    // 32 rows, ~25 s at 16 slots).
+    if !(2..=zpredict_circuit::MAX_SLOTS).contains(&c.batch_size) {
+        return Err(Error::Config(format!(
+            "batch_size must be 2..={}",
+            zpredict_circuit::MAX_SLOTS
+        )));
+    }
+    let markets = zpredict_circuit::DEFAULT_MARKETS;
+    let _ = zpredict_circuit::program(c.batch_size, c.table_rows, markets);
     serve(c, Polytune).await
 }
 
 pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result<()> {
-    let (slots, rows) = (matcher.slots().unwrap_or(c.batch_size), c.table_rows);
-    if slots != c.batch_size {
-        return Err(Error::Config(format!(
-            "batch_size must be {} for this matcher",
-            zpredict_circuit::N
-        )));
-    }
+    let (slots, rows) = (c.batch_size, c.table_rows);
     let state = State::open(c.index, c.markets.clone(), &c.data_dir)?.shared();
     let public = [
         read_key(&c.peer_keys[0])?,

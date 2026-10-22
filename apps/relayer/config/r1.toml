@@ -14,8 +14,10 @@ web_origin = "http://localhost:3000"
 # for deposit scanning and payouts. Set oracle_lightwalletd = "" to stay offline.
 oracle_lightwalletd = "https://zec.rocks:443"
 escrow_lightwalletd = "https://testnet.zec.rocks:443"
-batch_size = 16
-window_secs = 15
+# 8 slots, 32 rows (default), all open markets in one run: ~5 s MPC on an M4 Pro, ~10 s
+# estimated on the 8-core VPS, so a fill shows within window + MPC ≈ 22 s (#66).
+batch_size = 8
+window_secs = 12
 expire_batches = 3
 judge = true
 judge_credit = 5000 # 25 units in half-ticks
