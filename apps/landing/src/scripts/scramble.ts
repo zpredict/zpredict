@@ -3,9 +3,11 @@
 //   once:        on enter, every character is random and resolves left to right over 550 ms.
 //   continuous:  while hovered, all characters keep re-randomising; on leave they settle left
 //                to right over 700 ms (ease-out), lines staggered by 80 ms.
-// Mouse and keyboard focus only (not touch); spaces are never replaced; off with reduced motion.
+// Mouse hover on (hover: hover) and (pointer: fine) devices and keyboard focus only: never on load
+// or touch, so the text is readable at rest. Spaces are never replaced; off with reduced motion.
 const POOL = "!<>-_/?%+=@#$0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const TICK = 40;
+const finePointer = matchMedia("(hover: hover) and (pointer: fine)");
 const random = () => POOL[Math.floor(Math.random() * POOL.length)];
 
 class Line {
@@ -70,11 +72,13 @@ function bind(root: HTMLElement) {
 		if (!once) resolve(700, 700, (t) => 1 - (1 - t) ** 2);
 	};
 
+	// Hover only with a real mouse on a hover-capable device: touch never scrambles.
+	const mouse = (e: PointerEvent) => e.pointerType === "mouse" && finePointer.matches;
 	root.addEventListener("pointerenter", (e) => {
-		if (e.pointerType === "mouse") enter();
+		if (mouse(e)) enter();
 	});
 	root.addEventListener("pointerleave", (e) => {
-		if (e.pointerType === "mouse") leave();
+		if (mouse(e) || hovering) leave();
 	});
 	root.addEventListener("focusin", enter);
 	root.addEventListener("focusout", leave);
