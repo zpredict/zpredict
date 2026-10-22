@@ -1,5 +1,5 @@
 // Build step for the static images (apps/landing, apps/web).
-// 1. Writes csp.caddy: a self-only CSP that allows the build's inline scripts and styles
+// 1. Writes csp.caddy (imported inside a `header` block): a self-only CSP that allows the build's inline scripts and styles
 //    by sha256 hash (Next and Astro both inline a few), never 'unsafe-inline'.
 // 2. Precompresses text assets to .br and .gz so Caddy serves them without CPU per request.
 // Usage: node prepare.mjs <site dir> <csp.caddy out> [connect-src origins, comma separated]
@@ -59,7 +59,7 @@ const csp = [
 ]
 	.map((d) => d.trim())
 	.join("; ");
-writeFileSync(out, `header Content-Security-Policy "${csp}"\n`);
+writeFileSync(out, `Content-Security-Policy "${csp}"\n`);
 
 for (const f of files.filter((f) => /\.(html|js|css|txt|json|svg|webmanifest|xml)$/.test(f))) {
 	const buf = readFileSync(f);
