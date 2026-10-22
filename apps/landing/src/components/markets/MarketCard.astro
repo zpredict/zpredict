@@ -1,0 +1,190 @@
+---
+/**
+ * The core object of a prediction market: question, chance, YES/NO prices,
+ * probability bar and sparkline, plus what stays hidden on zPredict.
+ */
+import { categoryOf, type Market } from "../../data/markets";
+import { site } from "../../data/site";
+import Tag from "../ui/Tag.astro";
+import Sparkline from "./Sparkline.astro";
+
+interface Props {
+	market: Market;
+	class?: string;
+}
+
+const { market, class: className } = Astro.props;
+const no = 100 - market.yes;
+const height = market.resolveHeight.toLocaleString("en-US");
+---
+
+<article class:list={["market", className]}>
+	<header class="top">
+		<Tag>{categoryOf[market.plugin]}</Tag>
+		<span class="height">Block {height}</span>
+	</header>
+
+	<h3 class="question">{market.question}</h3>
+
+	<div class="odds">
+		<p class="chance"><span class="pct">{market.yes}%</span> chance</p>
+		<Sparkline class="spark" points={market.history} />
+	</div>
+	<div class="bar" style={`--yes:${market.yes}%`} aria-hidden="true"><span></span></div>
+
+	<div class="prices">
+		<a class="price price--yes" href={site.appUrl} aria-label={`Buy YES at ${market.yes} cents`}>
+			Yes <strong>{market.yes}¢</strong>
+		</a>
+		<a class="price price--no" href={site.appUrl} aria-label={`Buy NO at ${no} cents`}>
+			No <strong>{no}¢</strong>
+		</a>
+	</div>
+
+	<footer class="meta">
+		<span class="chip">Bettors: hidden</span>
+		<span class="chip">Sizes: hidden</span>
+		<span class="badge">Resolved from chain data</span>
+	</footer>
+</article>
+
+<style>
+	.market {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		padding: 22px;
+		border: 1px solid var(--hairline);
+		border-radius: var(--r-pane);
+		background:
+			radial-gradient(
+				320px 220px at 100% 0%,
+				rgba(102, 102, 102, 0.28) 0%,
+				rgba(102, 102, 102, 0) 100%
+			),
+			var(--surface-card);
+		box-shadow: 0 32px 43px -13px rgba(0, 0, 0, 0.48);
+		text-align: left;
+	}
+	.top {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+	}
+	.height {
+		font-family: var(--font-mono);
+		font-size: 12px;
+		opacity: 0.45;
+		white-space: nowrap;
+	}
+	.question {
+		font-family: var(--font-display);
+		font-weight: 500;
+		font-size: 21px;
+		line-height: 1.15;
+		letter-spacing: -0.03em;
+		text-wrap: balance;
+	}
+	.odds {
+		display: flex;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 16px;
+		margin-top: auto;
+	}
+	.chance {
+		font-size: 14px;
+		opacity: 0.9;
+		white-space: nowrap;
+	}
+	.pct {
+		font-family: var(--font-display);
+		font-weight: 500;
+		font-size: 44px;
+		line-height: 1;
+		letter-spacing: -0.05em;
+	}
+	.spark {
+		width: 46%;
+		height: 36px;
+	}
+	.bar {
+		height: 4px;
+		border-radius: 2px;
+		background: rgba(255, 255, 255, 0.1);
+		overflow: hidden;
+	}
+	.bar span {
+		display: block;
+		width: var(--yes);
+		height: 100%;
+		background: #fff;
+	}
+	.prices {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 10px;
+	}
+	.price {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		height: 46px;
+		padding: 0 16px;
+		border-radius: var(--r-pill);
+		font-family: var(--font-display);
+		font-weight: 500;
+		font-size: 16px;
+		transition:
+			background-color 0.18s ease,
+			border-color 0.18s ease;
+	}
+	.price strong {
+		font-weight: 500;
+	}
+	.price--yes {
+		background: #fff;
+		color: #000;
+	}
+	.price--yes:hover {
+		background: #e6e6e6;
+	}
+	.price--no {
+		border: 1px solid var(--glass-line);
+		background: rgba(255, 255, 255, 0.04);
+	}
+	.price--no:hover {
+		border-color: rgba(255, 255, 255, 0.35);
+	}
+	.meta {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		font-size: 12px;
+	}
+	.chip,
+	.badge {
+		padding: 5px 10px;
+		border-radius: var(--r-tag);
+		white-space: nowrap;
+	}
+	.chip {
+		border: 1px solid var(--hairline);
+		color: rgba(255, 255, 255, 0.7);
+	}
+	.badge {
+		margin-left: auto;
+		color: rgba(255, 255, 255, 0.55);
+	}
+	.badge::before {
+		content: "";
+		display: inline-block;
+		width: 6px;
+		height: 6px;
+		margin-right: 6px;
+		border-radius: 50%;
+		background: #fff;
+		vertical-align: 1px;
+	}
+</style>
