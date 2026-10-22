@@ -339,6 +339,18 @@
 	}
 }
 
+/* Phones: fixed two-line byte grid (market side price size / account), so every row aligns. */
+@media (max-width: 599.98px) {
+	.hexbytes {
+		display: grid;
+		grid-template-columns: 11ch 4.5ch 4.5ch 11ch;
+		font-size: 11px;
+	}
+	.f-account {
+		grid-column: 1 / -1;
+	}
+}
+
 @media (max-width: 759.98px) {
 	.relayers {
 		padding: 18px;
