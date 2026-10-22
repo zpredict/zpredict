@@ -105,6 +105,7 @@ async fn orders_contract() {
     let ev = Event::Batch {
         batch: 1,
         ids,
+        balances: vec![],
         fills,
         prices: vec![(1, 115)],
         expired: vec![],

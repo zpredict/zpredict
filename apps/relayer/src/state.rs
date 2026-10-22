@@ -6,11 +6,12 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
-use zpredict_core::{FILL_LEN, ORDER_LEN};
+use zpredict_core::{BALANCE_LEN, FILL_LEN, ORDER_LEN};
 use zpredict_oracle::Market;
 
 use crate::error::Result;
 use crate::store::{Event, Store};
+use crate::table::Table;
 
 /// View items kept for `GET /view`.
 pub const VIEW_KEEP: usize = 400;
@@ -61,8 +62,8 @@ pub struct State {
     pub peers: [bool; 3],
     pub markets: Vec<Market>,
     orders: HashMap<String, Order>,
-    /// Account tag (hex32) → this relayer's balance share, half-ticks.
-    accounts: HashMap<String, u64>,
+    /// This relayer's shares of the balance table (`table.rs`).
+    pub table: Table,
     /// Market id → public clearing prices in cents (YES side), oldest first.
     history: HashMap<u32, Vec<f64>>,
     view: VecDeque<ViewItem>,
@@ -82,7 +83,7 @@ impl State {
             peers,
             markets,
             orders: HashMap::new(),
-            accounts: HashMap::new(),
+            table: Table::default(),
             history: HashMap::new(),
             view: VecDeque::new(),
             seq: 0,
@@ -116,9 +117,13 @@ impl State {
                 batch,
                 ids,
                 fills,
+                balances,
                 prices,
                 expired,
             } => {
+                let balances: Vec<[u8; BALANCE_LEN]> =
+                    (balances.iter()).map(|b| hex_array(b)).collect();
+                self.table.set_balances(&balances);
                 for (id, fill) in ids.into_iter().zip(fills) {
                     let mut f = [0u8; FILL_LEN];
                     hex::decode_to_slice(&fill, &mut f).expect("logged fills are valid hex");
@@ -141,10 +146,9 @@ impl State {
                 }
                 self.batch = self.batch.max(batch + 1);
             }
-            Event::Credit { tag, amount } => {
-                let b = self.accounts.entry(tag).or_default();
-                *b = b.saturating_add(amount);
-            }
+            Event::Credit { id, amount } => self.table.credit(id, amount),
+            Event::Rows { ids } => self.table.append_zero(&ids),
+            Event::Seal { rows } => self.table.seal(rows),
         }
     }
 
@@ -206,21 +210,22 @@ impl State {
         ids
     }
 
-    pub fn balance_share(&self, tag: &str) -> u64 {
-        self.accounts.get(tag).copied().unwrap_or(0)
+    /// This relayer's balance share for an account tag (hex32; its first 8 bytes are
+    /// the account id, as in `Order::account`).
+    pub fn balance_share(&self, tag: &str) -> [u8; BALANCE_LEN] {
+        self.table.balance_share(tag_account(tag))
     }
 
-    /// Deposit entry point (settle scanner, judge mode). A deposit of A is shared
-    /// `(A, 0, 0)`: every relayer sees the amount anyway (shared viewing key).
-    ///
-    /// ponytail: adds to relayer 0's share in the clear, valid while balances never pass
-    /// through MPC. Once the circuit updates balances (#41), credits must go through MPC.
+    /// Deposit entry point (settle scanner, judge mode). Every relayer sees the amount
+    /// anyway (shared viewing key), so a deposit of A is shared `(A, 0, 0)`: relayer 0
+    /// credits its row (`table.rs`); relayers 1 and 2 pick the row up from relayer 0 at
+    /// the next batch, with zero shares, so for them this is a no-op.
     pub fn credit(&mut self, tag: &str, amount: u64) -> Result<()> {
-        let amount = if self.index == 0 { amount } else { 0 };
-        self.record(Event::Credit {
-            tag: tag.to_owned(),
-            amount,
-        })
+        if self.index != 0 {
+            return Ok(());
+        }
+        let id = tag_account(tag);
+        self.record(Event::Credit { id, amount })
     }
 
     pub fn view_after(&self, after: u64, max: usize) -> Vec<ViewItem> {
@@ -244,4 +249,17 @@ impl State {
         out.sort();
         out
     }
+}
+
+/// The order's `account` field for a tag: its first 8 bytes, little-endian.
+pub fn tag_account(tag: &str) -> u64 {
+    let mut b = [0u8; 8];
+    hex::decode_to_slice(&tag[..16], &mut b).expect("tags are checked hex32");
+    u64::from_le_bytes(b)
+}
+
+pub(crate) fn hex_array<const L: usize>(h: &str) -> [u8; L] {
+    let mut b = [0u8; L];
+    hex::decode_to_slice(h, &mut b).expect("logged shares are valid hex");
+    b
 }

@@ -26,17 +26,23 @@ pub enum Event {
         share: String,
         batch: u64,
     },
-    /// A batch ran: `ids[k]` got fill share `fills[k]`; `prices` are public clearing
-    /// prices `(market, YES half-ticks)`; `expired` orders became `unfilled`.
+    /// A batch ran: `ids[k]` got fill share `fills[k]`; balance-table row `k` got new
+    /// balance share `balances[k]`; `prices` are public clearing prices
+    /// `(market, YES half-ticks)`; `expired` orders became `unfilled`.
     Batch {
         batch: u64,
         ids: Vec<String>,
         fills: Vec<String>,
+        balances: Vec<String>,
         prices: Vec<(u32, u16)>,
         expired: Vec<String>,
     },
-    /// This relayer's balance share for `tag` grew by `amount` half-ticks.
-    Credit { tag: String, amount: u64 },
+    /// Relayer 0: account `id` was credited `amount` half-ticks (see `table.rs`).
+    Credit { id: u64, amount: u64 },
+    /// Relayers 1 and 2: zero-share rows appended for ids relayer 0 announced.
+    Rows { ids: Vec<u64> },
+    /// Relayer 0: the first `rows` table rows entered a batch; credit them via new rows.
+    Seal { rows: usize },
 }
 
 pub struct Store(File);
@@ -99,10 +105,7 @@ pub(crate) mod tests {
     #[test]
     fn replays_and_drops_torn_tail() {
         let dir = temp_dir("store");
-        let e = Event::Credit {
-            tag: "ab".repeat(16),
-            amount: 5,
-        };
+        let e = Event::Credit { id: 7, amount: 5 };
         let (mut s, got) = Store::open(&dir).unwrap();
         assert!(got.is_empty());
         s.append(&e).unwrap();

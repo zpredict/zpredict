@@ -15,6 +15,7 @@ pub mod server;
 pub mod settlement;
 pub mod state;
 pub mod store;
+pub mod table;
 #[cfg(test)]
 mod tests;
 

@@ -14,5 +14,5 @@ pub async fn get(State(api): State<Api>, Path(tag): Path<String>) -> Response {
         return fail(StatusCode::NOT_FOUND, "bad tag");
     }
     let share = api.state.lock().expect("state lock").balance_share(&tag);
-    Json(json!({ "balanceShare": hex::encode(share.to_le_bytes()) })).into_response()
+    Json(json!({ "balanceShare": hex::encode(share) })).into_response()
 }
