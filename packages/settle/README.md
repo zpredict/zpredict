@@ -33,7 +33,11 @@ hand (see below), then steps 3–4 apply unchanged except that blocks come from 
 
 ```sh
 scripts/scan-e2e.sh    # regtest -> DKG -> one tagged 5-unit deposit -> r0, r1, r2 scan it
+MEMO_FROM=sdk scripts/scan-e2e.sh   # same, but the deposit request is built by @zpredict/sdk, as in the web app
 ```
+
+`testdata/memo-vectors.json` (written by `UPDATE_VECTORS=1 cargo test -p zpredict-settle --test memo_vectors`)
+pins the memo format for the TypeScript port in `@zpredict/sdk`.
 
 Each relayer runs a `Scanner` (shared escrow FVK, its relayer index, its memo key) over
 lightwalletd: blocks with Ironwood actions are fetched as full transactions (compact
