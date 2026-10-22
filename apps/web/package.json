@@ -14,8 +14,8 @@
 		"test": "pnpm --filter @zpredict/sdk build && node --test mock-relayer/src/clearing.test.mjs"
 	},
 	"dependencies": {
-		"@fontsource/figtree": "^5.3.0",
-		"@fontsource/instrument-sans": "^5.3.0",
+		"@fontsource/jetbrains-mono": "^5.3.0",
+		"@zpredict/brand": "workspace:*",
 		"@zpredict/sdk": "workspace:*",
 		"next": "^16.4.2",
 		"react": "^19.3.1",
