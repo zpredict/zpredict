@@ -38,6 +38,7 @@
 //! the PR), and authentication of the TCP links (see [`net`]).
 
 mod error;
+pub mod harness;
 mod io;
 pub mod net;
 mod party;
