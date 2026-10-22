@@ -69,6 +69,14 @@ test("fill records decode the clear() output", () => {
 	);
 });
 
+test("fromHex rejects odd length and non-hex", () => {
+	assert.deepEqual(fromHex("00ff"), Uint8Array.of(0, 255));
+	assert.deepEqual(fromHex(""), new Uint8Array());
+	for (const bad of ["0", "abc", "zz", "0g", `${"ab".repeat(5000)}x`]) {
+		assert.throws(() => fromHex(bad), SyntaxError);
+	}
+});
+
 test("rejects malformed orders", () => {
 	const b = fromHex(v.orders[0].hex);
 	assert.equal(decodeOrder(b.map((x, i) => (i === 4 ? 2 : x))), null);
