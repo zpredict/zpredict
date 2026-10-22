@@ -21,6 +21,7 @@ mod fixture;
 pub mod frost;
 pub mod keys;
 pub mod memo;
+pub mod outcome;
 pub mod payout;
 pub mod scan;
 pub mod share;
