@@ -84,7 +84,7 @@ Each relayer is its own origin: `https://r0.zpredict.site`, `https://r1.zpredict
 | `GET /health` | `{relayer: 0\|1\|2, height: number, batch: number, peers: boolean[]}` |
 | `GET /markets` | `Market[]` (below) |
 | `POST /orders` body `{orderId: hex32, share: hex36}` | `202 {batch}`: the batch the share joins |
-| `GET /orders/:orderId` | `{status: "pending"\|"filled"\|"unfilled", fillShare?: hex16}` |
+| `GET /orders/:orderId` | `{status: "pending"\|"filled"\|"unfilled", fillShare?: hex20}` |
 | `GET /accounts/:tag` | `{balanceShare: hex16}` |
 | `GET /view?after=<seq>` | `{items: [{seq, kind: "order"\|"fill", orderId, share}]}`: exactly what this relayer sees; powers the Relayer View |
 | `POST /judge/claim` | `{tag}`: **mock**, testnet only (see below) |
@@ -93,7 +93,7 @@ Each relayer is its own origin: `https://r0.zpredict.site`, `https://r1.zpredict
 
 Encodings (all little-endian, identical in `zpredict-core` and `@zpredict/sdk`; `packages/core/testdata/vectors.json` pins them):
 - **Order share** (18 bytes): `market u32 | side u8 (0 yes, 1 no) | price u8 (1..=99) | size u32 | account u64`, XOR-split as `[r0, r1, order ^ r0 ^ r1]`.
-- **Fill share** (8 bytes): `size u32 | cost u16 (half-ticks per contract paid by this order's side) | side u8 | flags u8 (bit0 = filled)`. Only the order's owner learns it, by combining all three shares.
+- **Fill record** (10 bytes): `size u32 | total_cost u32 | side u8 | flags u8 (bit0 = filled)`. Size and cost (half-ticks) are summed over every match, since one order can cross several counterparties at different midpoints; unfilled orders are all zero. Only the owner learns it, by combining all three shares. Orders above `MAX_SIZE` (1,000,000 contracts) are rejected, so `total_cost` always fits.
 - **Balance share** (8 bytes): `u64` half-ticks.
 - **Account tag**: 16 random bytes chosen by the browser; the order's `account` field is the tag's first 8 bytes read as `u64`. The tag is the only credential, so it stays in the browser.
 - **orderId**: 16 random bytes from the browser; it links the three shares of one order and nothing else.
