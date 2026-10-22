@@ -58,6 +58,18 @@ pub fn clear(batch: &[Order]) -> Vec<Fill> {
     fills
 }
 
+/// The batch's public clearing price in YES half-ticks (2..=198): the volume-weighted
+/// mean of every fill's `yes_cost`, rounded down. `None` if nothing crossed. All three
+/// relayers learn it (for `lastPrice`/`history`); sizes and counts stay hidden.
+pub fn clearing_price(fills: &[Fill]) -> Option<u16> {
+    let volume: u64 = fills.iter().map(|f| f.size as u64).sum();
+    let cost: u64 = fills
+        .iter()
+        .map(|f| f.size as u64 * f.yes_cost as u64)
+        .sum();
+    (volume > 0).then(|| (cost / volume) as u16)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -97,5 +109,8 @@ mod tests {
         assert_eq!((f[0].yes, f[0].size), (1, 2)); // 70 beats 55
         assert_eq!((f[1].yes, f[1].size), (0, 3)); // NO's remaining 3
         assert!(f.iter().all(|x| x.yes_cost + x.no_cost == 2 * TICKS));
+        // 2 at 120 and 3 at 105: (240 + 315) / 5 = 111.
+        assert_eq!(clearing_price(&f), Some(111));
+        assert_eq!(clearing_price(&[]), None);
     }
 }
