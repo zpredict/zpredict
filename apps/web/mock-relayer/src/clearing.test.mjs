@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { decodeOrder, fromHex, toHex } from "@zpredict/sdk";
-import { clear, fillRecords, TICKS } from "./clear.mjs";
+import { clear, fillRecords, TICKS } from "./clearing.mjs";
 
 const o = (side, price, size) => ({
 	market: 7,
@@ -34,7 +34,10 @@ test("best price first, partial fills, dummies", () => {
 test("matches core test vectors", () => {
 	const v = JSON.parse(
 		readFileSync(
-			new URL("../../../packages/core/testdata/vectors.json", import.meta.url),
+			new URL(
+				"../../../../packages/core/testdata/vectors.json",
+				import.meta.url,
+			),
 			"utf8",
 		),
 	);

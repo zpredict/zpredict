@@ -8,9 +8,9 @@
 		"prebuild": "node scripts/brand.mjs",
 		"dev": "next dev -p 3000",
 		"build": "next build && node scripts/privacy.mjs",
-		"mock": "node mock-relayer/server.mjs",
+		"mock": "node mock-relayer/src/server.mjs",
 		"dev:mock": "node scripts/brand.mjs && node scripts/dev-mock.mjs",
-		"test": "node --test mock-relayer/clear.test.mjs"
+		"test": "node --test mock-relayer/src/clearing.test.mjs"
 	},
 	"dependencies": {
 		"@fontsource/figtree": "^5.3.0",
