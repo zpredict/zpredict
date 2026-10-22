@@ -1,16 +1,23 @@
 // Batch clearing for zPredict; mirrors `zpredict_core::clear_with_balances`. See the crate docs.
-// 16 order slots, 16 balance-table rows. Garble ranges must be literals, hence no consts.
+// 16 order slots; `{rows}` balance-table rows, substituted by program.rs before compiling
+// (Garble ranges and array sizes must be literals, hence no consts).
 
 // Fields in alphabetical order: that is how Garble lays out struct inputs (io.rs too).
 struct Party {
-    accounts: [[u8; 16]; 16],
-    balance_mask: [[u8; 8]; 16],
+    accounts: [[u8; 16]; {rows}],
+    balance_mask: [[u8; 8]; {rows}],
     fill_mask: [[u8; 10]; 16],
+    market: u32,
     orders: [[u8; 18]; 16],
 }
 
-pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; 16]) {
-    // Rebuild and decode. Malformed orders (side > 1, price outside 1..=99, size > MAX_SIZE) become dummies.
+pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; {rows}], u16) {
+    // The batch's market is public; if the parties disagree, nothing fills.
+    let market = p0.market;
+    let agreed = (p1.market == market) & (p2.market == market);
+
+    // Rebuild and decode. Malformed orders (side > 1, price outside 1..=99, size > MAX_SIZE)
+    // and orders for another market become dummies.
     let mut yes = [false; 16];
     let mut price = [0u8; 16];
     let mut size = [0u32; 16];
@@ -24,7 +31,16 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; 16]) 
             | ((o[7] as u32) << 8u8)
             | ((o[8] as u32) << 16u8)
             | ((o[9] as u32) << 24u8);
-        let ok = (o[4] <= 1u8) & (o[5] >= 1u8) & (o[5] <= 99u8) & (s <= 1000000u32);
+        let m = (o[0] as u32)
+            | ((o[1] as u32) << 8u8)
+            | ((o[2] as u32) << 16u8)
+            | ((o[3] as u32) << 24u8);
+        let ok = agreed
+            & (m == market)
+            & (o[4] <= 1u8)
+            & (o[5] >= 1u8)
+            & (o[5] <= 99u8)
+            & (s <= 1000000u32);
         yes[i] = o[4] == 0u8;
         price[i] = o[5];
         size[i] = if ok { s } else { 0u32 };
@@ -34,9 +50,9 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; 16]) 
     }
 
     // Rebuild the balance table: id u64 | balance u64 per row.
-    let mut id = [0u64; 16];
-    let mut balance = [0u64; 16];
-    for m in 0usize..16usize {
+    let mut id = [0u64; {rows}];
+    let mut balance = [0u64; {rows}];
+    for m in 0usize..{rows}usize {
         let mut r = [0u8; 16];
         for k in 0usize..16usize {
             r[k] = p0.accounts[m][k] ^ p1.accounts[m][k] ^ p2.accounts[m][k];
@@ -48,10 +64,10 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; 16]) 
     }
 
     // Each order's account row: the first row whose id matches.
-    let mut hit = [[false; 16]; 16];
+    let mut hit = [[false; {rows}]; 16];
     let mut found = [false; 16];
     for i in 0usize..16usize {
-        for m in 0usize..16usize {
+        for m in 0usize..{rows}usize {
             hit[i][m] = !found[i] & (account[i] == id[m]);
             found[i] = found[i] | hit[i][m];
         }
@@ -60,7 +76,7 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; 16]) 
     // In batch order, reserve each order's worst case (size x 2 x price half-ticks) from
     // its row; an order that doesn't fit what's left becomes a dummy. Sums stay in u32:
     // 16 x MAX_SIZE x 198 < 2^32.
-    let mut reserved = [0u32; 16];
+    let mut reserved = [0u32; {rows}];
     for i in 0usize..16usize {
         let mut worst = 0u32;
         for k in 0usize..8usize {
@@ -70,13 +86,13 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; 16]) 
         }
         let mut have = 0u64;
         let mut used = 0u32;
-        for m in 0usize..16usize {
+        for m in 0usize..{rows}usize {
             have = have | if hit[i][m] { balance[m] } else { 0u64 };
             used = used | if hit[i][m] { reserved[m] } else { 0u32 };
         }
         let ok = found[i] & (((used + worst) as u64) <= have);
         let take = if ok { worst } else { 0u32 };
-        for m in 0usize..16usize {
+        for m in 0usize..{rows}usize {
             reserved[m] = reserved[m] + if hit[i][m] { take } else { 0u32 };
         }
         size[i] = if ok { size[i] } else { 0u32 };
@@ -132,9 +148,9 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; 16]) 
     }
 
     // Debit each row what its orders actually paid (never more than they reserved).
-    let mut paid = [0u32; 16];
+    let mut paid = [0u32; {rows}];
     for i in 0usize..16usize {
-        for m in 0usize..16usize {
+        for m in 0usize..{rows}usize {
             paid[m] = paid[m] + if hit[i][m] { cost[i] } else { 0u32 };
         }
     }
@@ -157,8 +173,8 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; 16]) 
             fills[i][k] = r[k] ^ p0.fill_mask[i][k] ^ p1.fill_mask[i][k] ^ p2.fill_mask[i][k];
         }
     }
-    let mut balances = [[0u8; 8]; 16];
-    for m in 0usize..16usize {
+    let mut balances = [[0u8; 8]; {rows}];
+    for m in 0usize..{rows}usize {
         let left = balance[m] - (paid[m] as u64);
         for k in 0usize..8usize {
             let byte = (left >> ((8usize * k) as u8)) as u8;
@@ -166,5 +182,18 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; 16]) 
                 byte ^ p0.balance_mask[m][k] ^ p1.balance_mask[m][k] ^ p2.balance_mask[m][k];
         }
     }
-    (fills, balances)
+
+    // Public clearing price (zpredict_core::clearing_price): YES cost per contract over
+    // all fills, rounded down; 0 = nothing crossed. Every fill's YES side is one YES order,
+    // so summing YES orders' records covers each fill once. Unmasked: all three learn it.
+    let mut volume = 0u32;
+    let mut yes_paid = 0u32;
+    for i in 0usize..16usize {
+        volume = volume + if yes[i] { filled[i] } else { 0u32 };
+        yes_paid = yes_paid + if yes[i] { cost[i] } else { 0u32 };
+    }
+    // Divisor never 0: a 0 divisor would raise Garble's panic flag even in a dead branch.
+    let divisor = if volume > 0u32 { volume } else { 1u32 };
+    let price = (yes_paid / divisor) as u16; // 0 when nothing crossed
+    (fills, balances, price)
 }

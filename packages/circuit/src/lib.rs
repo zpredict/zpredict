@@ -58,6 +58,6 @@ mod party;
 mod program;
 
 pub use error::Error;
-pub use io::{AccountShares, BalanceShares, FillShares, OrderShares, Outcome};
+pub use io::{OrderShares, Outcome};
 pub use party::{run_party, run_party_on};
-pub use program::{ACCOUNTS, N, and_gates, eval_in_clear, program};
+pub use program::{DEFAULT_ROWS, N, and_gates, eval_in_clear, program};

@@ -1,51 +1,55 @@
 //! Shares and masks ↔ the circuit's input and output bits, via Garble literals.
 
+use polytune::garble_lang::GarbleProgram;
 use polytune::garble_lang::literal::Literal;
 use polytune::garble_lang::token::UnsignedNumType;
 use zpredict_core::{ACCOUNT_LEN, BALANCE_LEN, FILL_LEN, ORDER_LEN};
 
-use crate::{ACCOUNTS, Error, N, program::program};
+use crate::{Error, N};
 
 /// One relayer's shares of a batch: slot `i` holds its share of order `i`.
 pub type OrderShares = [[u8; ORDER_LEN]; N];
-/// One relayer's shares of the balance table (`zpredict_core::Account::encode` rows).
-/// Pad unused rows with shares of an all-zero row.
-pub type AccountShares = [[u8; ACCOUNT_LEN]; ACCOUNTS];
-/// One relayer's shares of the batch's fill records (`zpredict_core::fill_records`).
-pub type FillShares = [[u8; FILL_LEN]; N];
-/// One relayer's shares of each table row's new balance (`u64` LE half-ticks).
-pub type BalanceShares = [[u8; BALANCE_LEN]; ACCOUNTS];
 
-/// What one relayer gets back from a batch: its share of every fill record and of
-/// every row's updated balance.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// What one relayer gets back from a batch.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Outcome {
-    pub fills: FillShares,
-    pub balances: BalanceShares,
+    /// This relayer's share of every slot's `zpredict_core::fill_records` record.
+    pub fills: Vec<[u8; FILL_LEN]>,
+    /// This relayer's share of every table row's new balance (`u64` LE half-ticks).
+    pub balances: Vec<[u8; BALANCE_LEN]>,
+    /// The batch's public clearing price (`zpredict_core::clearing_price`), the same at
+    /// all three relayers; `None` if nothing crossed. Not a share.
+    pub price: Option<u16>,
 }
 
 impl Outcome {
-    pub(crate) fn random() -> Self {
+    pub(crate) fn random(rows: usize) -> Self {
         Self {
-            fills: rand::random(),
-            balances: rand::random(),
+            fills: (0..N).map(|_| rand::random()).collect(),
+            balances: (0..rows).map(|_| rand::random()).collect(),
+            price: None,
         }
     }
 
-    /// Byte-wise XOR, e.g. to combine shares or strip a mask.
+    /// XORs the shares (fills and balances), e.g. to combine them or strip a mask.
+    /// The price is public, so it is kept from `self`.
     pub fn xor(&self, other: &Self) -> Self {
         Self {
             fills: xor_rows(&self.fills, &other.fills),
             balances: xor_rows(&self.balances, &other.balances),
+            price: self.price,
         }
     }
 }
 
-fn xor_rows<const L: usize, const R: usize>(a: &[[u8; L]; R], b: &[[u8; L]; R]) -> [[u8; L]; R] {
-    std::array::from_fn(|i| std::array::from_fn(|k| a[i][k] ^ b[i][k]))
+fn xor_rows<const L: usize>(a: &[[u8; L]], b: &[[u8; L]]) -> Vec<[u8; L]> {
+    a.iter()
+        .zip(b)
+        .map(|(a, b)| std::array::from_fn(|k| a[k] ^ b[k]))
+        .collect()
 }
 
-fn rows<const L: usize, const R: usize>(rows: &[[u8; L]; R]) -> Literal {
+fn rows<const L: usize>(rows: &[[u8; L]]) -> Literal {
     let byte = |b: &u8| Literal::NumUnsigned(*b as u64, UnsignedNumType::U8);
     Literal::Array(
         rows.iter()
@@ -54,11 +58,14 @@ fn rows<const L: usize, const R: usize>(rows: &[[u8; L]; R]) -> Literal {
     )
 }
 
-/// Party `party`'s input: its shares plus the mask it puts on every output.
+/// Party `party`'s input: its shares, the batch market, and the mask it puts on every
+/// masked output.
 pub(crate) fn input_bits(
+    prg: &GarbleProgram,
     party: usize,
-    orders: &OrderShares,
-    accounts: &AccountShares,
+    market: u32,
+    orders: &[[u8; ORDER_LEN]],
+    accounts: &[[u8; ACCOUNT_LEN]],
     mask: &Outcome,
 ) -> Result<Vec<bool>, Error> {
     // Alphabetical: Garble lays out struct inputs by field name, not declaration order.
@@ -66,50 +73,61 @@ pub(crate) fn input_bits(
         ("accounts", rows(accounts)),
         ("balance_mask", rows(&mask.balances)),
         ("fill_mask", rows(&mask.fills)),
+        (
+            "market",
+            Literal::NumUnsigned(market as u64, UnsignedNumType::U32),
+        ),
         ("orders", rows(orders)),
     ];
     let arg = Literal::Struct(
         "Party".into(),
         fields.into_iter().map(|(k, v)| (k.into(), v)).collect(),
     );
-    let arg = program()
+    let arg = prg
         .literal_arg(party, arg)
         .map_err(|e| Error::Circuit(format!("{e:?}")))?;
     Ok(arg.as_bits())
 }
 
-fn bytes<const L: usize, const R: usize>(lit: Literal) -> Result<[[u8; L]; R], Error> {
+fn bytes<const L: usize>(lit: Literal) -> Result<Vec<[u8; L]>, Error> {
     let bad = || Error::Circuit("unexpected output shape".into());
     let Literal::Array(slots) = lit else {
         return Err(bad());
     };
-    let mut out = [[0u8; L]; R];
-    for (row, slot) in out.iter_mut().zip(slots) {
-        let Literal::Array(bytes) = slot else {
-            return Err(bad());
-        };
-        for (b, lit) in row.iter_mut().zip(bytes) {
-            let Literal::NumUnsigned(v, _) = lit else {
+    slots
+        .into_iter()
+        .map(|slot| {
+            let Literal::Array(bytes) = slot else {
                 return Err(bad());
             };
-            *b = v as u8;
-        }
-    }
-    Ok(out)
+            let mut row = [0u8; L];
+            for (b, lit) in row.iter_mut().zip(bytes) {
+                let Literal::NumUnsigned(v, _) = lit else {
+                    return Err(bad());
+                };
+                *b = v as u8;
+            }
+            Ok(row)
+        })
+        .collect()
 }
 
-/// Turns the output bits back into an [`Outcome`] (still masked, if run under MPC).
-pub(crate) fn decode_output(bits: &[bool]) -> Result<Outcome, Error> {
-    let out = program()
+/// Turns the output bits back into an [`Outcome`] (shares still masked, if under MPC).
+pub(crate) fn decode_output(prg: &GarbleProgram, bits: &[bool]) -> Result<Outcome, Error> {
+    let out = prg
         .parse_output(bits)
         .map_err(|e| Error::Circuit(format!("{e:?}")))?;
-    let bad = || Error::Circuit("output is not a (fills, balances) pair".into());
+    let bad = || Error::Circuit("output is not (fills, balances, price)".into());
     let Literal::Tuple(parts) = out else {
         return Err(bad());
     };
-    let [fills, balances] = <[Literal; 2]>::try_from(parts).map_err(|_| bad())?;
+    let [fills, balances, price] = <[Literal; 3]>::try_from(parts).map_err(|_| bad())?;
+    let Literal::NumUnsigned(price, _) = price else {
+        return Err(bad());
+    };
     Ok(Outcome {
         fills: bytes(fills)?,
         balances: bytes(balances)?,
+        price: (price != 0).then_some(price as u16),
     })
 }

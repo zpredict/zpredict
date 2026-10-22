@@ -1,55 +1,64 @@
 use std::net::SocketAddr;
 
 use polytune::channel::Channel;
+use zpredict_core::{ACCOUNT_LEN, ORDER_LEN};
 
 use crate::{
-    Error,
-    io::{self, AccountShares, OrderShares, Outcome},
+    Error, N,
+    io::{self, Outcome},
     net::TcpChannel,
-    program::circuit,
+    program::{circuit, program},
 };
 
-/// The garbled-circuit evaluator, and the only party that receives (masked) output.
+/// The garbled-circuit evaluator.
 const EVALUATOR: usize = 0;
+/// Everyone receives the output: shares stay masked, and the price is public anyway.
+const ALL: [usize; 3] = [0, 1, 2];
 
 /// Runs one relayer's side of a batch over TCP. `peers` lists all three parties'
 /// addresses in party order; this party listens on `peers[party]`.
 pub async fn run_party(
     party: usize,
     peers: &[SocketAddr; 3],
-    orders: &OrderShares,
-    accounts: &AccountShares,
+    market: u32,
+    orders: &[[u8; ORDER_LEN]],
+    accounts: &[[u8; ACCOUNT_LEN]],
 ) -> Result<Outcome, Error> {
     let channel = TcpChannel::connect(party, peers).await?;
-    run_party_on(&channel, party, orders, accounts).await
+    run_party_on(&channel, party, market, orders, accounts).await
 }
 
 /// Same as [`run_party`] over any polytune channel (e.g. one carried over HTTPS).
 ///
-/// Each party feeds a fresh random mask `m_p` into the circuit, which outputs
-/// `outcome ^ m_0 ^ m_1 ^ m_2` to party 0 only. Party 0's share is that output `^ m_0`;
-/// party 1 and 2's shares are their own masks. No party ever sees an unmasked value,
-/// and the three shares XOR to `zpredict_core::clear_with_balances`' result.
+/// - `market`: the batch's market id, public; all three must pass the same one.
+/// - `orders`: this relayer's share of each of the [`N`] slots; pad with zero shares.
+/// - `accounts`: this relayer's share of every balance-table row (`Account::encode`),
+///   in the same order at all three; its length picks the table size.
+///
+/// Each party feeds a fresh random mask `m_p` into the circuit, which reveals
+/// `shares ^ m_0 ^ m_1 ^ m_2` and the price to all three. Party 0's share is that output
+/// `^ m_0`; party 1 and 2's shares are their own masks, so no party (nor any two) can
+/// unmask a record, and the three shares XOR to `zpredict_core::clear_with_balances`.
 pub async fn run_party_on(
     channel: &impl Channel,
     party: usize,
-    orders: &OrderShares,
-    accounts: &AccountShares,
+    market: u32,
+    orders: &[[u8; ORDER_LEN]],
+    accounts: &[[u8; ACCOUNT_LEN]],
 ) -> Result<Outcome, Error> {
-    let mask = Outcome::random();
-    let input = io::input_bits(party, orders, accounts, &mask)?;
-    let out = polytune::mpc(
-        channel,
-        circuit(),
-        &input,
-        EVALUATOR,
-        party,
-        &[EVALUATOR],
-        None,
-    )
-    .await?;
-    if party != EVALUATOR {
-        return Ok(mask);
+    if orders.len() != N {
+        return Err(Error::Circuit(format!("batch must have {N} slots")));
     }
-    Ok(io::decode_output(&out)?.xor(&mask))
+    let prg = program(accounts.len());
+    let mask = Outcome::random(accounts.len());
+    let input = io::input_bits(prg, party, market, orders, accounts, &mask)?;
+    let out = polytune::mpc(channel, circuit(prg), &input, EVALUATOR, party, &ALL, None).await?;
+    let out = io::decode_output(prg, &out)?;
+    if party == EVALUATOR {
+        return Ok(out.xor(&mask));
+    }
+    Ok(Outcome {
+        price: out.price,
+        ..mask
+    })
 }
