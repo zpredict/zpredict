@@ -11,10 +11,11 @@
 # Deposit-memo public keys (`settle memo-key`), once they exist: add secrets rN_memo_pub
 # (environment: RN_MEMO_PUB) and ZPREDICT_MEMO_KEY_FILE=/run/secrets/rN_memo_pub per service.
 
-# The image is built once (by r0) and shared, so three cargo builds never run at once.
+# CI builds the image (relayer-image.yml) and pushes :<commit> and :main to GHCR; the VPS
+# only pulls it. Roll back or pin by setting RELAYER_TAG=<commit> in Coolify.
 x-relayer: &relayer
-  image: zpredict-relayer:local
-  pull_policy: never
+  image: ghcr.io/zpredict/zpredict-relayer:${RELAYER_TAG:-main}
+  pull_policy: always
   restart: unless-stopped
   # Peak RSS in a real batch on the VPS (8 slots, 32 rows; docker stats, ~2 s samples):
   # r0 496 MiB, r1 303, r2 354. Party 0 does more of the work, so it gets a larger cap.
@@ -26,10 +27,6 @@ x-relayer: &relayer
 services:
   r0:
     <<: *relayer
-    build:
-      context: ../..
-      dockerfile: deploy/production/relayer.Dockerfile
-    pull_policy: build
     mem_limit: 768m
     memswap_limit: 768m
     environment:
@@ -46,7 +43,6 @@ services:
       peers: { ipv4_address: 10.0.250.10 }
   r1:
     <<: *relayer
-    depends_on: [r0]
     environment:
       ZPREDICT_INDEX: 1
       ZPREDICT_JUDGE: "false"
@@ -62,7 +58,6 @@ services:
       peers: { ipv4_address: 10.0.250.11 }
   r2:
     <<: *relayer
-    depends_on: [r0]
     environment:
       ZPREDICT_INDEX: 2
       ZPREDICT_JUDGE: "false"

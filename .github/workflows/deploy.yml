@@ -16,31 +16,86 @@ jobs:
   ci:
     uses: ./.github/workflows/ci.yml
 
-  coolify:
+  changes:
+    name: What changed
+    runs-on: ubuntu-latest
+    outputs:
+      relayer: ${{ steps.diff.outputs.relayer }}
+      static: ${{ steps.diff.outputs.static }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # Manual runs, and pushes whose base is unknown, deploy everything.
+          if [ "$GITHUB_EVENT_NAME" != push ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "relayer=true" >> "$GITHUB_OUTPUT"
+            echo "static=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files=$(git diff --name-only "$BEFORE" "$GITHUB_SHA")
+          relayer='^(apps/relayer/|packages/(core|circuit|oracle|plugins|settle)/|Cargo\.(toml|lock)$|deploy/production/(compose\.yaml|relayer\.))'
+          static='^(apps/(landing|web)/|packages/(sdk|brand)/|deploy/static/|package\.json$|pnpm-(lock|workspace)\.yaml$)'
+          echo "relayer=$(grep -qE "$relayer" <<<"$files" && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "static=$(grep -qE "$static" <<<"$files" && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+  relayer-image:
+    needs: [ci, changes]
+    if: needs.changes.outputs.relayer == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/relayer-image.yml
+
+  static:
     name: Coolify (landing, web)
-    needs: ci
+    needs: [ci, changes]
+    if: needs.changes.outputs.static == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
-    env:
-      COOLIFY_URL: ${{ vars.COOLIFY_URL }}
-      COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
-      # Space-separated Coolify resource uuids, e.g. "landing-uuid web-uuid".
-      COOLIFY_RESOURCES: ${{ vars.COOLIFY_RESOURCES }}
     steps:
+      - uses: actions/checkout@v4
       - name: Trigger deploys
+        env:
+          COOLIFY_URL: ${{ vars.COOLIFY_URL }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          # Space-separated Coolify uuids of the static sites (landing, web).
+          COOLIFY_RESOURCES: ${{ vars.COOLIFY_RESOURCES }}
         run: |
-          if [ -z "$COOLIFY_TOKEN" ] || [ -z "$COOLIFY_URL" ] || [ -z "$COOLIFY_RESOURCES" ]; then
-            echo "::warning::COOLIFY_URL, COOLIFY_TOKEN or COOLIFY_RESOURCES is not set; skipping deploy."
-            exit 0
-          fi
-          for uuid in $COOLIFY_RESOURCES; do
-            code=$(curl -s -o /tmp/deploy.json -w '%{http_code}' -X POST \
-              -H "Authorization: Bearer $COOLIFY_TOKEN" \
-              "$COOLIFY_URL/api/v1/deploy?uuid=$uuid")
-            if [ "$code" != "200" ]; then
-              echo "::error::deploy $uuid failed with HTTP $code"
-              exit 1
-            fi
-            echo "queued $uuid"
+          # shellcheck disable=SC2086 # word splitting is the point: one argument per uuid
+          deploy/coolify-deploy.sh $COOLIFY_RESOURCES
+
+  relayers:
+    name: Coolify (relayers)
+    needs: [changes, relayer-image]
+    if: needs.changes.outputs.relayer == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trigger deploy (pulls ghcr.io/zpredict/zpredict-relayer:main)
+        env:
+          COOLIFY_URL: ${{ vars.COOLIFY_URL }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          COOLIFY_RELAYERS: ${{ vars.COOLIFY_RELAYERS }}
+        run: |
+          # shellcheck disable=SC2086 # word splitting is the point: one argument per uuid
+          deploy/coolify-deploy.sh $COOLIFY_RELAYERS
+      - name: Wait until all three run this commit with peers connected
+        run: |
+          for _ in $(seq 1 90); do
+            ok=0
+            for i in 0 1 2; do
+              h=$(curl -fsS -m 5 "https://r$i.zpredict.site/health" || true)
+              jq -e --arg v "$GITHUB_SHA" '.version == $v and (.peers | all)' <<<"$h" >/dev/null 2>&1 && ok=$((ok + 1))
+            done
+            if [ "$ok" = 3 ]; then echo "relayers healthy on $GITHUB_SHA"; exit 0; fi
+            sleep 10
           done
+          echo "::error::relayers not healthy on $GITHUB_SHA after 15 min"
+          exit 1

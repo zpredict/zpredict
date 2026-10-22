@@ -162,7 +162,7 @@ async fn health_accounts_judge_and_cors() {
     let (_, h) = call(&app, "GET", "/health", None).await;
     assert_eq!(
         h,
-        json!({"relayer": 0, "height": 0, "batch": 1, "peers": [true, false, false]})
+        json!({"relayer": 0, "height": 0, "batch": 1, "peers": [true, false, false], "version": null})
     );
 
     let (code, claim) = call(&app, "POST", "/judge/claim", None).await;

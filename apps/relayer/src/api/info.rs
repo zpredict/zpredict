@@ -13,10 +13,19 @@ use super::{Api, fail};
 /// Most items one `/view` call returns.
 const VIEW_PAGE: usize = 200;
 
+/// `version` is the commit the image was built from (`RELAYER_VERSION`, set by the image
+/// build), so a deploy can wait until all three run it. Public: the repo is public.
 pub async fn health(State(api): State<Api>) -> Response {
+    let version = std::env::var("RELAYER_VERSION").ok();
     let s = api.state.lock().expect("state lock");
-    Json(json!({ "relayer": s.index, "height": s.height, "batch": s.batch, "peers": s.peers }))
-        .into_response()
+    Json(json!({
+        "relayer": s.index,
+        "height": s.height,
+        "batch": s.batch,
+        "peers": s.peers,
+        "version": version,
+    }))
+    .into_response()
 }
 
 /// `Market` plus the public clearing prices (#39): `lastPrice` and `history` in cents,
