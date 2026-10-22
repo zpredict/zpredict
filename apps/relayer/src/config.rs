@@ -8,6 +8,7 @@ use serde::Deserialize;
 use zpredict_oracle::Market;
 
 use crate::error::{Error, Result};
+use crate::markets::{ROLLING_ID_BASE, Rolling};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -62,11 +63,19 @@ pub struct Config {
     /// served at `GET /memo-key`. The sealed secret half stays with the escrow scanner.
     #[serde(default)]
     pub memo_key_file: Option<PathBuf>,
-    /// Event log directory (see `store.rs`).
+    /// Sealed FROST key share (`settle-payout dkg` writes `rN-share.sealed`), opened with
+    /// `ZPREDICT_STORE_KEY`. With it, resolved outcomes are FROST-signed 2-of-3 and
+    /// `/group-key` serves the group key; without it they stay "resolved (unsigned)".
+    #[serde(default)]
+    pub frost_share_file: Option<PathBuf>,
+    /// Event log and `markets.json` directory (see `store.rs`, `markets/saved.rs`).
     pub data_dir: PathBuf,
     /// Use the plaintext dev matcher (needs the `dev-insecure` feature too).
     #[serde(default)]
     pub insecure_matcher: bool,
+    /// Hourly rolling markets (`markets/rolling.rs`); absent = off.
+    #[serde(default)]
+    pub rolling: Option<Rolling>,
     pub markets: Vec<Market>,
 }
 
@@ -101,6 +110,7 @@ impl Config {
             .into_iter()
             .chain(c.peer_keys.iter_mut())
             .chain(c.memo_key_file.as_mut())
+            .chain(c.frost_share_file.as_mut())
         {
             *p = base.join(&*p);
         }
@@ -137,7 +147,17 @@ impl Config {
         if self.web_origin.ends_with('/') || !self.web_origin.contains("://") {
             return bad("web_origin must be an origin like https://app.example");
         }
-        Ok(())
+        if self
+            .markets
+            .iter()
+            .any(|m| m.id == 0 || m.id >= ROLLING_ID_BASE)
+        {
+            return bad("market ids must be 1..1000000 (rolling markets use the rest)");
+        }
+        match &self.rolling {
+            Some(r) => r.validate().map_err(Error::Config),
+            None => Ok(()),
+        }
     }
 }
 
@@ -177,6 +197,13 @@ pub(crate) mod tests {
         assert_eq!((c.index, c.listen.port()), (2, 3174));
         assert_eq!(c.oracle_lightwalletd, "", "empty turns oracle polling off");
         assert_eq!(c.escrow_lightwalletd, "https://testnet.zec.rocks:443");
+        let r = c.rolling.expect("production runs rolling markets");
+        assert_eq!(
+            (r.interval_secs, r.horizon_secs, r.fast_from),
+            (3600, 3600, 3_543_405)
+        );
+        assert_eq!(c.markets.len() + 1, zpredict_circuit::DEFAULT_MARKETS);
+        assert_eq!(c.frost_share_file, None, "until the key ceremony (#78)");
     }
 
     #[test]

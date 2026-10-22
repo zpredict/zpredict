@@ -27,6 +27,7 @@ pub fn app(index: usize, name: &str, judge: bool) -> (Router, crate::state::Shar
         origin: ORIGIN.into(),
         judge_credit,
         memo_key: Some(memo_vector(index)),
+        group_key: None,
     };
     (router(api), state)
 }
