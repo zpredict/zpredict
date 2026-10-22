@@ -10,9 +10,11 @@ import {
 	fromHex,
 	getFill,
 	type Order,
+	payoutZats,
 	RELAYERS,
 	split,
 	submitOrder,
+	submitWithdrawal,
 	tagAccount,
 	toHex,
 } from "./index.js";
@@ -115,6 +117,25 @@ test("submitOrder sends exactly one share to each relayer", async (t) => {
 	assert.ok(posts.every(([, b]) => b.orderId === orderId));
 	const shares = posts.map(([, b]) => fromHex(b.share));
 	assert.deepEqual(decodeOrder(combine(shares)), o);
+});
+
+test("submitWithdrawal sends each relayer only its share of the account", async (t) => {
+	const posts: [string, { withdrawalId: string; share: string; amount: number }][] = [];
+	t.mock.method(globalThis, "fetch", async (url: string, init: RequestInit) => {
+		posts.push([url, JSON.parse(init.body as string)]);
+		return Response.json({}, { status: 202 });
+	});
+	const tag = `2a${"00".repeat(15)}`;
+	const { withdrawalId } = await submitWithdrawal(RELAYERS, tag, 5850n, "uregtest1x");
+	assert.deepEqual(
+		posts.map(([u]) => u),
+		RELAYERS.map((r) => `${r}/withdrawals`),
+	);
+	assert.ok(posts.every(([, b]) => b.withdrawalId === withdrawalId && b.amount === 5850));
+	const account = combine(posts.map(([, b]) => fromHex(b.share)));
+	assert.equal(tagAccount(`${toHex(account)}${"00".repeat(8)}`), 42n);
+	assert.equal(payoutZats(5850n), 29_240_000n);
+	await assert.rejects(submitWithdrawal(RELAYERS, tag, 2n, "u"), RangeError);
 });
 
 test("refuses two relayers on one origin", async (t) => {

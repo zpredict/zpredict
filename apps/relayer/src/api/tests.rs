@@ -28,6 +28,7 @@ pub fn app(index: usize, name: &str, judge: bool) -> (Router, crate::state::Shar
         judge_credit,
         memo_key: Some(memo_vector(index)),
         group_key: None,
+        escrow: None,
     };
     (router(api), state)
 }
@@ -129,6 +130,8 @@ async fn orders_contract() {
         prices: vec![(1, 115)],
         expired: vec![],
         credits: vec![],
+        deposits: vec![],
+        withdrawals: vec![],
     };
     state.lock().unwrap().record(ev).unwrap();
     let want = json!({"status": "filled", "fillShare": fill});

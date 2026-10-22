@@ -2,11 +2,14 @@
 // three relayers. Each relayer only ever receives its own share.
 
 import { fromHex, random, toHex } from "./bytes.js";
+import { at, call, distinct, type Relayers } from "./http.js";
 import type { MemoKeys } from "./memo.js";
 
 export { fromHex, random, toHex } from "./bytes.js";
+export type { Relayers } from "./http.js";
 export * from "./memo.js";
 export * from "./outcome.js";
+export * from "./withdraw.js";
 
 /** Encoded order length in bytes; also the share length. */
 export const ORDER_LEN = 18;
@@ -200,33 +203,12 @@ export interface JudgeClaim {
 	tag: string;
 }
 
-export type Relayers = readonly [string, string, string];
-
 /** Hosted testnet relayers, one per host. */
 export const RELAYERS: Relayers = [
 	"https://r0.zpredict.site",
 	"https://r1.zpredict.site",
 	"https://r2.zpredict.site",
 ];
-
-async function call<T>(url: string, init?: RequestInit): Promise<T> {
-	const r = await fetch(url, {
-		...init,
-		credentials: "omit",
-		referrerPolicy: "no-referrer",
-	});
-	if (!r.ok) throw new Error(`${r.status} from ${url}`);
-	return r.json() as Promise<T>;
-}
-
-const at = (base: string, path: string) => base.replace(/\/+$/, "") + path;
-
-/** Refuses to run unless the three relayers are three different origins. */
-function distinct(relayers: Relayers) {
-	if (new Set(relayers.map((u) => new URL(u).origin)).size !== 3) {
-		throw new Error("relayers must be three distinct origins");
-	}
-}
 
 /** Splits the order and POSTs share i only to relayer i. */
 export async function submitOrder(relayers: Relayers, order: Order) {

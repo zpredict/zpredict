@@ -133,6 +133,7 @@ async fn group_key_is_served_only_with_a_share() {
         judge_credit: None,
         memo_key: None,
         group_key: Some([7; 32]),
+        escrow: None,
     });
     let (_, body) = call(&signed, "GET", "/group-key", None).await;
     assert_eq!(

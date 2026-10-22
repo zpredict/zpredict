@@ -4,7 +4,7 @@ use orchard::keys::{FullViewingKey, Scope, SpendingKey};
 use rand_core::{OsRng, RngCore};
 use zcash_keys::address::UnifiedAddress;
 use zcash_keys::keys::UnifiedFullViewingKey;
-use zcash_protocol::consensus::{Network, Parameters};
+use zcash_protocol::consensus::{BlockHeight, Network, NetworkType, NetworkUpgrade, Parameters};
 use zcash_protocol::local_consensus::LocalNetwork;
 
 use crate::error::{Error, Result};
@@ -52,6 +52,43 @@ pub fn decode_fvk(ufvk: &str) -> Result<FullViewingKey> {
         .orchard()
         .cloned()
         .ok_or_else(|| Error::Encoding("UFVK has no Orchard key".into()))
+}
+
+/// The escrow's network, chosen at runtime (`main`, `test` or `regtest`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Params {
+    Main,
+    Test,
+    Regtest(LocalNetwork),
+}
+
+impl Params {
+    pub fn parse(network: &str) -> Result<Self> {
+        match network {
+            "main" => Ok(Params::Main),
+            "test" => Ok(Params::Test),
+            "regtest" => Ok(Params::Regtest(regtest())),
+            n => Err(Error::UnknownNetwork(n.into())),
+        }
+    }
+}
+
+impl Parameters for Params {
+    fn network_type(&self) -> NetworkType {
+        match self {
+            Params::Main => Network::MainNetwork.network_type(),
+            Params::Test => Network::TestNetwork.network_type(),
+            Params::Regtest(n) => n.network_type(),
+        }
+    }
+
+    fn activation_height(&self, nu: NetworkUpgrade) -> Option<BlockHeight> {
+        match self {
+            Params::Main => Network::MainNetwork.activation_height(nu),
+            Params::Test => Network::TestNetwork.activation_height(nu),
+            Params::Regtest(n) => n.activation_height(nu),
+        }
+    }
 }
 
 /// Regtest parameters. Encodings depend only on the network type, not the heights.

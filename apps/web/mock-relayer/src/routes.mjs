@@ -6,6 +6,7 @@ import { JUDGE_CREDIT, PORTS } from "./config.mjs";
 import { GROUP_KEY } from "./rolling.mjs";
 import { hex, u64le, xor } from "./shares.mjs";
 import { accept, account, chain, markets, orders, views } from "./state.mjs";
+import { getWithdrawal, postWithdrawal } from "./withdrawals.mjs";
 
 const HEX = (n) => new RegExp(`^[0-9a-f]{${n}}$`);
 
@@ -103,6 +104,8 @@ const ROUTES = [
 	["POST", /^\/judge\/claim$/, (_, { res }) => judgeClaim(res)],
 	["GET", /^\/orders\/([0-9a-f]{32})$/, (i, { m, res }) => getOrder(i, m[1], res)],
 	["GET", /^\/accounts\/([0-9a-f]{32})$/, (i, { m, res }) => getAccount(i, m[1], res)],
+	["POST", /^\/withdrawals$/, (i, { req, res }) => postWithdrawal(i, req, res, send, readJson)],
+	["GET", /^\/withdrawals\/([0-9a-f]{32})$/, (_, { m, res }) => getWithdrawal(m[1], res, send)],
 ];
 
 /** Request handler for relayer `i`. */

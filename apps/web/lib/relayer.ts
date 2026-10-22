@@ -6,11 +6,13 @@ import {
 	getGroupKey,
 	getMemoKeys,
 	getView,
+	getWithdrawal,
 	type Health,
 	type JudgeClaim,
 	type Market,
 	type Side,
 	submitOrder,
+	submitWithdrawal,
 	tagAccount,
 } from "@zpredict/sdk";
 import { relayers } from "./config";
@@ -57,5 +59,11 @@ export interface OrderInput {
 /** Encodes, splits and sends share i to relayer i only. */
 export const placeOrder = (o: OrderInput, tag: string) =>
 	submitOrder(relayers, { ...o, account: tagAccount(tag) });
+
+/** Sends relayer i only its share of the account; amount (half-ticks) and address are public. */
+export const withdraw = (tag: string, halfTicks: bigint, address: string) =>
+	submitWithdrawal(relayers, tag, halfTicks, address);
+
+export const fetchWithdrawal = (id: string) => getWithdrawal(relayers, id);
 
 export const relayerHost = (i: number) => new URL(relayers[i]).host;

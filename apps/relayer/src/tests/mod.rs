@@ -4,6 +4,7 @@
 mod batching;
 mod funds;
 mod outcomes;
+mod settlement;
 
 use std::time::Duration;
 
@@ -69,6 +70,8 @@ pub(super) fn relayers<M: Matcher>(
                 window,
                 expire: 1,
                 frost: None,
+                judge: true,
+                escrow: None,
             };
             Relayer { http, batcher }
         })

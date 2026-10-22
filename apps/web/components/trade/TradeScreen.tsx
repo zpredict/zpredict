@@ -5,6 +5,7 @@ import RelayersDown from "@/components/markets/RelayersDown";
 import DepositInfo from "@/components/order-ticket/DepositInfo";
 import OrderList from "@/components/order-ticket/OrderList";
 import OrderTicket from "@/components/order-ticket/OrderTicket";
+import WithdrawForm from "@/components/order-ticket/WithdrawForm";
 import RelayerView from "@/components/relayer-view/RelayerView";
 import Pane from "@/components/ui/Pane";
 import { useMarkets } from "@/hooks/useMarkets";
@@ -46,6 +47,7 @@ export default function TradeScreen() {
 								{latest && <ShareXor order={latest} seen={seen[latest.orderId]} />}
 								<OrderList orders={mine} />
 								<DepositInfo />
+								<WithdrawForm />
 							</>
 						)}
 					</Pane>

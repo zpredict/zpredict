@@ -1,26 +1,29 @@
-//! INSECURE: parties 1 and 2 send their shares to party 0, which rebuilds every order
-//! and table row, clears one market with `zpredict_core::clear_with_balances` and hands
-//! back fresh shares. It mirrors the circuit (markets, credits, prices), so the
-//! batch loop can be tested without the MPC's cost. Only for tests and local dev;
-//! the binary refuses it unless both the `dev-insecure` feature and
-//! `insecure_matcher = true` are set.
+//! INSECURE: parties 1 and 2 send their shares to party 0, which rebuilds everything,
+//! runs the plaintext references (`zpredict_core::apply_flows`, `clear_with_balances`,
+//! `resolve`) and hands back fresh shares. It mirrors the circuits, so the batch loop
+//! can be tested without the MPC's cost. Only for tests and local dev; the binary
+//! refuses it unless both the `dev-insecure` feature and `insecure_matcher = true` are set.
 
 use serde::{Deserialize, Serialize};
+use zpredict_circuit::{Outcome, Position, Public, Shares};
 use zpredict_core::{
-    ACCOUNT_LEN, Account, BALANCE_LEN, FILL_LEN, ORDER_LEN, Order, Side, clear_with_balances,
-    fill_records,
+    ACCOUNT_LEN, Account, BALANCE_LEN, FILL_LEN, ORDER_LEN, Order, Side, Withdrawal, apply_flows,
+    clear_with_balances, fill_records, resolve,
 };
 
-use super::{Cleared, Matcher};
+use super::Matcher;
 use crate::error::Result;
 use crate::peers::Links;
 
 pub struct InsecureLocalMatcher;
 
-#[derive(Serialize, Deserialize)]
-struct Shares {
+/// Everything a party holds, as rows of bytes.
+#[derive(Default, Serialize, Deserialize)]
+struct Held {
     orders: Vec<[u8; ORDER_LEN]>,
+    fills: Vec<[u8; FILL_LEN]>,
     accounts: Vec<[u8; ACCOUNT_LEN]>,
+    withdrawals: Vec<[u8; 8]>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -28,60 +31,104 @@ struct Reply {
     fills: Vec<[u8; FILL_LEN]>,
     balances: Vec<[u8; BALANCE_LEN]>,
     prices: Vec<Option<u16>>,
+    withdrawn: Vec<bool>,
 }
 
 impl Matcher for InsecureLocalMatcher {
-    async fn clear(
+    async fn clear(&self, links: &Links, public: &Public, shares: &Shares<'_>) -> Result<Outcome> {
+        let held = Held {
+            orders: shares.orders.to_vec(),
+            accounts: shares.accounts.to_vec(),
+            withdrawals: shares.withdrawals.to_vec(),
+            ..Held::default()
+        };
+        let r = round(links, held, |all| clear_all(public, all)).await?;
+        Ok(Outcome {
+            fills: r.fills,
+            balances: r.balances,
+            prices: r.prices,
+            withdrawn: r.withdrawn,
+        })
+    }
+
+    async fn resolve(
         &self,
         links: &Links,
-        markets: &[u32],
-        credits: &[u64],
-        orders: &[[u8; ORDER_LEN]],
+        market: u32,
+        outcome: Side,
+        positions: &[Position],
         accounts: &[[u8; ACCOUNT_LEN]],
-    ) -> Result<Cleared> {
-        let mine = Shares {
-            orders: orders.to_vec(),
+    ) -> Result<Vec<[u8; BALANCE_LEN]>> {
+        let held = Held {
+            orders: positions.iter().map(|p| p.0).collect(),
+            fills: positions.iter().map(|p| p.1).collect(),
             accounts: accounts.to_vec(),
+            ..Held::default()
         };
-        if links.party != 0 {
-            links.send(0, &serde_json::to_vec(&mine)?).await?;
-            let r: Reply = serde_json::from_slice(&links.recv(0).await?)?;
-            return Ok(Cleared {
-                fills: r.fills,
-                balances: r.balances,
-                prices: r.prices,
-            });
-        }
-        let mut all = mine;
-        for p in 1..3 {
-            let theirs: Shares = serde_json::from_slice(&links.recv(p).await?)?;
-            xor_into(&mut all.orders, &theirs.orders);
-            xor_into(&mut all.accounts, &theirs.accounts);
-        }
-        let Reply {
-            mut fills,
-            mut balances,
-            prices,
-        } = clear_markets(markets, credits, &all);
-        for p in 1..3 {
-            let r = Reply {
-                fills: reshare(&mut fills),
-                balances: reshare(&mut balances),
-                prices: prices.clone(),
-            };
-            links.send(p, &serde_json::to_vec(&r)?).await?;
-        }
-        Ok(Cleared {
-            fills,
-            balances,
-            prices,
+        let r = round(links, held, |all| {
+            let orders = decoded(&all.orders);
+            let positions: Vec<_> = orders.into_iter().zip(all.fills.clone()).collect();
+            let balances = resolve(market, outcome, &positions, &table(&all.accounts));
+            Reply {
+                fills: vec![],
+                balances: balances.iter().map(|b| b.to_le_bytes()).collect(),
+                prices: vec![],
+                withdrawn: vec![],
+            }
         })
+        .await?;
+        Ok(r.balances)
     }
 }
 
-/// Plaintext reference: credits first, then `clear_with_balances` (malformed orders
-/// are dummies).
-fn clear_markets(markets: &[u32], credits: &[u64], s: &Shares) -> Reply {
+/// Parties 1 and 2 send what they hold to party 0, which combines, computes and
+/// re-shares the fills and balances.
+async fn round(links: &Links, mine: Held, compute: impl FnOnce(&Held) -> Reply) -> Result<Reply> {
+    if links.party != 0 {
+        links.send(0, &serde_json::to_vec(&mine)?).await?;
+        return Ok(serde_json::from_slice(&links.recv(0).await?)?);
+    }
+    let mut all = mine;
+    for p in 1..3 {
+        let theirs: Held = serde_json::from_slice(&links.recv(p).await?)?;
+        xor_into(&mut all.orders, &theirs.orders);
+        xor_into(&mut all.fills, &theirs.fills);
+        xor_into(&mut all.accounts, &theirs.accounts);
+        xor_into(&mut all.withdrawals, &theirs.withdrawals);
+    }
+    let mut r = compute(&all);
+    for p in 1..3 {
+        let theirs = Reply {
+            fills: reshare(&mut r.fills),
+            balances: reshare(&mut r.balances),
+            prices: r.prices.clone(),
+            withdrawn: r.withdrawn.clone(),
+        };
+        links.send(p, &serde_json::to_vec(&theirs)?).await?;
+    }
+    Ok(r)
+}
+
+/// Plaintext reference: credits and withdrawals, then `clear_with_balances`.
+fn clear_all(public: &Public, all: &Held) -> Reply {
+    let orders = decoded(&all.orders);
+    let withdrawals: Vec<Withdrawal> = (all.withdrawals.iter().zip(&public.withdrawals))
+        .map(|(a, &amount)| Withdrawal {
+            account: u64::from_le_bytes(*a),
+            amount,
+        })
+        .collect();
+    let (table, withdrawn) = apply_flows(&table(&all.accounts), &public.credits, &withdrawals);
+    let c = clear_with_balances(&public.markets, &orders, &table);
+    Reply {
+        fills: fill_records(&orders, &c.fills),
+        balances: c.balances.iter().map(|b| b.to_le_bytes()).collect(),
+        prices: c.prices,
+        withdrawn,
+    }
+}
+
+fn decoded(orders: &[[u8; ORDER_LEN]]) -> Vec<Order> {
     let dummy = Order {
         market: 0,
         side: Side::Yes,
@@ -89,23 +136,20 @@ fn clear_markets(markets: &[u32], credits: &[u64], s: &Shares) -> Reply {
         size: 0,
         account: 0,
     };
-    let orders: Vec<Order> = (s.orders.iter())
+    orders
+        .iter()
         .map(|b| Order::decode(b).unwrap_or(dummy))
-        .collect();
+        .collect()
+}
+
+fn table(rows: &[[u8; ACCOUNT_LEN]]) -> Vec<Account> {
     let u64_at = |b: &[u8], i: usize| u64::from_le_bytes(b[i..i + 8].try_into().expect("8 bytes"));
-    let accounts: Vec<Account> = (s.accounts.iter().zip(credits))
-        .map(|(b, c)| Account {
+    (rows.iter())
+        .map(|b| Account {
             id: u64_at(b, 0),
-            balance: u64_at(b, 8) + c,
+            balance: u64_at(b, 8),
         })
-        .collect();
-    let c = clear_with_balances(markets, &orders, &accounts);
-    let balances = c.balances.iter().map(|b| b.to_le_bytes()).collect();
-    Reply {
-        fills: fill_records(&orders, &c.fills),
-        balances,
-        prices: c.prices,
-    }
+        .collect()
 }
 
 fn xor_into<const L: usize>(acc: &mut [[u8; L]], other: &[[u8; L]]) {

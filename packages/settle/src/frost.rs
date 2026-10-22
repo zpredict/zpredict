@@ -9,8 +9,9 @@
 //!    the sighash and randomizers from the PCZT itself and checks every output against
 //!    the payout vector ([`crate::verify`]) before producing any signature share.
 //!
-//! [`sign_all`] runs both rounds in one process. Across hosts the relayer carries the
-//! same messages over its TLS channel.
+//! [`sign_all`] runs both rounds in one process. Across hosts the relayer runs the same
+//! steps over its Noise peer links: [`commit`], [`requests`], [`sign_packages`] on each
+//! signer against its own copy of the PCZT and payout vector, then [`aggregate`].
 
 use std::collections::BTreeMap;
 
@@ -18,7 +19,8 @@ use orchard::keys::FullViewingKey;
 use pczt::Pczt;
 use rand_core::OsRng;
 use reddsa::frost::redpallas::{
-    self as frost, RandomizedParams, Randomizer as FrostRandomizer, SigningPackage,
+    self as frost, Identifier, RandomizedParams, Randomizer as FrostRandomizer, SigningPackage,
+    keys::PublicKeyPackage,
     round1::{SigningCommitments, SigningNonces},
     round2::SignatureShare,
 };
@@ -83,54 +85,75 @@ pub fn verify_then_sign(
         .collect()
 }
 
-/// Coordinator: one session over every spend with `signers` (any 2 of 3), each of
-/// which verifies independently. Returns one aggregated signature per spend.
-pub fn sign_all(
+/// Coordinator, after round 1: one request per spend, each a signing package over this
+/// PCZT's sighash with every signer's commitment for that spend (`commitments[id][j]`).
+pub fn requests(
     pczt: &Pczt,
-    payouts: &[Payout],
-    fvk: &FullViewingKey,
-    signers: &[&KeyShare],
-) -> Result<Vec<SpendSig>> {
-    let group = &signers
-        .first()
-        .ok_or(Error::Frost("no signers".into()))?
-        .group;
+    commitments: &BTreeMap<Identifier, Vec<SigningCommitments>>,
+) -> Result<Vec<SignRequest>> {
     let hash = sighash(pczt)?;
     let spends = randomizers(pczt)?;
-    let round1: Vec<_> = signers.iter().map(|s| commit(s, spends.len())).collect();
-    let requests: Vec<SignRequest> = spends
+    if commitments.values().any(|c| c.len() != spends.len()) {
+        return Err(Error::Frost(
+            "a signer committed to the wrong number of spends".into(),
+        ));
+    }
+    Ok(spends
         .iter()
         .enumerate()
         .map(|(j, spend)| SignRequest {
             spend: *spend,
             package: SigningPackage::new(
-                signers
-                    .iter()
-                    .zip(&round1)
-                    .map(|(s, (_, c))| (s.id(), c[j]))
-                    .collect(),
+                commitments.iter().map(|(id, c)| (*id, c[j])).collect(),
                 &hash,
             ),
         })
-        .collect();
-    let round2 = signers
-        .iter()
-        .zip(&round1)
-        .map(|(s, (nonces, _))| verify_then_sign(s, nonces, pczt, payouts, fvk, &requests))
-        .collect::<Result<Vec<_>>>()?;
+        .collect())
+}
 
+/// Signer, round 2 from a remote coordinator: rebuilds each request from the spends of
+/// its own copy of the PCZT and the coordinator's signing packages, then
+/// [`verify_then_sign`]s. Nothing the coordinator says about spends is taken on trust.
+pub fn sign_packages(
+    share: &KeyShare,
+    nonces: &[SigningNonces],
+    pczt: &Pczt,
+    payouts: &[Payout],
+    fvk: &FullViewingKey,
+    packages: Vec<SigningPackage>,
+) -> Result<Vec<SignatureShare>> {
+    let spends = randomizers(pczt)?;
+    if spends.len() != packages.len() {
+        return Err(Error::Refused(format!(
+            "{} spend(s) in the PCZT, {} package(s)",
+            spends.len(),
+            packages.len()
+        )));
+    }
+    let requests: Vec<SignRequest> = (spends.into_iter().zip(packages))
+        .map(|(spend, package)| SignRequest { spend, package })
+        .collect();
+    verify_then_sign(share, nonces, pczt, payouts, fvk, &requests)
+}
+
+/// Coordinator: one aggregated signature per spend from every signer's shares
+/// (`shares[id][j]` for request `j`).
+pub fn aggregate(
+    group: &PublicKeyPackage,
+    requests: &[SignRequest],
+    shares: &BTreeMap<Identifier, Vec<SignatureShare>>,
+) -> Result<Vec<SpendSig>> {
     requests
         .iter()
         .enumerate()
         .map(|(j, req)| {
-            let shares: BTreeMap<_, _> = signers
-                .iter()
-                .zip(&round2)
-                .map(|(s, sh)| (s.id(), sh[j]))
-                .collect();
+            let mine: BTreeMap<_, _> = (shares.iter())
+                .map(|(id, sh)| sh.get(j).map(|s| (*id, *s)))
+                .collect::<Option<_>>()
+                .ok_or_else(|| Error::Frost("a signer returned too few shares".into()))?;
             let alpha = randomizer(&req.spend.alpha)?;
             let params = RandomizedParams::from_randomizer(group.verifying_key(), alpha);
-            let sig = frost::aggregate(&req.package, &shares, group, &params).map_err(frost_err)?;
+            let sig = frost::aggregate(&req.package, &mine, group, &params).map_err(frost_err)?;
             let sig = sig.serialize().map_err(frost_err)?;
             Ok(SpendSig {
                 pool: req.spend.pool,
@@ -143,53 +166,39 @@ pub fn sign_all(
         .collect()
 }
 
+/// Coordinator: one session over every spend with `signers` (any 2 of 3), each of
+/// which verifies independently, all in this process. Returns one aggregated signature
+/// per spend. Across hosts the relayer runs the same steps over its peer links.
+pub fn sign_all(
+    pczt: &Pczt,
+    payouts: &[Payout],
+    fvk: &FullViewingKey,
+    signers: &[&KeyShare],
+) -> Result<Vec<SpendSig>> {
+    let group = &signers
+        .first()
+        .ok_or(Error::Frost("no signers".into()))?
+        .group;
+    let spends = randomizers(pczt)?.len();
+    let round1: Vec<_> = signers.iter().map(|s| commit(s, spends)).collect();
+    let commitments = (signers.iter().zip(&round1))
+        .map(|(s, (_, c))| (s.id(), c.clone()))
+        .collect();
+    let requests = requests(pczt, &commitments)?;
+    let shares = (signers.iter().zip(&round1))
+        .map(|(s, (nonces, _))| {
+            Ok((
+                s.id(),
+                verify_then_sign(s, nonces, pczt, payouts, fvk, &requests)?,
+            ))
+        })
+        .collect::<Result<_>>()?;
+    aggregate(group, &requests, &shares)
+}
+
 fn randomizer(alpha: &[u8; 32]) -> Result<FrostRandomizer> {
     FrostRandomizer::deserialize(alpha).map_err(frost_err)
 }
 
 #[cfg(test)]
-mod tests {
-    use orchard::keys::{Scope, SpendingKey};
-
-    use super::*;
-    use crate::fixture::fixture;
-    use crate::sign::apply;
-
-    #[test]
-    fn two_of_three_sign_every_spend_in_one_session() {
-        let f = fixture(None);
-        assert_eq!(randomizers(&f.pczt).unwrap().len(), 2);
-        let signers = [&f.shares[0], &f.shares[2]];
-        let sigs = sign_all(&f.pczt, &f.payouts, &f.fvk, &signers).unwrap();
-        assert_eq!(sigs.len(), 2);
-        // `apply` checks each signature against its spend's rk.
-        apply(f.pczt, &sigs).unwrap();
-    }
-
-    #[test]
-    fn a_tampered_output_is_refused() {
-        let thief = FullViewingKey::from(&SpendingKey::from_bytes([66; 32]).unwrap())
-            .address_at(0u32, Scope::External);
-        let f = fixture(Some(thief));
-        let err = sign_all(&f.pczt, &f.payouts, &f.fvk, &[&f.shares[0], &f.shares[1]]);
-        assert!(matches!(err, Err(Error::Refused(m)) if m.contains("not in the payout vector")));
-    }
-
-    #[test]
-    fn a_request_for_another_message_is_refused() {
-        let f = fixture(None);
-        let s = &f.shares[1];
-        let spends = randomizers(&f.pczt).unwrap();
-        let (nonces, commitments) = commit(s, spends.len());
-        let requests: Vec<_> = spends
-            .iter()
-            .zip(&commitments)
-            .map(|(spend, c)| SignRequest {
-                spend: *spend,
-                package: SigningPackage::new([(s.id(), *c)].into(), &[0u8; 32]),
-            })
-            .collect();
-        let err = verify_then_sign(s, &nonces, &f.pczt, &f.payouts, &f.fvk, &requests);
-        assert!(matches!(err, Err(Error::Refused(m)) if m.contains("sighash")));
-    }
-}
+mod tests;

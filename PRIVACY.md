@@ -13,9 +13,9 @@ secret. Each sealed file binds its label (`frost-key-share`, `ufvk`, `memo-key`,
 
 | Secret | Who holds it | At rest | In clear, when |
 |---|---|---|---|
-| FROST key share (one per relayer) | that relayer | `r{i}-share.sealed` | Only in memory: during the DKG (`settle-payout dkg` seals each share before writing anything) and while signing. No frost-client config file is involved |
-| Escrow UFVK (shared viewing key) | every relayer | `escrow-ufvk.sealed` | In memory while scanning, verifying or building a payout. Also as a command-line argument for the one `zcash-devtool wallet init-fvk` call that creates the escrow wallet |
-| Deposit-memo key (X25519, one per relayer) | that relayer | `r{i}-memo.sealed` | In memory while scanning. The public half is served at `GET /memo-key` |
+| FROST key share (one per relayer) | that relayer | `r{i}-share.sealed` | Only in memory: during the DKG (`settle-payout dkg` seals each share before writing anything), and in a relayer with `[settlement]` on, for as long as it runs (it co-signs payouts). No frost-client config file is involved |
+| Escrow UFVK (shared viewing key) | every relayer | `escrow-ufvk.sealed` | In memory while scanning, verifying or building a payout (a relayer with `[settlement]` on holds it while it runs). Also as a command-line argument for the one `zcash-devtool wallet init-fvk` call that creates the escrow wallet |
+| Deposit-memo key (X25519, one per relayer) | that relayer | `r{i}-memo.sealed` | In memory while scanning (the relayer's scanner thread). The public half is served at `GET /memo-key` |
 | Escrow wallet (zcash-devtool / zcash_client_sqlite DB: UFVK, notes, witnesses) | the proving relayer | `escrow-wallet.sealed` | Unsealed only for one step (sync, build a payout, prove, send) into `/dev/shm` where it exists (tmpfs, RAM). Without `/dev/shm`, e.g. on macOS, it goes to `ESCROW_WALLET_DIR` or `$RUN_DIR/escrow`. It is sealed again and deleted when the step exits, including on error |
 | Relayer Noise key (MPC peering) | that relayer | Production: never on disk (env → tmpfs `/run/zpredict`). Local dev: `apps/relayer/config/keys/r{i}.key`, mode 0600, gitignored | While the relayer runs |
 | Account tag | the trader's browser | `localStorage` only | Only to the relayers. The deposit memo encrypts it to each one, and the balance query (`GET /accounts/:tag`) sends it to each over TLS. It's never on chain in clear |
@@ -30,6 +30,14 @@ unsealed escrow wallet is left behind.
   `~/.cache/zpredict-run` and are deleted at the start of every run.
 - **The escrow wallet on a host without tmpfs** is plaintext on disk while one step runs. Use
   `ESCROW_WALLET_DIR` on a RAM disk, or run the prover on Linux.
+- **The escrow wallet while relayer 0 pays out**: with `[settlement]` on, relayer 0 builds,
+  proves and broadcasts payouts from `settlement.wallet_dir`, so the operator unseals the
+  wallet there (tmpfs) for as long as relayer 0 runs, and seals it again on shutdown. Its
+  payout PCZTs pass through files next to the wallet for one `zcash-devtool pczt combine`
+  and are deleted right after.
+- **Withdrawal requests in the relayer event log**: amount, payout address and this
+  relayer's share of the account id. Amount and address are public to all relayers by
+  design; the share alone says nothing about whose request it is.
 - **The relayer event log** (`data_dir`): order shares, fill shares and balance shares this
   relayer already holds. These are XOR shares, so they reveal nothing alone, but anyone
   holding all three relayers' logs can rebuild everything. That's the same 3-of-3 assumption

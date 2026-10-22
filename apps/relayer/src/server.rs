@@ -1,5 +1,6 @@
 //! Wires config, state, the peer listener, the batch loop, the chain poller and HTTP.
 
+use std::sync::Arc;
 use std::time::Duration;
 
 use zpredict_settle::KeyShare;
@@ -9,6 +10,7 @@ use crate::batch::{self, Batcher};
 use crate::chain;
 use crate::config::Config;
 use crate::error::{Error, Result};
+use crate::escrow::Escrow;
 use crate::keys::read_key;
 use crate::markets;
 use crate::mpc::{Matcher, Polytune};
@@ -48,7 +50,10 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
     let (slots, rows) = (c.batch_size, c.table_rows);
     let markets = markets::load(&c.data_dir, c.markets.clone());
     let state = State::open(c.index, markets, &c.data_dir)?.shared();
-    let frost = (c.frost_share_file.as_deref())
+    // Outcomes are signed with the escrow's key share: `frost_share_file`, or else the
+    // `[settlement]` one, so turning settlement on also signs outcomes.
+    let settlement_share = c.settlement.as_ref().map(|s| s.key_share.as_path());
+    let frost = (c.frost_share_file.as_deref().or(settlement_share))
         .map(|p| crate::outcome::load_share(p, c.index))
         .transpose()?;
     let group_key = frost.as_ref().map(KeyShare::ak).transpose();
@@ -61,6 +66,9 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
             "unsigned (no frost_share_file)"
         }
     );
+    let escrow = (c.settlement.as_ref())
+        .map(|s| Escrow::load(s, c.index).map(Arc::new))
+        .transpose()?;
     let public = [
         read_key(&c.peer_keys[0])?,
         read_key(&c.peer_keys[1])?,
@@ -82,12 +90,18 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
         rows,
         window: Duration::from_secs(c.window_secs),
         expire: c.expire_batches,
-        frost: frost.map(std::sync::Arc::new),
+        frost: frost.map(Arc::new),
+        judge: c.judge,
+        escrow: escrow.clone(),
     };
     let handle = tokio::runtime::Handle::current();
     tokio::task::spawn_blocking(move || handle.block_on(batch::run(b)));
-    // Market progress and resolution read the oracle (mainnet) chain only. The escrow
-    // endpoint, `c.escrow_lightwalletd`, is for the settle scanner and payouts.
+    // Deposits come from the escrow chain (testnet or regtest), never the oracle's.
+    if let Some(e) = escrow.clone() {
+        let (url, s) = (c.escrow_lightwalletd.clone(), state.clone());
+        tokio::task::spawn_blocking(move || crate::escrow::scan::poll(e, &url, s));
+    }
+    // Market progress and resolution read the oracle (mainnet) chain only.
     if !c.oracle_lightwalletd.is_empty() {
         let (url, s) = (c.oracle_lightwalletd.clone(), state.clone());
         let (rolling, dir) = (c.rolling.clone(), c.data_dir.clone());
@@ -103,6 +117,7 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
         judge_credit,
         memo_key,
         group_key,
+        escrow,
     });
     axum::serve(http, app).await?;
     Ok(())

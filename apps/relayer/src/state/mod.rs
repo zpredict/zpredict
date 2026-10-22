@@ -10,7 +10,10 @@ use zpredict_core::{BALANCE_LEN, FILL_LEN, ORDER_LEN};
 use zpredict_oracle::Market;
 
 use crate::error::Result;
+use crate::ledger::Ledger;
 use crate::store::{Event, Store};
+
+mod apply;
 use crate::table::Table;
 
 /// View items kept for `GET /view`.
@@ -64,6 +67,8 @@ pub struct State {
     orders: HashMap<String, Order>,
     /// This relayer's shares of the balance table (`table.rs`).
     pub table: Table,
+    /// Deposits, withdrawals and resolved markets (`ledger.rs`).
+    pub ledger: Ledger,
     /// Market id → public clearing prices in cents (YES side), oldest first.
     history: HashMap<u32, Vec<f64>>,
     view: VecDeque<ViewItem>,
@@ -84,6 +89,7 @@ impl State {
             markets,
             orders: HashMap::new(),
             table: Table::default(),
+            ledger: Ledger::default(),
             history: HashMap::new(),
             view: VecDeque::new(),
             seq: 0,
@@ -101,72 +107,6 @@ impl State {
         self.store.append(&e)?;
         self.apply(e);
         Ok(())
-    }
-
-    fn apply(&mut self, e: Event) {
-        match e {
-            Event::Order { id, share, batch } => {
-                let mut b = [0u8; ORDER_LEN];
-                hex::decode_to_slice(&share, &mut b).expect("logged shares are valid hex");
-                self.see("order", &id, share);
-                let status = Status::Pending { born: batch };
-                self.orders.insert(id, Order { share: b, status });
-                self.batch = self.batch.max(batch);
-            }
-            Event::Batch {
-                batch,
-                ids,
-                fills,
-                balances,
-                prices,
-                expired,
-                credits,
-            } => {
-                self.table.applied(&credits);
-                let balances: Vec<[u8; BALANCE_LEN]> =
-                    (balances.iter()).map(|b| hex_array(b)).collect();
-                self.table.set_balances(&balances);
-                for (id, fill) in ids.into_iter().zip(fills) {
-                    let mut f = [0u8; FILL_LEN];
-                    hex::decode_to_slice(&fill, &mut f).expect("logged fills are valid hex");
-                    self.see("fill", &id, fill);
-                    if let Some(o) = self.orders.get_mut(&id) {
-                        o.status = Status::Filled(f);
-                    }
-                }
-                for (market, half_ticks) in prices {
-                    let h = self.history.entry(market).or_default();
-                    h.push(f64::from(half_ticks) / 2.0);
-                    if h.len() > HISTORY_KEEP {
-                        h.remove(0);
-                    }
-                }
-                for id in expired {
-                    if let Some(o) = self.orders.get_mut(&id) {
-                        o.status = Status::Unfilled;
-                    }
-                }
-                self.batch = self.batch.max(batch + 1);
-            }
-            Event::Credit { id, amount } => self.table.credit(id, amount),
-            Event::Rows { ids } => self.table.append_zero(&ids),
-            Event::Seal { rows } => self.table.seal(rows),
-        }
-    }
-
-    fn see(&mut self, kind: &'static str, id: &str, share: String) {
-        self.seq += 1;
-        let order_id = id.to_owned();
-        let seq = self.seq;
-        self.view.push_back(ViewItem {
-            seq,
-            kind,
-            order_id,
-            share,
-        });
-        if self.view.len() > VIEW_KEEP {
-            self.view.pop_front();
-        }
     }
 
     /// Stores this relayer's share of an order: one share per order, ever.
@@ -239,17 +179,30 @@ impl State {
         self.history.get(&market).map_or(&[], Vec::as_slice)
     }
 
-    /// Settlement hook: this relayer's fill share of every batched order. The payout MPC
-    /// combines these with the other two relayers' (see `settlement::payout`).
-    pub fn positions(&self) -> Vec<(String, [u8; FILL_LEN])> {
+    /// This relayer's share of every position: each batched order with its fill share,
+    /// sorted by order id (the same order at all three relayers). The resolution MPC
+    /// combines them; no relayer knows whose they are or whether they filled.
+    pub fn positions(&self) -> Vec<zpredict_circuit::Position> {
         let mut out: Vec<_> = (self.orders.iter())
             .filter_map(|(id, o)| match o.status {
-                Status::Filled(f) => Some((id.clone(), f)),
+                Status::Filled(f) => Some((id, (o.share, f))),
                 _ => None,
             })
             .collect();
-        out.sort();
-        out
+        out.sort_by(|a, b| a.0.cmp(b.0));
+        out.into_iter().map(|(_, p)| p).collect()
+    }
+
+    /// Markets resolved on this relayer's node whose winners are not yet paid, with the
+    /// outcome (0 = YES, 1 = NO).
+    pub fn unpaid_resolutions(&self) -> Vec<(u32, u8)> {
+        (self.markets.iter())
+            .filter(|m| !self.ledger.resolved.contains(&m.id))
+            .filter_map(|m| match m.outcome? {
+                zpredict_oracle::Outcome::Yes => Some((m.id, 0)),
+                zpredict_oracle::Outcome::No => Some((m.id, 1)),
+            })
+            .collect()
     }
 }
 
