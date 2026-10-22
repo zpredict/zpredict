@@ -26,6 +26,10 @@ pub enum Event {
         id: String,
         share: String,
         batch: u64,
+        /// The browser's read token for this relayer's fill share (#15). Orders logged
+        /// before it existed have none and can no longer be read.
+        #[serde(default)]
+        token: String,
     },
     /// A batch ran: `ids[k]` got fill share `fills[k]`; balance-table row `k` got new
     /// balance share `balances[k]`; `prices` are public clearing prices

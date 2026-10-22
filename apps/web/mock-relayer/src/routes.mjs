@@ -47,16 +47,18 @@ const health = (i) => ({
 
 async function postOrder(i, req, res) {
 	const b = await readJson(req);
-	if (!b || !HEX(32).test(b.orderId) || !HEX(ORDER_LEN * 2).test(b.share))
+	if (!b || !HEX(32).test(b.orderId) || !HEX(ORDER_LEN * 2).test(b.share) || !HEX(32).test(b.token))
 		return send(res, 400, { error: "bad order" });
-	if (!accept(i, b.orderId, Buffer.from(b.share, "hex")))
+	if (!accept(i, b.orderId, Buffer.from(b.share, "hex"), b.token))
 		return send(res, 409, { error: "duplicate" });
 	send(res, 202, { batch: chain.batch });
 }
 
-function getOrder(i, id, res) {
+function getOrder(i, id, url, res) {
 	const o = orders.get(id);
-	if (!o?.shares[i]) return send(res, 404, { error: "unknown order" });
+	const token = url.searchParams.get("token");
+	if (!o?.shares[i] || !token || o.tokens[i] !== token)
+		return send(res, 404, { error: "unknown order" });
 	if (o.status === "pending") return send(res, 200, { status: "pending" });
 	send(res, 200, { status: o.status, fillShare: hex(o.fillShares[i]) });
 }
@@ -115,7 +117,7 @@ const ROUTES = [
 	["GET", /^\/view$/, (i, { url, res }) => getView(i, url, res)],
 	["POST", /^\/orders$/, (i, { req, res }) => postOrder(i, req, res)],
 	["POST", /^\/judge\/claim$/, (i, { req, res }) => judgeClaim(i, req, res)],
-	["GET", /^\/orders\/([0-9a-f]{32})$/, (i, { m, res }) => getOrder(i, m[1], res)],
+	["GET", /^\/orders\/([0-9a-f]{32})$/, (i, { m, url, res }) => getOrder(i, m[1], url, res)],
 	["GET", /^\/accounts\/([0-9a-f]{16})$/, (i, { m, url, res }) => getAccount(i, m[1], url, res)],
 	["POST", /^\/withdrawals$/, (i, { req, res }) => postWithdrawal(i, req, res, send, readJson)],
 	["GET", /^\/withdrawals\/([0-9a-f]{32})$/, (_, { m, res }) => getWithdrawal(m[1], res, send)],

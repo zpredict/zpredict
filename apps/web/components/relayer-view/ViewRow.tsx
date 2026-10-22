@@ -11,7 +11,7 @@ interface Props {
 	fresh: boolean;
 }
 
-/** One fixed-height slot of a relayer's feed: one share as it arrived, or empty. */
+/** One fixed-height slot of a relayer's feed: the digest of one share it received, or empty. */
 export default function ViewRow({ item, mine, fresh }: Props) {
 	return (
 		<li className={`vrow${item ? ` vrow--${item.kind}` : ""}${mine ? " is-mine" : ""}`}>
@@ -20,11 +20,11 @@ export default function ViewRow({ item, mine, fresh }: Props) {
 					<span className="vrow__meta">
 						<span>#{item.seq}</span>
 						<span className="vrow__kind">{item.kind}</span>
-						<span>{item.orderId.slice(0, 8)}</span>
+						<span>digest</span>
 						{mine && <span className="vrow__you">you</span>}
 					</span>
 					{/* Keyed by seq: the scrambler writes this span's text, React never updates it in place. */}
-					<Hex fresh={fresh} hex={bytes(item.share).join(" ")} key={item.seq} />
+					<Hex fresh={fresh} hex={bytes(item.digest).join(" ")} key={item.seq} />
 				</>
 			)}
 		</li>

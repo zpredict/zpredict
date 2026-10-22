@@ -1,7 +1,7 @@
 "use client";
 import type { Health, ViewItem } from "@zpredict/sdk";
 import { useEffect, useRef } from "react";
-import type { Seen } from "@/hooks/useRelayerView";
+import type { MyOrder } from "@/hooks/useOrders";
 import { relayerHost } from "@/lib/relayer";
 import PinnedShare from "./PinnedShare";
 import ViewRow from "./ViewRow";
@@ -17,10 +17,10 @@ interface Props {
 	health: Health | null;
 	online: boolean;
 	mine: Set<string>;
-	focus?: { orderId: string; seen?: Seen };
+	focus?: MyOrder;
 }
 
-/** Everything one relayer receives, newest first, as an ASCII panel. */
+/** Everything one relayer receives, newest first, as digests; your own share pinned on top. */
 export default function RelayerPanel({ index, items, health, online, mine, focus }: Props) {
 	const up = online && health !== null;
 	const newest = items.slice(-SLOTS).reverse();
@@ -44,8 +44,8 @@ export default function RelayerPanel({ index, items, health, online, mine, focus
 					: "unreachable"}
 			</p>
 			<PinnedShare
-				fill={focus?.seen?.fill[index]}
-				order={focus?.seen?.order[index]}
+				fill={focus?.fillShares?.[index]}
+				order={focus?.shares?.[index]}
 				orderId={focus?.orderId}
 			/>
 			<ol className="rpanel__stream">
@@ -62,7 +62,7 @@ export default function RelayerPanel({ index, items, health, online, mine, focus
 							item={it}
 							// biome-ignore lint/suspicious/noArrayIndexKey: slots stay put; their content moves
 							key={i}
-							mine={it !== undefined && mine.has(it.orderId)}
+							mine={it !== undefined && mine.has(it.digest)}
 						/>
 					);
 				})}

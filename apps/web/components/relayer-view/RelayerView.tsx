@@ -2,15 +2,16 @@
 import type { ViewItem } from "@zpredict/sdk";
 import ScrambleHeading from "@/components/ui/ScrambleHeading";
 import { useHealth } from "@/hooks/useHealth";
-import type { Seen } from "@/hooks/useRelayerView";
+import type { MyOrder } from "@/hooks/useOrders";
 import RelayerPanel from "./RelayerPanel";
 
 interface Props {
 	views: ViewItem[][];
 	online: boolean[];
+	/** Digests of this browser's own shares (`digestsOf`). */
 	mine: Set<string>;
 	/** The trader's latest order, pinned in every panel. */
-	focus?: { orderId: string; seen?: Seen };
+	focus?: MyOrder;
 }
 
 /** The relayers' side of the split screen: three machines, three streams of noise. */
@@ -25,7 +26,8 @@ export default function RelayerView({ views, online, mine, focus }: Props) {
 					lines={["None of these machines", "knows what you bet."]}
 				/>
 				<p className="rview__legend">
-					<span aria-hidden="true" className="swatch" /> your order&apos;s shares
+					<span aria-hidden="true" className="swatch" /> your order&apos;s shares · the public feed
+					shows a digest of each share, never the share
 				</p>
 			</header>
 			<div className="rview__grid">

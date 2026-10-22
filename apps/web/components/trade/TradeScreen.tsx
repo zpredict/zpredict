@@ -1,5 +1,6 @@
 "use client";
 import { useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 import MarketHeader from "@/components/markets/MarketHeader";
 import RelayersDown from "@/components/markets/RelayersDown";
 import DepositInfo from "@/components/order-ticket/DepositInfo";
@@ -11,6 +12,7 @@ import Pane from "@/components/ui/Pane";
 import { useMarkets } from "@/hooks/useMarkets";
 import { useOrders } from "@/hooks/useOrders";
 import { useRelayerView } from "@/hooks/useRelayerView";
+import { digestsOf } from "@/lib/shares";
 import ShareXor from "./ShareXor";
 
 /** The split screen: the trader on the left, the three relayers on the right. Sits in `main.trade`. */
@@ -20,12 +22,12 @@ export default function TradeScreen() {
 	const side = params.get("side") === "no" ? 1 : 0;
 	const { markets, down } = useMarkets();
 	const { orders } = useOrders();
-	const { views, seen, online } = useRelayerView();
+	const { views, online } = useRelayerView();
 
 	const market = markets?.find((m) => m.id === wanted) ?? markets?.find((m) => m.status === "open");
 	const mine = orders.filter((o) => o.market === market?.id);
 	const latest = mine[0];
-	const ids = new Set(orders.map((o) => o.orderId));
+	const digests = useMemo(() => digestsOf(orders), [orders]);
 
 	return (
 		<>
@@ -44,7 +46,7 @@ export default function TradeScreen() {
 								) : (
 									<p className="note">Trading on this market has closed.</p>
 								)}
-								{latest && <ShareXor order={latest} seen={seen[latest.orderId]} />}
+								{latest && <ShareXor order={latest} />}
 								<OrderList orders={mine} />
 								<DepositInfo />
 								<WithdrawForm />
@@ -52,12 +54,7 @@ export default function TradeScreen() {
 						)}
 					</Pane>
 					<Pane aria-label="Relayer View" className="relayers" id="relayers">
-						<RelayerView
-							focus={latest && { orderId: latest.orderId, seen: seen[latest.orderId] }}
-							mine={ids}
-							online={online}
-							views={views}
-						/>
+						<RelayerView focus={latest} mine={digests} online={online} views={views} />
 					</Pane>
 				</>
 			)}

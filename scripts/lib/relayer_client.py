@@ -2,13 +2,16 @@
 relayers and combines their shares when reading back, as @zpredict/sdk does. The tag
 (hex32) is the account's credential and never leaves whole.
 
-  relayer_client.py order <tag> <market> <yes|no> <price> <size>   -> orderId
-  relayer_client.py fill <orderId>                                  -> pending | <size> <cost> <side> <filled>
+  relayer_client.py order <tag> <market> <yes|no> <price> <size>   -> handle
+  relayer_client.py fill <handle>                                   -> pending | <size> <cost> <side> <filled>
   relayer_client.py balance <tag>                                   -> half-ticks
   relayer_client.py withdraw <tag> <half-ticks> <unified address>   -> withdrawalId
   relayer_client.py forge <tag> <relayer> <half-ticks> <address>    -> withdrawalId
   relayer_client.py withdrawal <withdrawalId>                       -> <status> [txid]
   relayer_client.py outcome <market>                                -> yes | no | -
+
+An order handle is `orderId.token0.token1.token2`: relayer i serves its fill share only
+to the read token it got with the order, as the browser keeps them.
 
 `forge` plays a malicious relayer: it knows the account id and its own key share (from
 its deposit-memo slot), and asks for a withdrawal with only that. It must be refused.
@@ -84,11 +87,13 @@ def main(cmd, *args):
         tag, market, side, price, size = args
         side = {"yes": 0, "no": 1}[side]
         order = struct.pack("<IBBI", int(market), side, int(price), int(size)) + bytes.fromhex(tag)
-        oid = secrets.token_hex(16)
-        post_all("/orders", [{"orderId": oid, "share": s.hex()} for s in split(order)])
-        print(oid)
+        oid, tokens = secrets.token_hex(16), [secrets.token_hex(16) for _ in URLS]
+        bodies = [{"orderId": oid, "share": s.hex(), "token": t} for s, t in zip(split(order), tokens)]
+        post_all("/orders", bodies)
+        print(".".join([oid, *tokens]))
     elif cmd == "fill":
-        replies = [call(u, f"/orders/{args[0]}")[1] for u in URLS]
+        oid, *tokens = args[0].split(".")
+        replies = [call(u, f"/orders/{oid}?token={t}")[1] for u, t in zip(URLS, tokens)]
         if any(r.get("status") != "filled" for r in replies):
             print("pending")
             return

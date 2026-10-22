@@ -95,7 +95,7 @@ pub(super) async fn submit<M>(r: &[Relayer<M>], id: &str, o: Order, to: &[usize]
     getrandom::fill(&mut r1).unwrap();
     let shares = split(&o.encode(), r0, r1);
     for &i in to {
-        let body = json!({"orderId": id, "share": hex::encode(shares[i])});
+        let body = json!({"orderId": id, "share": hex::encode(shares[i]), "token": token(i)});
         assert_eq!(
             call(&r[i].http, "POST", "/orders", Some(body))
                 .await
@@ -106,11 +106,17 @@ pub(super) async fn submit<M>(r: &[Relayer<M>], id: &str, o: Order, to: &[usize]
     }
 }
 
+/// The fill-share read token the test browser gives relayer `i` (any hex32 works).
+pub(super) fn token(i: usize) -> String {
+    format!("{:032x}", i + 1)
+}
+
 /// The owner's view: XOR of the three relayers' fill shares.
 pub(super) async fn fill<M>(r: &[Relayer<M>], id: &str) -> Option<[u8; FILL_LEN]> {
     let mut out = [0u8; FILL_LEN];
-    for x in r {
-        let (_, v) = call(&x.http, "GET", &format!("/orders/{id}"), None).await;
+    for (i, x) in r.iter().enumerate() {
+        let path = format!("/orders/{id}?token={}", token(i));
+        let (_, v) = call(&x.http, "GET", &path, None).await;
         let share = hex::decode(v["fillShare"].as_str()?).unwrap();
         out.iter_mut().zip(share).for_each(|(a, b)| *a ^= b);
     }

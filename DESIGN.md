@@ -90,12 +90,12 @@ Each relayer is its own origin: `https://r0.zpredict.site`, `https://r1.zpredict
 |---|---|
 | `GET /health` | `{relayer: 0\|1\|2, height: number, batch: number, peers: boolean[]}` |
 | `GET /markets` | `Market[]` (below) |
-| `POST /orders` body `{orderId: hex32, share: hex36}` | `202 {batch}`: the batch the share joins |
-| `GET /orders/:orderId` | `{status: "pending"\|"filled"\|"unfilled", fillShare?: hex20}` |
+| `POST /orders` body `{orderId: hex32, share: hex52, token: hex32}` | `202 {batch}`: the batch the share joins. `token` is fresh and random per order and relayer |
+| `GET /orders/:orderId?token=hex32` | `{status: "pending"\|"filled"\|"unfilled", fillShare?: hex20}`; a missing or wrong token answers `404` like an unknown order, so one relayer (which knows every orderId) can't collect the other two fill shares |
 | `GET /accounts/:id?key=hex32` | `{balanceShare: hex16}`; `id` is hex16 (u64 LE), `key` this relayer's share of the tag (else `403`; unknown ids hold a zero share) |
 | `GET /memo-key` | `{relayer: 0\|1\|2, memoKey: hex64}`: this relayer's X25519 public key for its slot in the deposit memo |
 | `GET /group-key` | `{relayer: 0\|1\|2, groupKey: hex64, threshold: 2}`: the escrow's FROST group key, which outcome signatures verify against; `404` while signing is off. The sdk's `getGroupKey` only accepts it if all three relayers serve the same key |
-| `GET /view?after=<seq>` | `{items: [{seq, kind: "order"\|"fill", orderId, share}]}`: exactly what this relayer sees; powers the Relayer View |
+| `GET /view?after=<seq>` | `{items: [{seq, kind: "order"\|"fill", digest: hex32}]}`: one item per share this relayer received, as `BLAKE2b-128(personal "zPredictViewItem", share)`; never the share or the orderId, since all three views are public and their shares would XOR back into every order and tag. The owner finds its own items by hashing the shares it sent. Powers the Relayer View |
 | `POST /judge/claim` body `{account: hex16, keyShare: hex32}` | `200 {}`: **mock**, testnet only (see below); `409` for a known id |
 | `POST /withdrawals` body `{withdrawalId: hex32, share: hex32, amount: half-ticks, address: unified address}` | `202 {}`; only with `[settlement]` on. Fresh share i of the tag goes only to relayer i |
 | `GET /withdrawals/:withdrawalId` | `{status: "pending"\|"refused"\|"debited"\|"paying"\|"paid", txid?}` |
@@ -133,6 +133,7 @@ A dishonest relayer could still try to *choose* the other relayers' shares for a
 **Not quantum-recoverable (ZIP 2005).** The escrow's spend authority `ak` is the FROST group key, so its viewing key cannot be derived from a seed. Its `nk` and `rivk` are random, generated once at the DKG (the same construction as `zcash-sign generate`). Escrow notes therefore don't use the ZIP 2005 derivation, which would let a key holder recover them after a quantum break of discrete log. For a hackathon escrow that holds collateral for days, this is acceptable. A production escrow would need a FROST-compatible ZIP 2005 derivation, or would have to sweep to a recoverable key before such a break.
 
 ### Leak checklist (from the research)
+Status and evidence for each item, plus the #15 audit findings: [PRIVACY.md](PRIVACY.md#leak-checklist).
 - [ ] No transparent address in any product path (deposits, payouts, refunds, change).
 - [ ] Deposits only in fixed denominations; never reveal order size.
 - [ ] Payouts batched per epoch to fresh diversified, shielded-only addresses: no deposit→payout timing or amount link.

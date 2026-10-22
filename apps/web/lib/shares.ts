@@ -6,6 +6,7 @@ import {
 	fromHex,
 	type Order,
 	toHex,
+	viewDigest,
 } from "@zpredict/sdk";
 
 /** All three shares present (sparse arrays come from the relayer views). */
@@ -25,4 +26,10 @@ export function openOrder(shares: string[]): Order | null {
 export function openFill(shares: string[]): Fill | null {
 	const h = xorHex(shares);
 	return h ? decodeFill(fromHex(h)) : null;
+}
+
+/** Digests of every share this browser sent or got back: how it finds its own rows in a view. */
+export function digestsOf(orders: { shares?: string[]; fillShares?: string[] }[]) {
+	const hex = orders.flatMap((o) => [...(o.shares ?? []), ...(o.fillShares ?? [])]);
+	return new Set(hex.map((h) => viewDigest(fromHex(h))));
 }

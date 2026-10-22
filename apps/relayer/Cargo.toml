@@ -13,6 +13,7 @@ dev-insecure = []
 
 [dependencies]
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "query", "tokio"] }
+blake2b_simd = "1"
 getrandom = "0.3"
 hex = "0.4"
 # Same rev as zpredict-circuit (needed to implement its `Channel` trait); don't `cargo update` it.

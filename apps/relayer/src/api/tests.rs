@@ -83,25 +83,28 @@ fn vector_share(k: usize) -> String {
 async fn orders_contract() {
     let (app, state) = app(1, "api-orders", false);
     let id = "0123456789abcdef0123456789abcdef";
+    let token = "5a".repeat(16);
     let share = vector_share(1);
     let (code, body) = call(
         &app,
         "POST",
         "/orders",
-        Some(json!({"orderId": id, "share": share})),
+        Some(json!({"orderId": id, "share": share, "token": token})),
     )
     .await;
     assert_eq!((code, body), (StatusCode::ACCEPTED, json!({"batch": 1})));
     // One share per order per relayer, ever.
-    let again = json!({"orderId": id, "share": vector_share(2)});
+    let again = json!({"orderId": id, "share": vector_share(2), "token": token});
     assert_eq!(
         call(&app, "POST", "/orders", Some(again)).await.0,
         StatusCode::CONFLICT
     );
     for bad in [
-        json!({"orderId": id.to_uppercase(), "share": share}),
-        json!({"orderId": id, "share": &share[2..]}),
-        json!({"orderId": id, "share": share, "extra": 1}),
+        json!({"orderId": id.to_uppercase(), "share": share, "token": token}),
+        json!({"orderId": id, "share": &share[2..], "token": token}),
+        json!({"orderId": id, "share": share, "token": token, "extra": 1}),
+        json!({"orderId": id, "share": share}),
+        json!({"orderId": id, "share": share, "token": &token[2..]}),
         json!({"orderId": id}),
     ] {
         assert_eq!(
@@ -109,11 +112,21 @@ async fn orders_contract() {
             StatusCode::BAD_REQUEST
         );
     }
-    let path = format!("/orders/{id}");
+    let path = format!("/orders/{id}?token={token}");
     assert_eq!(
         call(&app, "GET", &path, None).await.1,
         json!({"status": "pending"})
     );
+    // Every relayer knows every orderId; only the browser's token reads this share.
+    for other in [
+        format!("/orders/{id}"),
+        format!("/orders/{id}?token={}", "5b".repeat(16)),
+    ] {
+        assert_eq!(
+            call(&app, "GET", &other, None).await,
+            (StatusCode::NOT_FOUND, json!({"error": "unknown order"}))
+        );
+    }
     assert_eq!(
         call(&app, "GET", "/orders/00", None).await.0,
         StatusCode::NOT_FOUND
@@ -145,10 +158,15 @@ async fn orders_contract() {
         .map(|i| i["kind"].as_str().unwrap())
         .collect();
     assert_eq!(kinds, ["order", "fill"]);
+    // Digests only: no orderId, no share, so the three public views can't be XORed.
+    let digest = crate::state::view_digest(&hex::decode(&share).unwrap());
     assert_eq!(
         view["items"][0],
-        json!({"seq": 1, "kind": "order", "orderId": id, "share": share})
+        json!({"seq": 1, "kind": "order", "digest": digest})
     );
+    // Pinned for the sdk's `viewDigest` (packages/sdk/src/index.test.ts).
+    assert_eq!(digest, "11fde0156c756157bd540f66eab111fc");
+    assert!(!view.to_string().contains(id) && !view.to_string().contains(&share));
     assert_eq!(
         call(&app, "GET", "/view?after=2", None).await.1,
         json!({"items": []})

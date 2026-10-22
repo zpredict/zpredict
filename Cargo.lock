@@ -4220,6 +4220,7 @@ name = "zpredict-relayer"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "blake2b_simd",
  "getrandom 0.3.4",
  "hex",
  "polytune",

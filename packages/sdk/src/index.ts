@@ -1,6 +1,7 @@
 // Browser side of zPredict: mirrors `zpredict-core` byte for byte and talks to the
 // three relayers. Each relayer only ever receives its own share.
 
+import { blake2b } from "@noble/hashes/blake2.js";
 import { fromHex, random, toHex } from "./bytes.js";
 import { at, call, distinct, postEach, type Relayers } from "./http.js";
 import { accountHex, KEY_LEN, keyShares, type MemoKeys } from "./memo.js";
@@ -158,10 +159,11 @@ export interface Market {
 	history?: number[];
 }
 
-/** `POST /orders`: orderId hex32, share hex52. */
+/** `POST /orders`: orderId hex32, share hex52, token hex32 (fresh per order and relayer). */
 export interface OrderPost {
 	orderId: string;
 	share: string;
+	token: string;
 }
 
 /** `202` reply to `POST /orders`. */
@@ -169,7 +171,7 @@ export interface OrderAccepted {
 	batch: number;
 }
 
-/** `GET /orders/:orderId`; fillShare hex20 when filled. */
+/** `GET /orders/:orderId?token=`; fillShare hex20 when filled. */
 export interface OrderStatus {
 	status: "pending" | "filled" | "unfilled";
 	fillShare?: string;
@@ -180,14 +182,14 @@ export interface AccountShare {
 	balanceShare: string;
 }
 
+/** One share a relayer received, as a digest (`viewDigest`): never the share or orderId. */
 export interface ViewItem {
 	seq: number;
 	kind: "order" | "fill";
-	orderId: string;
-	share: string;
+	digest: string;
 }
 
-/** `GET /view?after=<seq>`: exactly what this relayer sees. */
+/** `GET /view?after=<seq>`: a digest of every share this relayer received. */
 export interface View {
 	items: ViewItem[];
 }
@@ -207,38 +209,62 @@ export const RELAYERS: Relayers = [
 	"https://r2.zpredict.site",
 ];
 
-/** Splits the order and POSTs share i only to relayer i. */
+/**
+ * What `GET /view` publishes for a share: BLAKE2b-128 (personal "zPredictViewItem"), hex.
+ * The owner holds the share, so it can find it in a relayer's view; nobody else can XOR
+ * the three views back together. Mirrors `zpredict_relayer::state::view_digest`.
+ */
+export const viewDigest = (share: Uint8Array) =>
+	toHex(
+		blake2b(share, {
+			dkLen: 16,
+			personalization: new TextEncoder().encode("zPredictViewItem"),
+		}),
+	);
+
+/**
+ * Splits the order and POSTs share i only to relayer i, with a fresh random read token
+ * per relayer: every relayer knows the orderId, so only the token stops one relayer from
+ * fetching the others' fill shares. Keep `tokens` (and `shares`) to read the fill.
+ */
 export async function submitOrder(relayers: Relayers, order: Order) {
 	distinct(relayers);
 	const orderId = toHex(random(16));
-	const shares = split(encodeOrder(order));
+	const shares = split(encodeOrder(order)).map(toHex);
+	const tokens = shares.map(() => toHex(random(16)));
 	const res = await Promise.all(
-		shares.map((s, i) =>
+		shares.map((share, i) =>
 			call<OrderAccepted>(at(relayers[i], "/orders"), {
 				method: "POST",
 				headers: { "content-type": "application/json" },
-				body: JSON.stringify({ orderId, share: toHex(s) } satisfies OrderPost),
+				body: JSON.stringify({ orderId, share, token: tokens[i] } satisfies OrderPost),
 			}),
 		),
 	);
-	return { orderId, batch: Math.max(...res.map((r) => r.batch)) };
+	return { orderId, batch: Math.max(...res.map((r) => r.batch)), shares, tokens };
 }
 
+/** Combines the three fill shares; relayer i answers only to `tokens[i]` from `submitOrder`. */
 export async function getFill(
 	relayers: Relayers,
 	orderId: string,
-): Promise<{ status: OrderStatus["status"]; fill?: Fill }> {
+	tokens: readonly string[],
+): Promise<{ status: OrderStatus["status"]; fill?: Fill; fillShares?: string[] }> {
 	distinct(relayers);
+	const id = encodeURIComponent(orderId);
 	const res = await Promise.all(
-		relayers.map((u) => call<OrderStatus>(at(u, `/orders/${encodeURIComponent(orderId)}`))),
+		relayers.map((u, i) =>
+			call<OrderStatus>(at(u, `/orders/${id}?token=${encodeURIComponent(tokens[i] ?? "")}`)),
+		),
 	);
 	if (res.some((r) => r.status === "pending")) return { status: "pending" };
 	if (res.every((r) => r.status === "unfilled")) return { status: "unfilled" };
 	if (!res.every((r) => r.status === "filled" && r.fillShare)) {
 		throw new Error("relayers disagree on the fill");
 	}
-	const fill = decodeFill(combine(res.map((r) => fromHex(r.fillShare as string))));
-	return { status: "filled", fill };
+	const fillShares = res.map((r) => r.fillShare as string);
+	const fill = decodeFill(combine(fillShares.map(fromHex)));
+	return { status: "filled", fill, fillShares };
 }
 
 /** Balance in half-ticks. Each relayer answers only to its own share of the tag. */

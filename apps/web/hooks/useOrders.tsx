@@ -15,6 +15,11 @@ export interface MyOrder extends OrderInput {
 	at: number;
 	status: "pending" | "filled" | "unfilled";
 	fill?: Fill;
+	/** Share i went to relayer i; only this browser holds all three. */
+	shares?: string[];
+	/** Relayer i's fill-share read token (absent on orders placed before tokens existed). */
+	tokens?: string[];
+	fillShares?: string[];
 }
 
 interface Orders {
@@ -32,7 +37,7 @@ export function useOrders(): Orders {
 }
 
 export function OrdersProvider({ children }: { children: ReactNode }) {
-	const { tag, refresh } = useAccount();
+	const { tag } = useAccount();
 	const [orders, setOrders] = useState<MyOrder[]>([]);
 
 	// Orders belong to the tag: reload when it changes (forget clears storage).
@@ -48,31 +53,34 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 		});
 	}, []);
 
-	const pending = orders.filter((o) => o.status === "pending").map((o) => o.orderId);
+	const pending = orders.filter((o) => o.status === "pending" && o.tokens);
 
+	// No balance read right after a fill: a fill poll followed at once by `/accounts/:id`
+	// would let a relayer link the order to the account by timing. The balance poll
+	// picks the change up on its own (jittered) schedule.
 	usePoll(
 		async () => {
-			for (const id of pending) {
-				const r = await fetchFill(id);
+			for (const { orderId, tokens = [] } of pending) {
+				const r = await fetchFill(orderId, tokens);
 				if (r.status === "pending") continue;
-				update((all) =>
-					all.map((o) => (o.orderId === id ? { ...o, status: r.status, fill: r.fill } : o)),
-				);
-				await refresh();
+				const done = { status: r.status, fill: r.fill, fillShares: r.fillShares };
+				update((all) => all.map((o) => (o.orderId === orderId ? { ...o, ...done } : o)));
 			}
 		},
 		POLL_MS.fills,
-		pending.join(),
+		pending.map((o) => o.orderId).join(),
 	);
 
 	const place = useCallback(
 		async (o: OrderInput) => {
 			if (!tag) throw new Error("no account");
-			const { orderId, batch } = await placeOrder(o, tag);
+			const { orderId, batch, shares, tokens } = await placeOrder(o, tag);
 			const mine: MyOrder = {
 				...o,
 				orderId,
 				batch,
+				shares,
+				tokens,
 				at: Date.now(),
 				status: "pending",
 			};
