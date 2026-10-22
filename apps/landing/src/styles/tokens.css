@@ -14,11 +14,7 @@
 	--tag-fill: rgba(255, 255, 255, 0.05);
 	--glass-fill: rgba(0, 0, 0, 0.1);
 	--glass-line: rgba(255, 255, 255, 0.14);
-	--surface-card: linear-gradient(
-		0deg,
-		var(--card-bottom) 0%,
-		var(--card-top) 100%
-	);
+	--surface-card: linear-gradient(0deg, var(--card-bottom) 0%, var(--card-top) 100%);
 
 	--r-panel: 33px;
 	--r-pane: 26px;

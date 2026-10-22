@@ -13,8 +13,7 @@ export const sampleMarkets: SampleMarket[] = [
 		yes: 71,
 	},
 	{
-		question:
-			"Will the Ironwood pool hold more than 500,000 ZEC at height 3,600,000?",
+		question: "Will the Ironwood pool hold more than 500,000 ZEC at height 3,600,000?",
 		rule: "Pool value from the chain",
 		yes: 38,
 	},

@@ -25,11 +25,7 @@ export const threats: ThreatRow[] = [
 	},
 	{
 		observer: "2 colluding relayers",
-		learns: [
-			"Same as one for orders, and ",
-			{ em: "can move escrow funds" },
-			" (2-of-3)",
-		],
+		learns: ["Same as one for orders, and ", { em: "can move escrow funds" }, " (2-of-3)"],
 		hidden: "Orders: MPC needs all 3 to collude",
 	},
 	{ observer: "All 3 colluding", learns: ["Everything"], hidden: "—" },
