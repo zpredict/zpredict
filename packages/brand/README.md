@@ -1,6 +1,8 @@
 # brand
 
-zPredict logo and icons, shared by `apps/landing` and `apps/web`.
+zPredict logo, icons and design tokens, shared by `apps/landing` and `apps/web`.
+
+- `tokens.css`: colours, easing, font and spacing for the ASCII Studio design. Import it once per app: `@import "@zpredict/brand/tokens.css";`.
 
 - `black/`: for light backgrounds. Also holds the default `favicon.ico`.
 - `white/`: for dark backgrounds.
