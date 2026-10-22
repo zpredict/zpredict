@@ -10,6 +10,8 @@
 
 ## Checks
 
+CI (`.github/workflows/ci.yml`) runs the same checks on every PR, and `main` requires it to pass. A merge to `main` runs CI again, then deploys through Coolify (`deploy.yml`).
+
 The Husky pre-commit hook runs Biome on staged files and `cargo fmt --check`. Before you open a PR:
 
 ```sh
