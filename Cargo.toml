@@ -6,6 +6,7 @@ members = [
     "packages/plugins/ironwood-pool",
     "packages/plugins/nu7-activation",
     "packages/plugins/shielded-actions",
+    "packages/settle",
 ]
 
 [workspace.package]

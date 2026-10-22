@@ -1,0 +1,18 @@
+[package]
+name = "zpredict-settle"
+description = "FROST 2-of-3 signing glue for zPredict's Ironwood (v6) escrow PCZTs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+# Same librustzcash generation as zcash-devtool eb38d7a (NU7 branch ID 0x77190AD9).
+[dependencies]
+ff = "0.14"
+hex = "0.4"
+orchard = { version = "=0.16.0", features = ["unstable-frost"] }
+pczt = { version = "=0.10.0", features = ["orchard", "signer"] }
+rand_core = { version = "0.6", features = ["getrandom"] }
+zcash_keys = { version = "=0.17.0", features = ["orchard", "unstable-frost"] }
+zcash_primitives = "=0.31.0"
+zcash_protocol = { version = "=0.11.0", features = ["local-consensus"] }
