@@ -61,7 +61,11 @@ impl Order {
 }
 
 /// Split with caller-supplied randomness: `r0`, `r1` must be uniformly random.
-pub fn split(order: &[u8; ORDER_LEN], r0: [u8; ORDER_LEN], r1: [u8; ORDER_LEN]) -> [[u8; ORDER_LEN]; 3] {
+pub fn split(
+    order: &[u8; ORDER_LEN],
+    r0: [u8; ORDER_LEN],
+    r1: [u8; ORDER_LEN],
+) -> [[u8; ORDER_LEN]; 3] {
     let mut s2 = *order;
     for i in 0..ORDER_LEN {
         s2[i] ^= r0[i] ^ r1[i];
@@ -115,7 +119,13 @@ pub fn clear(batch: &[Order]) -> Vec<Fill> {
         }
         let size = left[yi].min(left[ni]);
         let yes_cost = p + TICKS - q;
-        fills.push(Fill { yes: yi, no: ni, size, yes_cost, no_cost: 2 * TICKS - yes_cost });
+        fills.push(Fill {
+            yes: yi,
+            no: ni,
+            size,
+            yes_cost,
+            no_cost: 2 * TICKS - yes_cost,
+        });
         left[yi] -= size;
         left[ni] -= size;
         if left[yi] == 0 {
@@ -133,7 +143,13 @@ mod tests {
     use super::*;
 
     fn o(side: Side, price: u8, size: u32) -> Order {
-        Order { market: 7, side, price, size, account: 42 }
+        Order {
+            market: 7,
+            side,
+            price,
+            size,
+            account: 42,
+        }
     }
 
     #[test]
@@ -159,7 +175,16 @@ mod tests {
     fn crosses_at_midpoint() {
         // YES pays up to 0.60, NO pays up to 0.45 (YES ask 0.55) → midpoint 0.575.
         let f = clear(&[o(Side::Yes, 60, 3), o(Side::No, 45, 3)]);
-        assert_eq!(f, vec![Fill { yes: 0, no: 1, size: 3, yes_cost: 115, no_cost: 85 }]);
+        assert_eq!(
+            f,
+            vec![Fill {
+                yes: 0,
+                no: 1,
+                size: 3,
+                yes_cost: 115,
+                no_cost: 85
+            }]
+        );
     }
 
     #[test]
