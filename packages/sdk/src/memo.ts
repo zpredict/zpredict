@@ -1,16 +1,19 @@
-// The deposit memo: the account tag, encrypted separately to each relayer. Mirrors
-// `zpredict_settle::memo` byte for byte; packages/settle/testdata/memo-vectors.json pins it.
+// The deposit memo: the account id and one share of the tag per relayer, each encrypted
+// to that relayer only. Mirrors `zpredict_settle::memo` byte for byte;
+// packages/settle/testdata/memo-vectors.json pins it.
 //
-//   0xFF | 0x01 | epk (32) | slot0 | slot1 | slot2, zero after byte 130 (512 bytes)
-//   slot_i = ChaCha20-Poly1305(k_i, nonce 0, tag), 16-byte ciphertext ‖ 16-byte MAC
+//   0xFF | 0x02 | epk (32) | slot0 | slot1 | slot2, zero after byte 154 (512 bytes)
+//   slot_i = ChaCha20-Poly1305(k_i, nonce 0, id u64 LE ‖ s_i), 24-byte ciphertext ‖ 16-byte MAC
 //   k_i    = BLAKE2b-256(personal "zPredictMemoKey1", X25519(esk, pk_i) ‖ epk ‖ pk_i)
+//   id     = BLAKE2b-64(personal "zPredictAccount1", tag), u64 LE
+//   s_i    = BLAKE2b-128(personal "zPredictKeyShare", tag ‖ i) for i = 0, 1; s_2 = tag ⊕ s_0 ⊕ s_1
 //
 // X25519 is WebCrypto. WebCrypto has neither ChaCha20-Poly1305 nor BLAKE2b, so those come
 // from @noble/ciphers and @noble/hashes: audited, zero-dependency, the usual choice.
 
 import { chacha20poly1305 } from "@noble/ciphers/chacha.js";
 import { blake2b } from "@noble/hashes/blake2.js";
-import { fromHex, random } from "./bytes.js";
+import { fromHex, random, toHex } from "./bytes.js";
 
 /** A Zcash memo is 512 bytes. */
 export const MEMO_LEN = 512;
@@ -23,9 +26,26 @@ export type Denomination = (typeof DENOMINATIONS)[number];
 /** The three relayers' memo public keys (hex64), in relayer order. */
 export type MemoKeys = readonly [string, string, string];
 
-const VERSION = 0x01;
-const PREFIX = 2 + 32 + 3 * 32;
+/** Tag (credential) length in bytes. */
+export const KEY_LEN = 16;
+const VERSION = 0x02;
+const PREFIX = 2 + 32 + 3 * 40;
 const PERSONAL = new TextEncoder().encode("zPredictMemoKey1");
+const personal = (s: string) => ({ personalization: new TextEncoder().encode(s) });
+
+/** The account's public label: hex16 of its u64 LE id. Grants nothing without the tag. */
+export function accountHex(tag: string): string {
+	return toHex(blake2b(bytes(tag, KEY_LEN, "tag"), { dkLen: 8, ...personal("zPredictAccount1") }));
+}
+
+/** The three relayers' shares of the tag, the same every time (see the layout above). */
+export function keyShares(tag: string): [Uint8Array, Uint8Array, Uint8Array] {
+	const t = bytes(tag, KEY_LEN, "tag");
+	const s = (i: number) =>
+		blake2b(new Uint8Array([...t, i]), { dkLen: KEY_LEN, ...personal("zPredictKeyShare") });
+	const [s0, s1] = [s(0), s(1)];
+	return [s0, s1, t.map((x, j) => x ^ s0[j] ^ s1[j])];
+}
 // PKCS#8 header of an X25519 private key: WebCrypto's only way to import raw key bytes.
 const PKCS8_X25519 = fromHex("302e020100300506032b656e04220420");
 const X25519 = { name: "X25519" } as const;
@@ -37,15 +57,17 @@ function bytes(hex: string, n: number, what: string): Uint8Array<ArrayBuffer> {
 }
 
 /**
- * The 512-byte memo for a deposit to account `tag` (hex32), readable by each relayer.
- * Pass `esk` only in tests: a fresh one per memo is what keeps the zero nonce safe.
+ * The 512-byte memo for a deposit to account `tag` (hex32): relayer i reads the account id
+ * and its own share of the tag, never the tag. Pass `esk` only in tests: a fresh one per
+ * memo is what keeps the zero nonce safe.
  */
 export async function encodeMemo(
 	tag: string,
 	keys: MemoKeys,
 	esk: Uint8Array = random(32),
 ): Promise<Uint8Array> {
-	const t = bytes(tag, 16, "tag");
+	const id = fromHex(accountHex(tag));
+	const shares = keyShares(tag);
 	const pks = keys.map((k) => bytes(k, 32, "memo key"));
 	const priv = await crypto.subtle.importKey(
 		"pkcs8",
@@ -70,7 +92,8 @@ export async function encodeMemo(
 			dkLen: 32,
 			personalization: PERSONAL,
 		});
-		memo.set(chacha20poly1305(k, new Uint8Array(12)).encrypt(t), 2 + 32 + 32 * i);
+		const plain = new Uint8Array([...id, ...shares[i]]);
+		memo.set(chacha20poly1305(k, new Uint8Array(12)).encrypt(plain), 2 + 32 + 40 * i);
 	}
 	return memo;
 }

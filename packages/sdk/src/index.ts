@@ -2,8 +2,8 @@
 // three relayers. Each relayer only ever receives its own share.
 
 import { fromHex, random, toHex } from "./bytes.js";
-import { at, call, distinct, type Relayers } from "./http.js";
-import type { MemoKeys } from "./memo.js";
+import { at, call, distinct, postEach, type Relayers } from "./http.js";
+import { accountHex, KEY_LEN, keyShares, type MemoKeys } from "./memo.js";
 
 export { fromHex, random, toHex } from "./bytes.js";
 export type { Relayers } from "./http.js";
@@ -12,7 +12,7 @@ export * from "./outcome.js";
 export * from "./withdraw.js";
 
 /** Encoded order length in bytes; also the share length. */
-export const ORDER_LEN = 18;
+export const ORDER_LEN = 26;
 /**
  * Fill record length: size u32 LE | totalCost u32 LE | side u8 | flags u8 (bit0 = filled).
  * Summed over every match the order took part in; unfilled orders are all zero.
@@ -35,7 +35,8 @@ export interface Order {
 	price: number;
 	/** Contracts; 0 marks a dummy order. */
 	size: number;
-	account: bigint;
+	/** The account's tag (hex32): the credential the circuit matches against its row's key. */
+	key: string;
 }
 
 export interface Fill {
@@ -48,7 +49,7 @@ export interface Fill {
 
 const u32 = (x: number) => Number.isInteger(x) && x >= 0 && x <= 0xffffffff;
 
-/** Little-endian layout: market(4) side(1) price(1) size(4) account(8). */
+/** Little-endian layout: market(4) side(1) price(1) size(4) key(16). */
 export function encodeOrder(o: Order): Uint8Array {
 	if (
 		!u32(o.market) ||
@@ -58,8 +59,7 @@ export function encodeOrder(o: Order): Uint8Array {
 		o.price > 99 ||
 		!u32(o.size) ||
 		o.size > MAX_SIZE ||
-		o.account < 0n ||
-		o.account >= 1n << 64n
+		!/^[0-9a-f]{32}$/.test(o.key)
 	) {
 		throw new RangeError("order field out of range");
 	}
@@ -69,13 +69,13 @@ export function encodeOrder(o: Order): Uint8Array {
 	b[4] = o.side;
 	b[5] = o.price;
 	v.setUint32(6, o.size, true);
-	v.setBigUint64(10, o.account, true);
+	b.set(fromHex(o.key), 10);
 	return b;
 }
 
 /** Returns null for anything the circuit would treat as malformed. */
 export function decodeOrder(b: Uint8Array): Order | null {
-	if (b.length !== ORDER_LEN) throw new RangeError("order must be 18 bytes");
+	if (b.length !== ORDER_LEN) throw new RangeError("order must be 26 bytes");
 	const v = new DataView(b.buffer, b.byteOffset, b.length);
 	const side = b[4];
 	const price = b[5];
@@ -86,7 +86,7 @@ export function decodeOrder(b: Uint8Array): Order | null {
 		side,
 		price,
 		size,
-		account: v.getBigUint64(10, true),
+		key: toHex(b.subarray(10, 10 + KEY_LEN)),
 	};
 }
 
@@ -120,15 +120,9 @@ export function combine(shares: readonly Uint8Array[]): Uint8Array {
 	return shares[0].map((_, i) => shares.reduce((x, s) => x ^ s[i], 0));
 }
 
-/** A fresh account tag: 16 random bytes, hex. */
-export const newTag = () => toHex(random(16));
-
-/** The order's `account` field: first 8 bytes of the tag, little-endian. */
-export function tagAccount(tag: string): bigint {
-	const b = fromHex(tag);
-	if (b.length !== 16) throw new RangeError("tag must be 16 bytes");
-	return new DataView(b.buffer).getBigUint64(0, true);
-}
+/** A fresh account tag: 16 random bytes, hex. It is the account's credential: it stays in
+ * the browser, and relayers only ever see one share of it or fresh XOR shares. */
+export const newTag = () => toHex(random(KEY_LEN));
 
 // Relayer API (see DESIGN.md "Relayer API"). Hex lengths are in characters.
 
@@ -164,7 +158,7 @@ export interface Market {
 	history?: number[];
 }
 
-/** `POST /orders`: orderId hex32, share hex36. */
+/** `POST /orders`: orderId hex32, share hex52. */
 export interface OrderPost {
 	orderId: string;
 	share: string;
@@ -181,7 +175,7 @@ export interface OrderStatus {
 	fillShare?: string;
 }
 
-/** `GET /accounts/:tag`; balanceShare hex16. */
+/** `GET /accounts/:id?key=<this relayer's key share>`; balanceShare hex16. */
 export interface AccountShare {
 	balanceShare: string;
 }
@@ -198,9 +192,12 @@ export interface View {
 	items: ViewItem[];
 }
 
-/** `POST /judge/claim`: testnet-only mock credit. */
+/** `POST /judge/claim` to relayer i: testnet-only mock credit for a new account. */
 export interface JudgeClaim {
-	tag: string;
+	/** hex16: the account id, u64 LE. */
+	account: string;
+	/** hex32: relayer i's share of the tag. */
+	keyShare: string;
 }
 
 /** Hosted testnet relayers, one per host. */
@@ -244,13 +241,23 @@ export async function getFill(
 	return { status: "filled", fill };
 }
 
-/** Balance in half-ticks. */
+/** Balance in half-ticks. Each relayer answers only to its own share of the tag. */
 export async function getBalance(relayers: Relayers, tag: string) {
 	distinct(relayers);
+	const [id, shares] = [accountHex(tag), keyShares(tag)];
 	const res = await Promise.all(
-		relayers.map((u) => call<AccountShare>(at(u, `/accounts/${encodeURIComponent(tag)}`))),
+		relayers.map((u, i) => call<AccountShare>(at(u, `/accounts/${id}?key=${toHex(shares[i])}`))),
 	);
 	return decodeBalance(combine(res.map((r) => fromHex(r.balanceShare))));
+}
+
+/** Judge mode: opens account `tag` with the relayers' mock credit, sending relayer i only
+ * its share of the tag (as a deposit memo would). Fails if the account already exists. */
+export async function claimJudge(relayers: Relayers, tag: string) {
+	distinct(relayers);
+	const account = accountHex(tag);
+	const bodies = keyShares(tag).map((s): JudgeClaim => ({ account, keyShare: toHex(s) }));
+	await postEach(relayers, "/judge/claim", bodies);
 }
 
 export const getMarkets = (url: string) => call<Market[]>(at(url, "/markets"));

@@ -4,9 +4,11 @@ import { test } from "node:test";
 import { fromHex, toHex } from "./bytes.js";
 import { getMemoKeys, type Relayers } from "./index.js";
 import {
+	accountHex,
 	DENOMINATIONS,
 	depositUri,
 	encodeMemo,
+	keyShares,
 	MEMO_LEN,
 	type MemoKeys,
 	memoParam,
@@ -22,6 +24,8 @@ const keys = v.relayers.map((r: { public: string }) => r.public) as unknown as M
 
 test("memos encode exactly like settle", async () => {
 	for (const m of v.memos) {
+		assert.equal(accountHex(m.tag), m.account);
+		assert.deepEqual(keyShares(m.tag).map(toHex), m.keyShares);
 		const memo = await encodeMemo(m.tag, keys, fromHex(m.esk));
 		assert.equal(memo.length, MEMO_LEN);
 		assert.equal(toHex(memo.subarray(0, m.memo.length / 2)), m.memo);
@@ -34,7 +38,7 @@ test("a fresh memo uses a fresh ephemeral key", async () => {
 	const tag = v.memos[0].tag;
 	const [a, b] = [await encodeMemo(tag, keys), await encodeMemo(tag, keys)];
 	assert.notEqual(toHex(a.subarray(2, 34)), toHex(b.subarray(2, 34)));
-	assert.deepEqual([...a.subarray(0, 2)], [0xff, 0x01]);
+	assert.deepEqual([...a.subarray(0, 2)], [0xff, 0x02]);
 });
 
 test("bad tags and keys are refused", async () => {
