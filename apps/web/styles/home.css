@@ -1,132 +1,108 @@
-/* Home: template hero split. Left = statement + judge CTA, right = video + markets. */
+/* Markets hero: the ASCII mark, with the statement over it as lime highlighter strips. */
 
-.hero__content {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
+.hero {
+	position: relative;
+	display: grid;
+	place-items: center;
+	min-height: min(100svh, 920px);
+	padding: var(--header-space) var(--zp-gutter) 48px;
+	overflow: hidden;
+}
+
+.ascii-hero {
+	position: absolute;
+	inset: var(--header-space) 0 0;
+	display: grid;
+	place-items: center;
+	pointer-events: none;
+}
+
+.ascii-hero__art {
+	margin: 0;
+	color: var(--zp-glyph);
+	font-size: min(1.6vw, 2.1svh);
+	line-height: 1.2;
+	letter-spacing: 0;
+	user-select: none;
+}
+
+.hero__copy {
+	position: relative;
+	display: grid;
+	justify-items: center;
 	gap: 28px;
-	padding: 29px;
+	text-align: center;
+}
+
+/* Small text sits on the ASCII art: give it its own near-black strip. */
+.hero__eyebrow,
+.judge__note {
+	padding: 4px 8px;
+	background: var(--zp-bg);
+}
+
+.hero__eyebrow {
+	color: var(--zp-text);
 }
 
 .hero__title {
-	margin-top: auto;
-	font-family: var(--font-display);
-	font-weight: 500;
-	font-size: clamp(56px, 6.4vw, 104px);
-	line-height: 0.9;
-	letter-spacing: -0.05em;
-	text-transform: uppercase;
+	color: var(--zp-ink);
+	font-size: clamp(20px, 2vw, 30px);
+	line-height: 1.45;
+	letter-spacing: -0.02em;
 }
 
-.hero__line {
-	display: block;
-	animation: line-enter 420ms var(--ease) both;
-}
-
-.hero__line:nth-child(1) {
-	animation-delay: 360ms;
-}
-.hero__line:nth-child(2) {
-	animation-delay: 460ms;
-}
-.hero__line:nth-child(3) {
-	animation-delay: 560ms;
-}
-
-.hero__lede {
-	max-width: 420px;
-	font-size: 22px;
-	line-height: 29px;
-	animation: detail-enter 380ms 780ms var(--ease) both;
+.hero__title .scr__line {
+	margin-inline: auto;
+	padding: 0 7px;
+	background: var(--zp-lime);
 }
 
 .judge {
-	margin-top: auto;
 	display: grid;
+	justify-items: center;
 	gap: 14px;
-	animation: cta-enter 340ms 880ms var(--ease) both;
-	transform-origin: left center;
 }
 
 .judge__note {
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	max-width: 420px;
-	color: var(--dim);
-	font-size: 14px;
-	line-height: 1.4;
+	max-width: 46ch;
+	color: var(--zp-muted);
+	font-size: 12px;
+	line-height: 1.5;
+	text-align: left;
 }
 
-.showcase {
-	display: flex;
-	flex-direction: column;
-	min-height: 560px;
-}
-
-.showcase__media {
-	position: absolute;
-	inset: 0;
-}
-
-.showcase__video {
-	position: absolute;
-	inset: 0;
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-}
-
-.showcase__shade {
-	position: absolute;
-	inset: 0;
-	background: linear-gradient(180deg, rgba(2, 2, 2, 0.1) 0%, rgba(2, 2, 2, 0.75) 100%);
-}
-
-.showcase__eyebrow {
-	position: relative;
-	padding: 32px 34px 0;
-	font-size: 14px;
-	line-height: 18px;
-	opacity: 0.55;
-}
-
-.showcase__card {
-	position: relative;
-	display: flex;
-	flex-direction: column;
-	justify-content: flex-end;
-	flex: 1;
-	padding: 24px 34px 34px;
-}
-
-.split--home {
-	min-height: clamp(560px, 68dvh, 680px);
-}
-
-@media (max-width: 1099.98px) {
-	.hero__content {
+@media (max-width: 900px) {
+	.hero {
+		place-items: start stretch;
 		min-height: 0;
-		gap: 22px;
-		padding: clamp(22px, 5vw, 40px);
+		padding: var(--header-space) 20px 56px;
+	}
+	.ascii-hero {
+		position: relative;
+		inset: auto;
+		order: 2;
+		margin-top: 32px;
+	}
+	.ascii-hero__art {
+		font-size: 2.5vw;
+	}
+	.hero__copy {
+		justify-items: start;
+		text-align: left;
 	}
 	.hero__title {
-		margin-top: 40px;
+		font-size: clamp(20px, 5.6vw, 30px);
+		line-height: 1.5;
 	}
-}
-
-@media (max-width: 599.98px) {
-	.hero__title {
-		font-size: clamp(44px, 14vw, 72px);
+	.hero__title .scr__line {
+		margin-inline: 0;
+		padding: 3px 6px;
 	}
-	.hero__lede {
-		font-size: 18px;
-		line-height: 24px;
-	}
-	.showcase__card {
-		padding: 20px 14px 14px;
-	}
-	.showcase__eyebrow {
-		padding: 24px 18px 0;
+	.judge {
+		justify-items: start;
 	}
 }

@@ -15,10 +15,8 @@ export default function MarketHeader({ market: m }: { market: Market }) {
 				<Link className="mhead__back" href="/">
 					← Markets
 				</Link>
-				<Badge size="sm">{category(m)}</Badge>
-				<Badge size="sm" tone={m.status === "open" ? "live" : "default"}>
-					{m.status}
-				</Badge>
+				<Badge>{category(m)}</Badge>
+				<Badge tone={m.status === "open" ? "live" : "default"}>{m.status}</Badge>
 			</div>
 			<h1 className="mhead__q">{m.question}</h1>
 			<div className="mcard__odds">
