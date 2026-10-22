@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
+    "apps/relayer",
     "packages/circuit",
     "packages/core",
     "packages/oracle",
@@ -22,4 +23,8 @@ repository = "https://github.com/zpredict/zpredict"
 opt-level = 3
 
 [profile.dev.package.zpredict-circuit]
+opt-level = 3
+
+# The relayer instantiates polytune's `mpc` over its own Noise channel, so same reason.
+[profile.dev.package.zpredict-relayer]
 opt-level = 3
