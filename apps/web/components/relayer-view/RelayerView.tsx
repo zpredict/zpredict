@@ -1,5 +1,6 @@
 "use client";
 import type { ViewItem } from "@zpredict/sdk";
+import ScrambleHeading from "@/components/ui/ScrambleHeading";
 import { useHealth } from "@/hooks/useHealth";
 import type { Seen } from "@/hooks/useRelayerView";
 import RelayerPanel from "./RelayerPanel";
@@ -18,12 +19,11 @@ export default function RelayerView({ views, online, mine, focus }: Props) {
 	return (
 		<div className="rview">
 			<header className="rview__head">
-				<p className="rview__eyebrow">Relayer View · live</p>
-				<h2 className="rview__title">
-					None of these machines
-					<br />
-					knows what you bet
-				</h2>
+				<p className="rview__eyebrow">Relayer View / live</p>
+				<ScrambleHeading
+					className="rview__title"
+					lines={["None of these machines", "knows what you bet."]}
+				/>
 				<p className="rview__legend">
 					<span aria-hidden="true" className="swatch" /> your order&apos;s shares
 				</p>

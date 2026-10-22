@@ -25,9 +25,7 @@ export default function ShareXor({ order, seen }: Props) {
 		<Card className="xor">
 			<header className="xor__head">
 				<span>Your order, as the relayers hold it</span>
-				<Badge size="sm" tone="you">
-					{order.orderId.slice(0, 8)}
-				</Badge>
+				<Badge tone="you">{order.orderId.slice(0, 8)}</Badge>
 			</header>
 			{[0, 1, 2].map((i) => (
 				<div className={`xor__row${shares[i] ? " is-in" : ""}`} key={i}>
@@ -44,7 +42,7 @@ export default function ShareXor({ order, seen }: Props) {
 					? `market ${opened.market} · ${sideName(opened.side)} · ${opened.price}¢ · ${opened.size} contracts`
 					: "Waiting for the shares to land at all three relayers…"}
 			</p>
-			<p className="xor__fill">
+			<p className={`xor__fill${fill?.filled ? " is-filled" : ""}`} role="status">
 				{fill?.filled
 					? `Filled ${fill.size} @ ${avgCents(fill).toFixed(1)}¢ average — only you can open this.`
 					: fill

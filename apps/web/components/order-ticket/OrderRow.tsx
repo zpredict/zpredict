@@ -11,9 +11,7 @@ const fillText = (o: MyOrder) => {
 export default function OrderRow({ order: o }: { order: MyOrder }) {
 	return (
 		<li className={`orow orow--${o.status}`}>
-			<Badge size="sm" tone={o.side === 0 ? "yes" : "no"}>
-				{sideName(o.side)}
-			</Badge>
+			<Badge tone={o.side === 0 ? "yes" : "no"}>{sideName(o.side)}</Badge>
 			<span className="num">
 				{o.size} × {o.price}¢
 			</span>

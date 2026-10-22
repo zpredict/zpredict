@@ -12,7 +12,7 @@ import { useOrders } from "@/hooks/useOrders";
 import { useRelayerView } from "@/hooks/useRelayerView";
 import ShareXor from "./ShareXor";
 
-/** The split screen: the trader on the left, the three relayers on the right. */
+/** The split screen: the trader on the left, the three relayers on the right. Sits in `main.trade`. */
 export default function TradeScreen() {
 	const params = useSearchParams();
 	const wanted = Number(params.get("m"));
@@ -27,27 +27,34 @@ export default function TradeScreen() {
 	const ids = new Set(orders.map((o) => o.orderId));
 
 	return (
-		<main className="panel split split--trade">
-			<Pane className="trader">
-				{down && <RelayersDown />}
-				{market && (
-					<>
-						<MarketHeader market={market} />
-						<OrderTicket initialSide={side} key={`${market.id}-${side}`} market={market} />
-						{latest && <ShareXor order={latest} seen={seen[latest.orderId]} />}
-						<OrderList orders={mine} />
-						<DepositInfo />
-					</>
-				)}
-			</Pane>
-			<Pane className="relayers" id="relayers" variant="media">
-				<RelayerView
-					focus={latest && { orderId: latest.orderId, seen: seen[latest.orderId] }}
-					mine={ids}
-					online={online}
-					views={views}
-				/>
-			</Pane>
-		</main>
+		<>
+			{/* The split renders once the market is known: on phones the trader pane sits above the
+			    relayers, and filling it in later would push the whole Relayer View down (CLS). */}
+			{!markets && !down && <p className="note">Loading market…</p>}
+			{(markets || down) && (
+				<>
+					<Pane aria-label="Your order" className="trader">
+						{down && <RelayersDown />}
+						{market && (
+							<>
+								<MarketHeader market={market} />
+								<OrderTicket initialSide={side} key={`${market.id}-${side}`} market={market} />
+								{latest && <ShareXor order={latest} seen={seen[latest.orderId]} />}
+								<OrderList orders={mine} />
+								<DepositInfo />
+							</>
+						)}
+					</Pane>
+					<Pane aria-label="Relayer View" className="relayers" id="relayers">
+						<RelayerView
+							focus={latest && { orderId: latest.orderId, seen: seen[latest.orderId] }}
+							mine={ids}
+							online={online}
+							views={views}
+						/>
+					</Pane>
+				</>
+			)}
+		</>
 	);
 }
