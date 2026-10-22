@@ -21,6 +21,12 @@ pub enum Error {
     Store(String),
     /// The chain backend (lightwalletd) failed.
     Chain(String),
+    /// A payout could not be parsed or its PCZT could not be built.
+    Payout(String),
+    /// A signer refused: the PCZT does not match the agreed payout vector.
+    Refused(String),
+    /// A FROST key share or signing step failed.
+    Frost(String),
     Io(std::io::Error),
 }
 
@@ -36,6 +42,9 @@ impl fmt::Display for Error {
             Error::Usage(e) => write!(f, "{e}"),
             Error::Store(e) => write!(f, "store: {e}"),
             Error::Chain(e) => write!(f, "chain: {e}"),
+            Error::Payout(e) => write!(f, "payout: {e}"),
+            Error::Refused(e) => write!(f, "refused to sign: {e}"),
+            Error::Frost(e) => write!(f, "frost: {e}"),
             Error::Io(e) => write!(f, "io: {e}"),
         }
     }
