@@ -1,6 +1,8 @@
 ---
-import "@fontsource/figtree/500.css";
-import "@fontsource/instrument-sans/400.css";
+import "@fontsource/figtree/latin-500.css";
+import "@fontsource/instrument-sans/latin-400.css";
+import figtree from "@fontsource/figtree/files/figtree-latin-500-normal.woff2?url";
+import instrumentSans from "@fontsource/instrument-sans/files/instrument-sans-latin-400-normal.woff2?url";
 import "../styles/global.css";
 import { site } from "../data/site";
 
@@ -23,6 +25,10 @@ const ogImage = new URL(site.ogImage, Astro.site);
 		<style is:inline>
 			@layer reset, base, ui;
 		</style>
+		<!-- The two weights above the fold; the CSS is inlined, so these start with the HTML. -->
+		<link rel="preload" href={figtree} as="font" type="font/woff2" crossorigin />
+		<link rel="preload" href={instrumentSans} as="font" type="font/woff2" crossorigin />
+		<slot name="head" />
 		<title>{title}</title>
 		<meta name="description" content={description} />
 		<meta name="referrer" content="no-referrer" />

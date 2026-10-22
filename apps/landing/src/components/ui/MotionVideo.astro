@@ -1,16 +1,16 @@
 ---
 /**
- * Muted looping background video. It has no autoplay: motion-video.ts plays it
- * only while it is on screen and the visitor allows motion; otherwise the poster shows.
+ * Muted looping background video, poster first. The file is not even requested until
+ * motion-video.ts decides to play it (wide screen, on screen, motion allowed, page loaded);
+ * otherwise the poster is all anyone downloads.
  */
 interface Props {
 	src: string;
 	poster: string;
-	preload?: "none" | "metadata";
 	class?: string;
 }
 
-const { src, poster, preload = "metadata", class: className } = Astro.props;
+const { src, poster, class: className } = Astro.props;
 ---
 
 <video
@@ -18,12 +18,11 @@ const { src, poster, preload = "metadata", class: className } = Astro.props;
 	muted
 	loop
 	playsinline
-	preload={preload}
+	preload="none"
 	poster={poster}
+	data-src={src}
 	aria-hidden="true"
->
-	<source src={src} type="video/mp4" />
-</video>
+></video>
 
 <script>
 	import "../../scripts/motion-video";

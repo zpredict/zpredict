@@ -11,14 +11,14 @@ export default function PriceButtons({ market: m }: { market: Market }) {
 	return (
 		<div className="prices">
 			<Link
-				aria-label={`Buy YES at ${cents(yes)}`}
+				aria-label={`Buy Yes ${cents(yes)}`}
 				className="price price--yes"
 				href={`/trade/?m=${m.id}&side=yes`}
 			>
 				Yes <strong className="num">{cents(yes)}</strong>
 			</Link>
 			<Link
-				aria-label={`Buy NO at ${cents(no)}`}
+				aria-label={`Buy No ${cents(no)}`}
 				className="price price--no"
 				href={`/trade/?m=${m.id}&side=no`}
 			>

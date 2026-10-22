@@ -1,0 +1,8 @@
+# zPredict app
+
+> Trading app for zPredict, a shielded prediction market on Zcash. A static site that talks to three relayers directly; no analytics, no third-party requests.
+
+- [Markets](https://app.zpredict.site/): open markets with public prices
+- [Relayer View](https://app.zpredict.site/trade/): what each relayer sees of an order (one random share)
+- [Threat model](https://app.zpredict.site/threat-model/): what each party can and cannot learn
+- [About](https://zpredict.site/): project overview, links to the source and design

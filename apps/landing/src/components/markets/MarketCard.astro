@@ -10,10 +10,13 @@ import Sparkline from "./Sparkline.astro";
 
 interface Props {
 	market: Market;
+	/** Heading level for the question: 2 where the card sits right under the page's h1. */
+	level?: 2 | 3;
 	class?: string;
 }
 
-const { market, class: className } = Astro.props;
+const { market, level = 3, class: className } = Astro.props;
+const Question = `h${level}` as const;
 const no = 100 - market.yes;
 const height = market.resolveHeight.toLocaleString("en-US");
 ---
@@ -24,7 +27,7 @@ const height = market.resolveHeight.toLocaleString("en-US");
 		<span class="height">Block {height}</span>
 	</header>
 
-	<h3 class="question">{market.question}</h3>
+	<Question class="question">{market.question}</Question>
 
 	<div class="odds">
 		<p class="chance"><span class="pct">{market.yes}%</span> chance</p>
@@ -33,10 +36,10 @@ const height = market.resolveHeight.toLocaleString("en-US");
 	<div class="bar" style={`--yes:${market.yes}%`} aria-hidden="true"><span></span></div>
 
 	<div class="prices">
-		<a class="price price--yes" href={site.appUrl} aria-label={`Buy YES at ${market.yes} cents`}>
+		<a class="price price--yes" href={site.appUrl} aria-label={`Buy Yes ${market.yes}¢`}>
 			Yes <strong>{market.yes}¢</strong>
 		</a>
-		<a class="price price--no" href={site.appUrl} aria-label={`Buy NO at ${no} cents`}>
+		<a class="price price--no" href={site.appUrl} aria-label={`Buy No ${no}¢`}>
 			No <strong>{no}¢</strong>
 		</a>
 	</div>
