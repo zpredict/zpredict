@@ -14,6 +14,7 @@
 //! - [`store`]: relayer secrets (viewing key, memo key) and [`share`]s sealed at rest.
 
 pub mod deposit;
+pub mod dkg;
 pub mod error;
 #[cfg(test)]
 mod fixture;
@@ -28,6 +29,7 @@ pub mod store;
 pub mod verify;
 
 pub use deposit::{Deposit, Flag, Flagged, NoteId};
+pub use dkg::dkg_local;
 pub use error::{Error, Result};
 pub use frost::{SignRequest, sign_all, verify_then_sign};
 pub use keys::{EscrowKeys, decode_fvk, escrow_keys};
@@ -40,6 +42,8 @@ pub use verify::verify;
 
 /// Relayers in the escrow committee (FROST 2-of-3, MPC 3-of-3).
 pub const RELAYERS: usize = 3;
+/// Signers needed to spend from the escrow.
+pub const THRESHOLD: u16 = 2;
 /// Zatoshis in one unit of collateral (0.01 ZEC): the only place the mapping lives.
 /// Small enough that testnet coins cover a demo, and 100x the minimum ZIP 317 fee.
 pub const UNIT_ZATS: u64 = 1_000_000;

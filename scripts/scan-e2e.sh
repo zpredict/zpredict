@@ -4,14 +4,13 @@
 # Runs the ignored regtest test in packages/settle against the live chain.
 #   scripts/scan-e2e.sh                 full run on a fresh chain
 #   SKIP_BUILD=1 scripts/scan-e2e.sh    reuse already-built tools
-#   KEEP=1 scripts/scan-e2e.sh          leave regtest and frostd running afterwards
+#   KEEP=1 scripts/scan-e2e.sh          leave regtest running afterwards
 set -euo pipefail
 here=$(dirname "$0")
 source "$here/lib/env.sh"
 
 cleanup() {
   [ "${KEEP:-0}" = 1 ] && return
-  stop_frostd
   regtest_down
 }
 trap cleanup EXIT

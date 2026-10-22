@@ -3,6 +3,7 @@
 //!
 //! ```text
 //! settle seal <label> < secret > secret.sealed
+//! settle open <label> < secret.sealed > secret      (to a pipe; never redirect to a file)
 //! settle zats <units>                               -> zatoshis of a fixed denomination
 //! settle memo-key <out.sealed>                      -> `pubkey <hex>`
 //! settle deposit-memo <tag-hex> <pk0> <pk1> <pk2>   -> base64url memo for a ZIP 321 `memo=`
@@ -18,7 +19,7 @@ use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use zpredict_settle::{Error, MemoKey, Result, Scanner, store};
 
-const USAGE: &str = "usage: settle seal <label> | zats <units> | memo-key <out> | deposit-memo <tag> <pk0> <pk1> <pk2> | scan <relayer> <ufvk.sealed> <memo-key.sealed> <lwd-url> <from> <to>";
+const USAGE: &str = "usage: settle seal <label> | open <label> | zats <units> | memo-key <out> | deposit-memo <tag> <pk0> <pk1> <pk2> | scan <relayer> <ufvk.sealed> <memo-key.sealed> <lwd-url> <from> <to>";
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -36,6 +37,12 @@ fn run(args: &[&str]) -> Result<()> {
             std::io::stdin().read_to_end(&mut plain)?;
             let sealed = store::seal(&store::key_from_env()?, label, &plain);
             std::io::stdout().write_all(&sealed)?;
+        }
+        ["open", label] => {
+            let mut sealed = vec![];
+            std::io::stdin().read_to_end(&mut sealed)?;
+            let plain = store::open(&store::key_from_env()?, label, &sealed)?;
+            std::io::stdout().write_all(&plain)?;
         }
         ["zats", units] => {
             let units: u64 = parse(units)?;

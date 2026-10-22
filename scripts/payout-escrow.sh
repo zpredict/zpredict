@@ -11,6 +11,8 @@ source "$(dirname "$0")/lib/env.sh"
 
 F=$RUN_DIR/frost
 S=$RUN_DIR/payout
+escrow_open
+trap escrow_close EXIT
 rm -rf "$S" "$RUN_DIR"/winner-*
 mkdir -p "$S"
 
@@ -28,8 +30,8 @@ cat "$S/payouts.txt"
 
 log "PCZT for $(wc -l <"$S/payouts.txt" | tr -d ' ') payouts"
 sync_wallet escrow
-"$BIN/settle-payout" create regtest "$RUN_DIR/escrow" "$S/payouts.txt" >"$S/created.pczt"
-devtool pczt -w "$RUN_DIR/escrow" prove <"$S/created.pczt" >"$S/proven.pczt" 2>"$S/prove.log" &
+"$BIN/settle-payout" create regtest "$ESCROW" "$S/payouts.txt" >"$S/created.pczt"
+devtool pczt -w "$ESCROW" prove <"$S/created.pczt" >"$S/proven.pczt" 2>"$S/prove.log" &
 prover=$!
 
 log "a tampered payout vector is refused"
@@ -47,7 +49,7 @@ log "FROST 2-of-3, one session for every spend (r0, r1; r2 offline)"
 wait "$prover" || die "prover failed, see $S/prove.log"
 log "combine, broadcast"
 devtool pczt combine -i "$S/signed.pczt" -i "$S/proven.pczt" >"$S/final.pczt"
-devtool pczt -w "$RUN_DIR/escrow" send -s "$LWD" <"$S/final.pczt" | tee "$S/send.out"
+devtool pczt -w "$ESCROW" send -s "$LWD" <"$S/final.pczt" | tee "$S/send.out"
 TXID=$(grep -oE '[0-9a-f]{64}' "$S/send.out" | tail -1)
 [ -n "$TXID" ] || die "no txid from pczt send"
 

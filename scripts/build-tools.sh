@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Builds the pinned toolchain: zcash-devtool (regtest support), frostd, frost-client,
-# and this repo's frost-pczt. Each is built with its own Cargo.lock (--locked).
+# Builds the pinned toolchain: zcash-devtool (regtest support) and this repo's settle
+# binaries. Each is built with its own Cargo.lock (--locked).
 set -euo pipefail
 source "$(dirname "$0")/lib/env.sh"
 
@@ -16,10 +16,5 @@ checkout "$DEVTOOL_REPO" "$DEVTOOL_REV" "$TOOLS_DIR/zcash-devtool"
 cargo build -q --release --locked --features regtest_support \
   --manifest-path "$TOOLS_DIR/zcash-devtool/Cargo.toml"
 
-log "frostd + frost-client @ ${FROST_REV:0:7}"
-checkout "$FROST_REPO" "$FROST_REV" "$TOOLS_DIR/frost-zcash-demo"
-cargo build -q --release --locked -p frostd -p frost-client \
-  --manifest-path "$TOOLS_DIR/frost-zcash-demo/Cargo.toml"
-
-log "frost-pczt (packages/settle)"
+log "settle, settle-payout (packages/settle)"
 cargo build -q --release --locked -p zpredict-settle --manifest-path "$REPO_ROOT/Cargo.toml"

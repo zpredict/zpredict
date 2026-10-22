@@ -9,6 +9,8 @@
 set -euo pipefail
 source "$(dirname "$0")/lib/env.sh"
 source "$RUN_DIR/escrow.env"
+escrow_open
+trap escrow_close EXIT
 
 read -ra PKS <<<"$MEMO_PKS"
 for units in ${DEPOSIT_UNITS:-5}; do

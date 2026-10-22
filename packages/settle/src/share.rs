@@ -1,4 +1,4 @@
-//! A relayer's FROST key share: imported once from the DKG, then only ever sealed.
+//! A relayer's FROST key share: made by the DKG ([`crate::dkg`]), then only ever sealed.
 
 use reddsa::frost::redpallas::{
     Error as FrostError, Identifier,
@@ -17,26 +17,6 @@ impl KeyShare {
     /// Store label for a sealed key share ([`crate::store`]).
     pub const LABEL: &'static str = "frost-key-share";
 
-    /// The share in a frost-client config written by `frost-client dkg` (one group).
-    /// frost-client keeps it in clear; import it, seal it, delete the config.
-    pub fn from_frost_client_config(toml: &str) -> Result<Self> {
-        let field = |name: &str| {
-            let prefix = format!("{name} = \"");
-            toml.lines()
-                .find_map(|l| l.strip_prefix(&prefix)?.strip_suffix('"'))
-                .and_then(|h| hex::decode(h).ok())
-                .ok_or_else(|| Error::Frost(format!("no {name} in frost-client config")))
-        };
-        Self::from_parts(&field("key_package")?, &field("public_key_package")?)
-    }
-
-    fn from_parts(key: &[u8], group: &[u8]) -> Result<Self> {
-        Ok(KeyShare {
-            key: KeyPackage::deserialize(key).map_err(frost_err)?,
-            group: PublicKeyPackage::deserialize(group).map_err(frost_err)?,
-        })
-    }
-
     /// `len(key) u32 LE ‖ key ‖ group`, the plaintext that gets sealed.
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         let key = self.key.serialize().map_err(frost_err)?;
@@ -50,11 +30,21 @@ impl KeyShare {
         let (key, group) = rest
             .split_at_checked(u32::from_le_bytes(*len) as usize)
             .ok_or_else(bad)?;
-        Self::from_parts(key, group)
+        Ok(KeyShare {
+            key: KeyPackage::deserialize(key).map_err(frost_err)?,
+            group: PublicKeyPackage::deserialize(group).map_err(frost_err)?,
+        })
     }
 
     pub fn id(&self) -> Identifier {
         *self.key.identifier()
+    }
+
+    /// The escrow spend validating key `ak`: the group's verifying key.
+    pub fn ak(&self) -> Result<[u8; 32]> {
+        (self.group.verifying_key().serialize().map_err(frost_err)?)
+            .try_into()
+            .map_err(|_| Error::Frost("group key is not 32 bytes".into()))
     }
 }
 
@@ -73,16 +63,6 @@ mod tests {
         let s = &f.shares[0];
         let back = KeyShare::from_bytes(&s.to_bytes().unwrap()).unwrap();
         assert_eq!((back.key, back.group), (s.key.clone(), s.group.clone()));
-        let toml = format!(
-            "[group.x]\npublic_key_package = \"{}\"\nkey_package = \"{}\"\n",
-            hex::encode(s.group.serialize().unwrap()),
-            hex::encode(s.key.serialize().unwrap())
-        );
-        assert_eq!(
-            KeyShare::from_frost_client_config(&toml).unwrap().id(),
-            s.id()
-        );
-        assert!(KeyShare::from_frost_client_config("version = 0").is_err());
         assert!(KeyShare::from_bytes(&[9, 0, 0, 0, 1]).is_err());
     }
 }
