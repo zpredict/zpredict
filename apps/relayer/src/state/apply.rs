@@ -2,19 +2,29 @@
 
 use zpredict_core::{BALANCE_LEN, FILL_LEN, ORDER_LEN};
 
-use super::{HISTORY_KEEP, Order, State, Status, VIEW_KEEP, ViewItem, hex_array};
+use super::{HISTORY_KEEP, Order, State, Status, VIEW_KEEP, ViewItem, hex_array, view_digest};
 use crate::ledger::WithdrawalStatus;
 use crate::store::Event;
 
 impl State {
     pub(super) fn apply(&mut self, e: Event) {
         match e {
-            Event::Order { id, share, batch } => {
+            Event::Order {
+                id,
+                share,
+                batch,
+                token,
+            } => {
                 let mut b = [0u8; ORDER_LEN];
                 hex::decode_to_slice(&share, &mut b).expect("logged shares are valid hex");
-                self.see("order", &id, share);
+                self.see("order", &b);
                 let status = Status::Pending { born: batch };
-                self.orders.insert(id, Order { share: b, status });
+                let order = Order {
+                    share: b,
+                    status,
+                    token,
+                };
+                self.orders.insert(id, order);
                 self.batch = self.batch.max(batch);
             }
             Event::Batch {
@@ -44,7 +54,7 @@ impl State {
                 for (id, fill) in ids.into_iter().zip(fills) {
                     let mut f = [0u8; FILL_LEN];
                     hex::decode_to_slice(&fill, &mut f).expect("logged fills are valid hex");
-                    self.see("fill", &id, fill);
+                    self.see("fill", &f);
                     if let Some(o) = self.orders.get_mut(&id) {
                         o.status = Status::Filled(f);
                     }
@@ -104,16 +114,11 @@ impl State {
         }
     }
 
-    fn see(&mut self, kind: &'static str, id: &str, share: String) {
+    fn see(&mut self, kind: &'static str, share: &[u8]) {
         self.seq += 1;
-        let order_id = id.to_owned();
         let seq = self.seq;
-        self.view.push_back(ViewItem {
-            seq,
-            kind,
-            order_id,
-            share,
-        });
+        let digest = view_digest(share);
+        self.view.push_back(ViewItem { seq, kind, digest });
         if self.view.len() > VIEW_KEEP {
             self.view.pop_front();
         }

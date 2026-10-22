@@ -39,15 +39,28 @@ pub enum Status {
 pub struct Order {
     pub share: [u8; ORDER_LEN],
     pub status: Status,
+    /// Only a caller with this (the order's browser) reads the fill share.
+    pub token: String,
 }
 
+/// One `GET /view` item: a digest of a share this relayer received, never the share or
+/// the orderId. The three views are public, so publishing shares would let anyone XOR
+/// them back into every order and account tag (#15).
 #[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ViewItem {
     pub seq: u64,
     pub kind: &'static str,
-    pub order_id: String,
-    pub share: String,
+    pub digest: String,
+}
+
+/// `BLAKE2b-128(personal "zPredictViewItem", share)`, hex: the owner, who holds the
+/// share, can find it in the view; to anyone else it is noise.
+pub fn view_digest(share: &[u8]) -> String {
+    let h = blake2b_simd::Params::new()
+        .hash_length(16)
+        .personal(b"zPredictViewItem")
+        .hash(share);
+    hex::encode(h.as_bytes())
 }
 
 pub enum Accept {
@@ -110,7 +123,7 @@ impl State {
     }
 
     /// Stores this relayer's share of an order: one share per order, ever.
-    pub fn accept(&mut self, id: &str, share: [u8; ORDER_LEN]) -> Result<Accept> {
+    pub fn accept(&mut self, id: &str, share: [u8; ORDER_LEN], token: &str) -> Result<Accept> {
         if self.orders.contains_key(id) {
             return Ok(Accept::Duplicate);
         }
@@ -118,8 +131,13 @@ impl State {
             return Ok(Accept::Full);
         }
         let batch = self.batch;
-        let (id, share) = (id.to_owned(), hex::encode(share));
-        self.record(Event::Order { id, share, batch })?;
+        let (id, share, token) = (id.to_owned(), hex::encode(share), token.to_owned());
+        self.record(Event::Order {
+            id,
+            share,
+            batch,
+            token,
+        })?;
         Ok(Accept::Joined(batch))
     }
 

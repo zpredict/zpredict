@@ -50,13 +50,14 @@ async fn three_relayers_clear_expire_and_restart() {
             (json!(2), json!([true, true, true]))
         );
     }
-    let (_, s) = call(&r[0].http, "GET", &format!("/orders/{}", id(4)), None).await;
+    let path = |i| format!("/orders/{}?token={}", id(4), token(i));
+    let (_, s) = call(&r[0].http, "GET", &path(0), None).await;
     assert_eq!(s, json!({"status": "pending"}));
 
     // Next batch: order 4 is a batch old and still missing a share, so it expires.
     batch_all(&r).await;
     for i in [0, 2] {
-        let (_, s) = call(&r[i].http, "GET", &format!("/orders/{}", id(4)), None).await;
+        let (_, s) = call(&r[i].http, "GET", &path(i), None).await;
         assert_eq!(s, json!({"status": "unfilled"}));
     }
 
