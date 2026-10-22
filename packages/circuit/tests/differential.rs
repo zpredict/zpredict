@@ -2,7 +2,7 @@
 
 use zpredict_circuit::{
     Error, Outcome, eval_in_clear,
-    harness::{Batch, MARKET, Rng, combine, expected, random_batch, run_local},
+    harness::{Batch, MARKETS, Rng, combine, expected, random_batch, run_local},
 };
 use zpredict_core::{Order, Side, clear, fill_records};
 
@@ -22,14 +22,14 @@ fn unchecked(orders: &[[u8; 18]]) -> Vec<[u8; 10]> {
     fill_records(&batch, &clear(&batch))
 }
 
-fn eval(b: &Batch, markets: [u32; 3], credits: [&[u64]; 3]) -> Result<Outcome, Error> {
+fn eval(b: &Batch, markets: [&[u32]; 3], credits: [&[u64]; 3]) -> Result<Outcome, Error> {
     let orders = [0, 1, 2].map(|p| b.order_shares[p].as_slice());
     let accounts = [0, 1, 2].map(|p| b.account_shares[p].as_slice());
     eval_in_clear(markets, credits, orders, accounts)
 }
 
 fn agreed(b: &Batch) -> Outcome {
-    eval(b, [MARKET; 3], [b.credits.as_slice(); 3]).unwrap()
+    eval(b, [&MARKETS; 3], [b.credits.as_slice(); 3]).unwrap()
 }
 
 /// The circuit's logic, evaluated in the clear: many batches, fast.
@@ -38,7 +38,7 @@ fn circuit_matches_clear_with_balances() {
     let mut rng = Rng(0x2026_1028);
     let (mut filled, mut debited, mut refused, mut priced, mut credited) = (0, 0, 0, 0, 0);
     for round in 0..300 {
-        let mut batch = random_batch(&mut rng, 16);
+        let mut batch = random_batch(&mut rng, 16, 16);
         let want = expected(&batch);
         assert_eq!(agreed(&batch), want, "round {round}");
         filled += want.fills.iter().filter(|r| r[9] == 1).count();
@@ -49,7 +49,7 @@ fn circuit_matches_clear_with_balances() {
             })
             .count();
         refused += usize::from(unchecked(&batch.orders) != want.fills);
-        priced += usize::from(want.price.is_some());
+        priced += want.prices.iter().flatten().count();
         let credits = std::mem::replace(&mut batch.credits, vec![0; 16]);
         credited += usize::from(expected(&batch).fills != want.fills);
         batch.credits = credits;
@@ -61,17 +61,17 @@ fn circuit_matches_clear_with_balances() {
     assert!(refused > 100, "checks changed too few batches: {refused}");
     assert!(credited > 20, "credits changed too few batches: {credited}");
     assert!(
-        (50..250).contains(&priced),
-        "price present in {priced} of 300"
+        (100..500).contains(&priced),
+        "prices present in {priced} of 600 market slots"
     );
 }
 
-/// The table size is a parameter: an odd size compiles and still matches.
+/// Slots and table size are parameters: an odd shape compiles and still matches.
 #[test]
-fn other_table_sizes_match() {
+fn other_shapes_match() {
     let mut rng = Rng(5);
     for _ in 0..30 {
-        let batch = random_batch(&mut rng, 5);
+        let batch = random_batch(&mut rng, 7, 5);
         assert_eq!(agreed(&batch), expected(&batch));
     }
 }
@@ -79,33 +79,34 @@ fn other_table_sizes_match() {
 /// Parties that disagree on the market or the credits clear nothing and are told so.
 #[test]
 fn disagreement_is_an_error() {
-    let batch = random_batch(&mut Rng(3), 16);
+    let batch = random_batch(&mut Rng(3), 16, 16);
     let c = batch.credits.as_slice();
-    let markets = [MARKET, MARKET, MARKET + 1];
+    let other = [7, 9, 0, 0];
+    let markets = [&MARKETS[..], &MARKETS, &other];
     assert!(matches!(
         eval(&batch, markets, [c; 3]),
         Err(Error::Disagreement)
     ));
-    let other = vec![1; 16];
-    let credits = [c, c, other.as_slice()];
+    let more = vec![1; 16];
+    let credits = [c, c, more.as_slice()];
     assert!(matches!(
-        eval(&batch, [MARKET; 3], credits),
+        eval(&batch, [&MARKETS; 3], credits),
         Err(Error::Disagreement)
     ));
 }
 
 /// The full 3-party MPC over localhost TCP: shares combine to the reference, and all
-/// three see the same public price.
+/// three see the same public prices.
 #[tokio::test(flavor = "multi_thread")]
 async fn three_parties_match_clear_with_balances() {
     let mut rng = Rng(7);
     for port in [7100, 7110] {
-        let batch = random_batch(&mut rng, 16);
+        let batch = random_batch(&mut rng, 16, 16);
         let shares = run_local(&batch, port).await.unwrap();
         let want = expected(&batch);
         assert_eq!(combine(&shares), want);
         for s in &shares {
-            assert_eq!(s.price, want.price);
+            assert_eq!(s.prices, want.prices);
             assert_ne!(s.fills, want.fills, "no single relayer holds the records");
         }
     }

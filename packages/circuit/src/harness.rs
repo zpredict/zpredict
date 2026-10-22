@@ -7,11 +7,12 @@ use zpredict_core::{
     ACCOUNT_LEN, Account, MAX_SIZE, ORDER_LEN, Order, Side, clear_with_balances, fill_records,
 };
 
-use crate::{Error, N, Outcome, run_party};
+use crate::{Error, Outcome, run_party};
 
-/// The market every generated batch clears; a few orders are for [`OTHER_MARKET`].
-pub const MARKET: u32 = 7;
-pub const OTHER_MARKET: u32 = 8;
+/// The markets every generated batch clears (two used slots, two unused); a few orders
+/// are for [`UNLISTED`], which the batch does not clear.
+pub const MARKETS: [u32; 4] = [7, 8, 0, 0];
+pub const UNLISTED: u32 = 9;
 
 /// SplitMix64: deterministic, so a failing seed reproduces. Not a CSPRNG.
 pub struct Rng(pub u64);
@@ -44,11 +45,11 @@ pub struct Batch {
     pub account_shares: [Vec<[u8; ACCOUNT_LEN]>; 3],
 }
 
-/// Random [`MARKET`] batch over a `rows`-row table (at least 4), with dummies, malformed
-/// slots, other-market orders, price ties, partial fills, the odd `MAX_SIZE` order,
+/// Random [`MARKETS`] batch of `slots` orders over a `rows`-row table (at least 4), with dummies, malformed
+/// slots, orders in two markets plus unlisted ones, price ties, partial fills, the odd `MAX_SIZE` order,
 /// short and unknown accounts, accounts with several orders, a duplicated row id and
 /// zero padding rows, so every branch gets exercised.
-pub fn random_batch(rng: &mut Rng, rows: usize) -> Batch {
+pub fn random_batch(rng: &mut Rng, slots: usize, rows: usize) -> Batch {
     let used = 4 + rng.below(rows.min(16) as u64 - 3) as usize; // the rest is padding
     let mut accounts = vec![Account { id: 0, balance: 0 }; rows];
     for a in accounts.iter_mut().take(used) {
@@ -70,7 +71,7 @@ pub fn random_batch(rng: &mut Rng, rows: usize) -> Batch {
         .filter(|a| a.id != 0)
         .map(|a| a.id)
         .collect();
-    let orders: Vec<[u8; ORDER_LEN]> = (0..N)
+    let orders: Vec<[u8; ORDER_LEN]> = (0..slots)
         .map(|_| {
             let side = if rng.below(2) == 0 {
                 Side::Yes
@@ -90,10 +91,10 @@ pub fn random_batch(rng: &mut Rng, rows: usize) -> Batch {
                 0 => rng.next_u64(), // no such account
                 _ => live[rng.below(live.len() as u64) as usize],
             };
-            let market = if rng.below(10) == 0 {
-                OTHER_MARKET
-            } else {
-                MARKET
+            let market = match rng.below(10) {
+                0 => UNLISTED,
+                1..=5 => MARKETS[0],
+                _ => MARKETS[1],
             };
             let mut b = Order {
                 market,
@@ -141,12 +142,12 @@ fn split3<const L: usize>(rng: &mut Rng, rows: &[[u8; L]]) -> [Vec<[u8; L]>; 3] 
     out
 }
 
-/// What the circuit must output for a [`MARKET`] batch: `clear_with_balances` on the
-/// credited table, as fill records, LE balances and the price, with every slot that
-/// fails `Order::decode` treated as a size-0 dummy.
+/// What the circuit must output for a [`MARKETS`] batch: `clear_with_balances` on the
+/// credited table, as fill records, LE balances and prices, with every slot that fails
+/// `Order::decode` treated as a size-0 dummy.
 pub fn expected(b: &Batch) -> Outcome {
     let dummy = Order {
-        market: MARKET,
+        market: 0,
         side: Side::Yes,
         price: 1,
         size: 0,
@@ -163,11 +164,11 @@ pub fn expected(b: &Batch) -> Outcome {
             ..*a
         })
         .collect();
-    let c = clear_with_balances(MARKET, &batch, &credited);
+    let c = clear_with_balances(&MARKETS, &batch, &credited);
     Outcome {
         fills: fill_records(&batch, &c.fills),
         balances: c.balances.iter().map(|v| v.to_le_bytes()).collect(),
-        price: c.price,
+        prices: c.prices,
     }
 }
 
@@ -186,7 +187,7 @@ pub async fn run_local(batch: &Batch, base_port: u16) -> Result<[Outcome; 3], Er
     let peers = localhost(base_port);
     let party = |p: usize| {
         let (orders, accounts) = (&batch.order_shares[p], &batch.account_shares[p]);
-        run_party(p, &peers, MARKET, &batch.credits, orders, accounts)
+        run_party(p, &peers, &MARKETS, &batch.credits, orders, accounts)
     };
     let (a, b, c) = tokio::join!(party(0), party(1), party(2));
     Ok([a?, b?, c?])
