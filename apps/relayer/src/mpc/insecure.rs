@@ -1,6 +1,6 @@
 //! INSECURE: parties 1 and 2 send their shares to party 0, which rebuilds every order
 //! and table row, clears one market with `zpredict_core::clear_with_balances` and hands
-//! back fresh shares. It mirrors the circuit (market filter, credits, price), so the
+//! back fresh shares. It mirrors the circuit (markets, credits, prices), so the
 //! batch loop can be tested without the MPC's cost. Only for tests and local dev;
 //! the binary refuses it unless both the `dev-insecure` feature and
 //! `insecure_matcher = true` are set.
@@ -27,22 +27,14 @@ struct Shares {
 struct Reply {
     fills: Vec<[u8; FILL_LEN]>,
     balances: Vec<[u8; BALANCE_LEN]>,
-    price: Option<u16>,
+    prices: Vec<Option<u16>>,
 }
 
 impl Matcher for InsecureLocalMatcher {
-    fn slots(&self) -> Option<usize> {
-        None
-    }
-
-    fn per_market(&self) -> bool {
-        true
-    }
-
     async fn clear(
         &self,
         links: &Links,
-        market: u32,
+        markets: &[u32],
         credits: &[u64],
         orders: &[[u8; ORDER_LEN]],
         accounts: &[[u8; ACCOUNT_LEN]],
@@ -57,7 +49,7 @@ impl Matcher for InsecureLocalMatcher {
             return Ok(Cleared {
                 fills: r.fills,
                 balances: r.balances,
-                price: r.price,
+                prices: r.prices,
             });
         }
         let mut all = mine;
@@ -66,43 +58,39 @@ impl Matcher for InsecureLocalMatcher {
             xor_into(&mut all.orders, &theirs.orders);
             xor_into(&mut all.accounts, &theirs.accounts);
         }
-        let (mut fills, mut balances, price) = clear_market(market, credits, &all);
+        let Reply {
+            mut fills,
+            mut balances,
+            prices,
+        } = clear_markets(markets, credits, &all);
         for p in 1..3 {
             let r = Reply {
                 fills: reshare(&mut fills),
                 balances: reshare(&mut balances),
-                price,
+                prices: prices.clone(),
             };
             links.send(p, &serde_json::to_vec(&r)?).await?;
         }
         Ok(Cleared {
             fills,
             balances,
-            price,
+            prices,
         })
     }
 }
 
 /// Plaintext reference: credits first, then `clear_with_balances` (malformed orders
 /// are dummies).
-fn clear_market(
-    market: u32,
-    credits: &[u64],
-    s: &Shares,
-) -> (Vec<[u8; FILL_LEN]>, Vec<[u8; BALANCE_LEN]>, Option<u16>) {
+fn clear_markets(markets: &[u32], credits: &[u64], s: &Shares) -> Reply {
     let dummy = Order {
-        market,
+        market: 0,
         side: Side::Yes,
         price: 1,
         size: 0,
         account: 0,
     };
     let orders: Vec<Order> = (s.orders.iter())
-        .map(|b| {
-            Order::decode(b)
-                .filter(|o| o.market == market)
-                .unwrap_or(dummy)
-        })
+        .map(|b| Order::decode(b).unwrap_or(dummy))
         .collect();
     let u64_at = |b: &[u8], i: usize| u64::from_le_bytes(b[i..i + 8].try_into().expect("8 bytes"));
     let accounts: Vec<Account> = (s.accounts.iter().zip(credits))
@@ -111,9 +99,13 @@ fn clear_market(
             balance: u64_at(b, 8) + c,
         })
         .collect();
-    let c = clear_with_balances(market, &orders, &accounts);
+    let c = clear_with_balances(markets, &orders, &accounts);
     let balances = c.balances.iter().map(|b| b.to_le_bytes()).collect();
-    (fill_records(&orders, &c.fills), balances, c.price)
+    Reply {
+        fills: fill_records(&orders, &c.fills),
+        balances,
+        prices: c.prices,
+    }
 }
 
 fn xor_into<const L: usize>(acc: &mut [[u8; L]], other: &[[u8; L]]) {

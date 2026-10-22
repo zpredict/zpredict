@@ -13,7 +13,7 @@ NEXT_PUBLIC_RELAYERS=http://localhost:4101,http://localhost:4102,http://localhos
   pnpm --filter @zpredict/web dev         # http://localhost:3000
 ```
 
-`dev.sh` generates Noise keys into `config/keys/` on first run (gitignored) and keeps state in `config/data/` (gitignored; delete it to start fresh). The web app needs only `NEXT_PUBLIC_RELAYERS`; the configs already allow `http://localhost:3000` as the CORS origin. Click **Judge mode**, place an order, and its fill share appears after the next batch: one 15 s window plus about 12 s of MPC (N = 16 orders, 16 table rows; the first batch also waits for the circuit to compile at startup).
+`dev.sh` generates Noise keys into `config/keys/` on first run (gitignored) and keeps state in `config/data/` (gitignored; delete it to start fresh). The web app needs only `NEXT_PUBLIC_RELAYERS`; the configs already allow `http://localhost:3000` as the CORS origin. Click **Judge mode**, place an order, and its fill share appears after the next batch: at most one 12 s window plus about 5 s of MPC (8 order slots, 32 table rows, all open markets in one run; startup compiles the circuit first, ~6 s).
 
 `INSECURE=1 apps/relayer/scripts/dev.sh` uses the plaintext dev matcher instead (see below): batches finish instantly, and **relayer 0 sees every order**.
 
@@ -33,8 +33,8 @@ TOML, one file per relayer (`config/r{0,1,2}.toml` are the local examples). Path
 | `web_origin` | The only origin CORS answers |
 | `oracle_lightwalletd` | The chain the markets are about (default `https://zec.rocks:443`, mainnet): tip height in `/health` and market progress, and the oracle resolvers. `""` = offline |
 | `escrow_lightwalletd` | The chain the escrow lives on (default `https://testnet.zec.rocks:443`): deposit scanning and payouts (settle). Never used for market data |
-| `batch_size` | Slots per batch, N; must be 16 (`zpredict_circuit::N`) for the real matcher |
-| `table_rows` | Balance-table rows per batch (default 32): the most funded accounts this deployment holds. ~15 s per market per window at 32, ~23 s at 64 |
+| `batch_size` | Order slots per batch, N, shared by all open markets (2..=21). Crossing costs ~N² gates: at 32 rows, 8 ≈ 5 s and 16 ≈ 13.5 s per window on an M4 Pro |
+| `table_rows` | Balance-table rows per batch (default 32): the most funded accounts this deployment holds. ~8k AND gates per row |
 | `window_secs` | Batch window; batches start on wall-clock multiples of it |
 | `expire_batches` | A pending order missing from the intersection this long becomes `unfilled` |
 | `judge`, `judge_credit` | `POST /judge/claim` (mock), credit in half-ticks |
@@ -50,7 +50,7 @@ Every window, each relayer:
 2. Swaps a hello: its pending orderIds, and from relayer 0 the balance-table row ids and the open market ids. The batch is the **sorted intersection** of the three pending sets, capped at N; the batch number is the max of the three. Orders past N wait for the next batch.
 3. Relayers 1 and 2 append zero-share rows for any table rows relayer 0 added (see Balances).
 4. Pads orders to N and the table to `table_rows` rows with all-zero shares. A zero order rebuilds to price 0, which the circuit treats as a dummy; a zero row has balance 0.
-5. Runs the matcher (`mpc/`). A matcher that filters by market runs once per open market: fill shares XOR together and balances chain from run to run. The current circuit ignores the market, so it runs once.
+5. Runs the matcher (`mpc/`) once per group of up to 4 open markets (`zpredict_circuit::DEFAULT_MARKETS`), padded with unused slots: one run for the demo's three markets. With more markets, fill shares XOR together and balances chain from run to run. Which markets have orders never changes what runs.
 6. Stores its fill share per order, its new balance share per row and any public prices as one fsynced event, and expires orders that are `expire_batches` old and not in the intersection. These are orders where one of the browser's three POSTs never arrived.
 
 A failed or aborted batch (peer down, MPC abort, timeout) changes no shares, and its orders run again next window. `/health.peers` shows which peers the last attempt reached.
@@ -71,7 +71,7 @@ The circuit (#46) checks collateral against a **balance table** of 16 rows (`id 
 - **`Polytune` (default, real):** `zpredict_circuit::run_party_on(links, party, orders, accounts)` over our Noise links (the relayer implements polytune's `Channel` for them). It returns fill shares and new balance shares.
 - **`InsecureLocalMatcher`:** parties 1 and 2 send their shares to party 0. Party 0 rebuilds the orders and the table, clears one market at a time with `zpredict_core::clear_with_balances`, and hands back fresh shares and the price. It mirrors the circuit. It is compiled only for tests or with `--features dev-insecure`, and even then used only when the config sets `insecure_matcher = true`. It prints a warning at startup. Never deploy it.
 
-`Polytune` runs the circuit once per open market (`per_market`), passing that window's public credits in the first run, and takes `Cleared::price` from the circuit's public output.
+`Polytune` clears up to four markets per circuit run (orders only cross within their market), passing that window's public credits in the first run, and takes `Cleared::prices` (one per market) from the circuit's public output.
 
 ## State (`state.rs`, `store.rs`)
 

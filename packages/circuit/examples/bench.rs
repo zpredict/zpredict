@@ -1,7 +1,7 @@
-//! N = 16 clearing benchmark: three separate processes over localhost TCP.
+//! Clearing benchmark: three separate processes over localhost TCP.
 //!
-//! `cargo run --release -p zpredict-circuit --example bench [runs] [rows]` spawns parties
-//! 0, 1, 2 as child processes (`bench party <p> <seed> <rows>`), checks that their
+//! `cargo run --release -p zpredict-circuit --example bench [runs] [rows] [slots]` spawns
+//! parties 0, 1, 2 as child processes (`bench party <p> <seed> <rows> <slots>`), checks that their
 //! shares combine to `clear_with_balances`' result, and prints per-party MPC timings.
 
 use std::{
@@ -12,8 +12,8 @@ use std::{
 use zpredict_core::{BALANCE_LEN, FILL_LEN};
 
 use zpredict_circuit::{
-    DEFAULT_ROWS, N, Outcome, and_gates,
-    harness::{MARKET, Rng, combine, expected, localhost, random_batch},
+    DEFAULT_ROWS, DEFAULT_SLOTS, Outcome, and_gates,
+    harness::{MARKETS, Rng, combine, expected, localhost, random_batch},
     net::TcpChannel,
     run_party_on,
 };
@@ -25,13 +25,16 @@ async fn main() {
     let args: Vec<String> = std::env::args().collect();
     let arg = |i: usize, default: u64| args.get(i).map_or(default, |a| a.parse().unwrap());
     if args.get(1).map(String::as_str) == Some("party") {
-        return party(arg(2, 0) as usize, arg(3, 0), arg(4, 0) as usize).await;
+        let slots = arg(5, DEFAULT_SLOTS as u64) as usize;
+        return party(arg(2, 0) as usize, arg(3, 0), arg(4, 0) as usize, slots).await;
     }
     let (runs, rows) = (arg(1, 3), arg(2, DEFAULT_ROWS as u64) as usize);
+    let slots = arg(3, DEFAULT_SLOTS as u64) as usize;
     let t = Instant::now();
-    let gates = and_gates(rows);
+    let gates = and_gates(slots, rows, MARKETS.len());
     println!(
-        "N = {N}, {rows} rows, {gates} AND gates, compiled in {:.1?}",
+        "N = {slots}, {rows} rows, {} market slots, {gates} AND gates, compiled in {:.1?}",
+        MARKETS.len(),
         t.elapsed()
     );
     let exe = std::env::current_exe().unwrap();
@@ -43,6 +46,7 @@ async fn main() {
                     &p.to_string(),
                     &seed.to_string(),
                     &rows.to_string(),
+                    &slots.to_string(),
                 ];
                 Command::new(&exe)
                     .args(args)
@@ -57,25 +61,26 @@ async fn main() {
             .collect();
         let shares: [Outcome; 3] = std::array::from_fn(|p| {
             let mut words = outs[p].split_whitespace();
-            let (time, price, hex) = (words.next(), words.next(), words.next());
+            let (time, prices, hex) = (words.next(), words.next(), words.next());
             print!("party {p}: {}  ", time.unwrap());
-            parse(hex.unwrap(), price.unwrap().parse().ok())
+            let prices = prices.unwrap().split(',').map(|p| p.parse().ok()).collect();
+            parse(hex.unwrap(), prices, slots)
         });
-        let want = expected(&random_batch(&mut Rng(seed), rows));
-        let ok = shares.iter().all(|s| s.price == want.price) && combine(&shares) == want;
+        let want = expected(&random_batch(&mut Rng(seed), slots, rows));
+        let ok = shares.iter().all(|s| s.prices == want.prices) && combine(&shares) == want;
         let status = if ok { "matches" } else { "MISMATCH" };
-        println!("| seed {seed}: price {:?}, {status}", want.price);
+        println!("| seed {seed}: prices {:?}, {status}", want.prices);
         assert!(ok);
     }
 }
 
-async fn party(p: usize, seed: u64, rows: usize) {
-    and_gates(rows); // compile before connecting, so it stays out of the timing
-    let batch = random_batch(&mut Rng(seed), rows);
+async fn party(p: usize, seed: u64, rows: usize, slots: usize) {
+    and_gates(slots, rows, MARKETS.len()); // compile before connecting: keeps it out of the timing
+    let batch = random_batch(&mut Rng(seed), slots, rows);
     let channel = TcpChannel::connect(p, &localhost(PORT)).await.unwrap();
     let t = Instant::now(); // MPC only: excludes compile and waiting for peers
     let (orders, accounts) = (&batch.order_shares[p], &batch.account_shares[p]);
-    let out = run_party_on(&channel, p, MARKET, &batch.credits, orders, accounts)
+    let out = run_party_on(&channel, p, &MARKETS, &batch.credits, orders, accounts)
         .await
         .unwrap();
     let bytes = out
@@ -84,22 +89,24 @@ async fn party(p: usize, seed: u64, rows: usize) {
         .flatten()
         .chain(out.balances.iter().flatten());
     let hex: String = bytes.map(|b| format!("{b:02x}")).collect();
-    let price = out.price.map_or("-".into(), |p| p.to_string());
-    println!("{:.2?} {price} {hex}", t.elapsed());
+    let prices: Vec<String> = (out.prices.iter())
+        .map(|p| p.map_or("-".into(), |p| p.to_string()))
+        .collect();
+    println!("{:.2?} {} {hex}", t.elapsed(), prices.join(","));
 }
 
-fn parse(hex: &str, price: Option<u16>) -> Outcome {
+fn parse(hex: &str, prices: Vec<Option<u16>>, slots: usize) -> Outcome {
     let b: Vec<u8> = (0..hex.len())
         .step_by(2)
         .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
         .collect();
-    let (f, bal) = b.split_at(N * FILL_LEN);
+    let (f, bal) = b.split_at(slots * FILL_LEN);
     Outcome {
         fills: f.chunks(FILL_LEN).map(|c| c.try_into().unwrap()).collect(),
         balances: bal
             .chunks(BALANCE_LEN)
             .map(|c| c.try_into().unwrap())
             .collect(),
-        price,
+        prices,
     }
 }

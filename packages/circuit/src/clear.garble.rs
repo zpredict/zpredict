@@ -1,34 +1,39 @@
 // Batch clearing for zPredict; mirrors `zpredict_core::clear_with_balances`. See the crate docs.
-// 16 order slots; `{rows}` balance-table rows, substituted by program.rs before compiling
-// (Garble ranges and array sizes must be literals, hence no consts).
+// `{n}` order slots, `{rows}` balance-table rows and `{markets}` market slots, substituted by
+// program.rs before compiling (Garble ranges and array sizes must be literals, hence no consts).
 
 // Fields in alphabetical order: that is how Garble lays out struct inputs (io.rs too).
 struct Party {
     accounts: [[u8; 16]; {rows}],
     balance_mask: [[u8; 8]; {rows}],
     credits: [u64; {rows}],
-    fill_mask: [[u8; 10]; 16],
-    market: u32,
-    orders: [[u8; 18]; 16],
+    fill_mask: [[u8; 10]; {n}],
+    markets: [u32; {markets}],
+    orders: [[u8; 18]; {n}],
 }
 
-pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; {rows}], u16, bool) {
-    // The batch's market and credits are public. If the parties disagree on either,
-    // nothing fills, nothing is credited, and `agreed` (public) says so.
-    let market = p0.market;
+pub fn main(
+    p0: Party,
+    p1: Party,
+    p2: Party,
+) -> ([[u8; 10]; {n}], [[u8; 8]; {rows}], [u16; {markets}], bool) {
+    // The batch's markets (0 = unused slot) and credits are public. If the parties disagree
+    // on either, nothing fills, nothing is credited, and `agreed` (public) says so.
+    let markets = p0.markets;
     let credits = p0.credits;
-    let agreed = (p1.market == market)
-        & (p2.market == market)
+    let agreed = (p1.markets == markets)
+        & (p2.markets == markets)
         & (p1.credits == credits)
         & (p2.credits == credits);
 
     // Rebuild and decode. Malformed orders (side > 1, price outside 1..=99, size > MAX_SIZE)
-    // and orders for another market become dummies.
-    let mut yes = [false; 16];
-    let mut price = [0u8; 16];
-    let mut size = [0u32; 16];
-    let mut account = [0u64; 16];
-    for i in 0usize..16usize {
+    // and orders for a market not in this batch become dummies.
+    let mut yes = [false; {n}];
+    let mut market = [0u32; {n}];
+    let mut price = [0u8; {n}];
+    let mut size = [0u32; {n}];
+    let mut account = [0u64; {n}];
+    for i in 0usize..{n}usize {
         let mut o = [0u8; 18];
         for k in 0usize..18usize {
             o[k] = p0.orders[i][k] ^ p1.orders[i][k] ^ p2.orders[i][k];
@@ -41,8 +46,13 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; {rows
             | ((o[1] as u32) << 8u8)
             | ((o[2] as u32) << 16u8)
             | ((o[3] as u32) << 24u8);
+        let mut listed = false;
+        for j in 0usize..{markets}usize {
+            listed = listed | ((markets[j] != 0u32) & (m == markets[j]));
+        }
+        market[i] = m;
         let ok = agreed
-            & (m == market)
+            & listed
             & (o[4] <= 1u8)
             & (o[5] >= 1u8)
             & (o[5] <= 99u8)
@@ -72,9 +82,9 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; {rows
     }
 
     // Each order's account row: the first row whose id matches.
-    let mut hit = [[false; {rows}]; 16];
-    let mut found = [false; 16];
-    for i in 0usize..16usize {
+    let mut hit = [[false; {rows}]; {n}];
+    let mut found = [false; {n}];
+    for i in 0usize..{n}usize {
         for m in 0usize..{rows}usize {
             hit[i][m] = !found[i] & (account[i] == id[m]);
             found[i] = found[i] | hit[i][m];
@@ -83,9 +93,9 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; {rows
 
     // In batch order, reserve each order's worst case (size x 2 x price half-ticks) from
     // its row; an order that doesn't fit what's left becomes a dummy. Sums stay in u32:
-    // 16 x MAX_SIZE x 198 < 2^32.
+    // {n} x MAX_SIZE x 198 < 2^32 (program.rs caps {n} at 21).
     let mut reserved = [0u32; {rows}];
-    for i in 0usize..16usize {
+    for i in 0usize..{n}usize {
         let mut worst = 0u32;
         for k in 0usize..8usize {
             if ((price[i] >> (k as u8)) & 1u8) == 1u8 {
@@ -106,16 +116,27 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; {rows
         size[i] = if ok { size[i] } else { 0u32 };
     }
 
-    // Each order's place in its side's queue (best price first, ties by index), as an
-    // interval [start, end) on that side's cumulative size axis.
-    let mut start = [0u32; 16];
-    let mut end = [0u32; 16];
-    for i in 0usize..16usize {
+    // Markets never mix: `same[i][k]` gates both the queues and the crossing.
+    let mut same = [[false; {n}]; {n}];
+    for i in 0usize..{n}usize {
+        for k in 0usize..{n}usize {
+            if k > i {
+                same[i][k] = market[i] == market[k];
+                same[k][i] = same[i][k];
+            }
+        }
+    }
+
+    // Each order's place in its market's and side's queue (best price first, ties by
+    // index), as an interval [start, end) on that queue's cumulative size axis.
+    let mut start = [0u32; {n}];
+    let mut end = [0u32; {n}];
+    for i in 0usize..{n}usize {
         let mut acc = 0u32;
-        for k in 0usize..16usize {
+        for k in 0usize..{n}usize {
             if k != i {
                 let ahead = if k < i { price[k] >= price[i] } else { price[k] > price[i] };
-                if (yes[k] == yes[i]) & ahead {
+                if same[i][k] & (yes[k] == yes[i]) & ahead {
                     acc = acc + size[k];
                 }
             }
@@ -124,18 +145,18 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; {rows
         end[i] = acc + size[i];
     }
 
-    // A YES/NO pair fills by the overlap of their intervals, if their prices cross.
-    let mut filled = [0u32; 16];
-    let mut cost = [0u32; 16];
-    for i in 0usize..16usize {
-        for j in 0usize..16usize {
+    // A same-market YES/NO pair fills by the overlap of their intervals, if prices cross.
+    let mut filled = [0u32; {n}];
+    let mut cost = [0u32; {n}];
+    for i in 0usize..{n}usize {
+        for j in 0usize..{n}usize {
             if j > i {
                 let lo = if start[i] > start[j] { start[i] } else { start[j] };
                 let hi = if end[i] < end[j] { end[i] } else { end[j] };
                 let p = if yes[i] { price[i] as u16 } else { price[j] as u16 };
                 let q = if yes[i] { price[j] as u16 } else { price[i] as u16 };
                 // Branch-free: an `if` around array writes makes Garble mux whole arrays.
-                let cross = (yes[i] != yes[j]) & (p + q >= 100u16) & (hi > lo);
+                let cross = same[i][j] & (yes[i] != yes[j]) & (p + q >= 100u16) & (hi > lo);
                 let f = if cross { hi - lo } else { 0u32 };
                 // f * yes_cost by shift-and-add: the cost fits in 8 bits, and Garble's
                 // generic u32 multiplier costs ~4x more AND gates.
@@ -157,7 +178,7 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; {rows
 
     // Debit each row what its orders actually paid (never more than they reserved).
     let mut paid = [0u32; {rows}];
-    for i in 0usize..16usize {
+    for i in 0usize..{n}usize {
         for m in 0usize..{rows}usize {
             paid[m] = paid[m] + if hit[i][m] { cost[i] } else { 0u32 };
         }
@@ -166,8 +187,8 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; {rows
     // Fill record (zpredict_core::fill_records): size u32 LE | total cost u32 LE (half-ticks)
     // | side u8 | flags u8 (bit0 = filled); all zero when unfilled. Balance: u64 LE.
     // Everything is masked by all three parties' masks.
-    let mut fills = [[0u8; 10]; 16];
-    for i in 0usize..16usize {
+    let mut fills = [[0u8; 10]; {n}];
+    for i in 0usize..{n}usize {
         let mut r = [0u8; 10];
         for k in 0usize..4usize {
             r[k] = (filled[i] >> ((8usize * k) as u8)) as u8;
@@ -191,17 +212,22 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; {rows
         }
     }
 
-    // Public clearing price (zpredict_core::clearing_price): YES cost per contract over
-    // all fills, rounded down; 0 = nothing crossed. Every fill's YES side is one YES order,
-    // so summing YES orders' records covers each fill once. Unmasked: all three learn it.
-    let mut volume = 0u32;
-    let mut yes_paid = 0u32;
-    for i in 0usize..16usize {
-        volume = volume + if yes[i] { filled[i] } else { 0u32 };
-        yes_paid = yes_paid + if yes[i] { cost[i] } else { 0u32 };
+    // Public clearing price per market slot (zpredict_core::clearing_price): YES cost per
+    // contract over that market's fills, rounded down; 0 = nothing crossed. Every fill's
+    // YES side is one YES order, so summing YES orders' records covers each fill once.
+    // Unmasked: all three learn it.
+    let mut prices = [0u16; {markets}];
+    for j in 0usize..{markets}usize {
+        let mut volume = 0u32;
+        let mut yes_paid = 0u32;
+        for i in 0usize..{n}usize {
+            let mine = yes[i] & (market[i] == markets[j]);
+            volume = volume + if mine { filled[i] } else { 0u32 };
+            yes_paid = yes_paid + if mine { cost[i] } else { 0u32 };
+        }
+        // Divisor never 0: a 0 divisor would raise Garble's panic flag even in a dead branch.
+        let divisor = if volume > 0u32 { volume } else { 1u32 };
+        prices[j] = (yes_paid / divisor) as u16;
     }
-    // Divisor never 0: a 0 divisor would raise Garble's panic flag even in a dead branch.
-    let divisor = if volume > 0u32 { volume } else { 1u32 };
-    let price = (yes_paid / divisor) as u16; // 0 when nothing crossed
-    (fills, balances, price, agreed)
+    (fills, balances, prices, agreed)
 }

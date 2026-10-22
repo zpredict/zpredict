@@ -6,9 +6,10 @@
 //! 2. relayers 1 and 2 append zero-share rows for table rows relayer 0 added, and all
 //!    take relayer 0's pending credits (public deposit amounts per row);
 //! 3. pad orders to N and the table to its row count with all-zero shares;
-//! 4. run the [`Matcher`] as one MPC party: once per open market if it filters by market
-//!    (fill shares XOR together, balances chain, credits go in the first run), else
-//!    once. A window with credits but no orders still runs, so top-ups land;
+//! 4. run the [`Matcher`] as one MPC party, once per group of `DEFAULT_MARKETS` open
+//!    markets (one run for the demo's markets; with more, fill shares XOR together,
+//!    balances chain, credits go in the first run). Every window runs the same circuit
+//!    whichever markets have orders. A window with credits but no orders still runs;
 //! 5. store fill shares, new balance shares and public prices in one event, and expire
 //!    orders that never reached all three relayers (`unfilled`).
 //!
@@ -59,7 +60,7 @@ struct Hello {
 pub async fn run<M: Matcher>(b: Batcher<M>) {
     loop {
         sleep(until_next_window(b.window)).await;
-        // Generous: N = 16 takes ~11 s in release on one machine, longer between hosts.
+        // Generous: N = 8 takes ~5 s in release on one machine, longer between hosts.
         let budget = (b.window * 4).max(Duration::from_secs(120));
         match timeout(budget, b.once()).await {
             Ok(Ok(_)) => {}
@@ -164,8 +165,9 @@ impl<M: Matcher> Batcher<M> {
         Ok(ids)
     }
 
-    /// Runs the matcher once per open market (or once, if it ignores the market, or if
-    /// no market is open and only credits are due). Credits go in the first run only.
+    /// Runs the matcher once per group of `DEFAULT_MARKETS` open markets, padded with 0,
+    /// so every window runs the same circuit whichever markets have orders (and at least
+    /// once, for credits). Credits go in the first run only.
     async fn clear(
         &self,
         links: &Links,
@@ -174,26 +176,24 @@ impl<M: Matcher> Batcher<M> {
         orders: &[[u8; ORDER_LEN]],
         accounts: &[[u8; ACCOUNT_LEN]],
     ) -> Result<(Vec<[u8; FILL_LEN]>, Vec<[u8; 8]>, Vec<(u32, u16)>)> {
-        let mut passes = if self.matcher.per_market() {
-            markets.to_vec()
-        } else {
-            vec![0]
-        };
+        let width = zpredict_circuit::DEFAULT_MARKETS;
+        let mut passes: Vec<Vec<u32>> = markets.chunks(width).map(<[u32]>::to_vec).collect();
         if passes.is_empty() {
-            passes.push(0);
+            passes.push(Vec::new());
         }
+        passes.iter_mut().for_each(|p| p.resize(width, 0));
         let zero = vec![0u64; credits.len()];
         let mut fills = vec![[0u8; FILL_LEN]; orders.len()];
         let mut table = accounts.to_vec();
         let mut prices = Vec::new();
-        for (k, market) in passes.into_iter().enumerate() {
+        for (k, group) in passes.into_iter().enumerate() {
             let credits = if k == 0 { credits } else { &zero };
             let Cleared {
                 fills: f,
                 balances,
-                price,
+                prices: p,
             } = (self.matcher)
-                .clear(links, market, credits, orders, &table)
+                .clear(links, &group, credits, orders, &table)
                 .await?;
             if f.len() < orders.len() || balances.len() < table.len() {
                 return Err(Error::Mpc("matcher returned too few shares".into()));
@@ -206,7 +206,8 @@ impl<M: Matcher> Batcher<M> {
                 .iter_mut()
                 .zip(&balances)
                 .for_each(|(row, b)| row[8..].copy_from_slice(b));
-            prices.extend(price.map(|p| (market, p)));
+            let priced = group.into_iter().zip(p).filter(|(m, _)| *m != 0);
+            prices.extend(priced.filter_map(|(m, p)| p.map(|p| (m, p))));
         }
         let balances = table
             .iter()

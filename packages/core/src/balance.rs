@@ -1,5 +1,5 @@
-//! One market's batch with collateral: an order only crosses if it is for the batch's
-//! market and its account can cover its worst case.
+//! A batch with collateral: an order only crosses if its market is in the batch and its
+//! account can cover its worst case.
 
 use crate::ACCOUNT_LEN;
 use crate::clearing::{Fill, clear, clearing_price};
@@ -38,26 +38,27 @@ pub struct Cleared {
     pub fills: Vec<Fill>,
     /// Every account row's new balance, in table order.
     pub balances: Vec<u64>,
-    /// [`clearing_price`] of `fills`; public.
-    pub price: Option<u16>,
+    /// [`clearing_price`] of each market slot's fills, in `markets` order; public.
+    pub prices: Vec<Option<u16>>,
 }
 
-/// [`clear`] for one market's batch, with collateral.
+/// [`clear`] for a batch holding several markets, with collateral.
 ///
-/// Orders for any other `market` are dummies. Then, in batch order, each order reserves
-/// its [`worst_case_cost`] from the first account row whose id matches its `account`.
-/// An order with no matching row, or whose worst case exceeds what is left after earlier
-/// orders' reservations, becomes a size-0 dummy. The survivors are cleared with
-/// [`clear`], and each account is debited what its orders actually paid, which never
-/// exceeds what they reserved.
-pub fn clear_with_balances(market: u32, batch: &[Order], accounts: &[Account]) -> Cleared {
+/// `markets` lists the batch's markets; `0` marks an unused slot. Orders for any market
+/// not listed are dummies. Then, in batch order, each order reserves its
+/// [`worst_case_cost`] from the first account row whose id matches its `account`. An
+/// order with no matching row, or whose worst case exceeds what is left after earlier
+/// orders' reservations (across all markets), becomes a size-0 dummy. Each market's
+/// survivors are cleared with [`clear`] on their own, and each account is debited what
+/// its orders actually paid, which never exceeds what they reserved.
+pub fn clear_with_balances(markets: &[u32], batch: &[Order], accounts: &[Account]) -> Cleared {
     let row = |o: &Order| accounts.iter().position(|a| a.id == o.account);
     let mut left: Vec<u64> = accounts.iter().map(|a| a.balance).collect();
     let funded: Vec<Order> = batch
         .iter()
         .map(|o| {
             let mut o = *o;
-            if o.market != market {
+            if o.market == 0 || !markets.contains(&o.market) {
                 o.size = 0;
             }
             let need = worst_case_cost(&o);
@@ -68,7 +69,17 @@ pub fn clear_with_balances(market: u32, batch: &[Order], accounts: &[Account]) -
             o
         })
         .collect();
-    let fills = clear(&funded);
+    let only = |m: u32| -> Vec<Order> {
+        let pick = |o: &Order| Order {
+            size: if o.market == m { o.size } else { 0 },
+            ..*o
+        };
+        funded.iter().map(pick).collect()
+    };
+    let mut distinct: Vec<u32> = markets.iter().copied().filter(|&m| m != 0).collect();
+    distinct.sort_unstable();
+    distinct.dedup();
+    let fills: Vec<Fill> = distinct.iter().flat_map(|&m| clear(&only(m))).collect();
     let mut balances: Vec<u64> = accounts.iter().map(|a| a.balance).collect();
     for f in &fills {
         for (i, cost) in [(f.yes, f.yes_cost), (f.no, f.no_cost)] {
@@ -76,11 +87,21 @@ pub fn clear_with_balances(market: u32, batch: &[Order], accounts: &[Account]) -
             balances[r] -= f.size as u64 * cost as u64;
         }
     }
-    let price = clearing_price(&fills);
+    let prices = markets
+        .iter()
+        .map(|&m| {
+            let of_m: Vec<Fill> = fills
+                .iter()
+                .filter(|f| m != 0 && funded[f.yes].market == m)
+                .copied()
+                .collect();
+            clearing_price(&of_m)
+        })
+        .collect();
     Cleared {
         fills,
         balances,
-        price,
+        prices,
     }
 }
 
@@ -98,9 +119,9 @@ mod tests {
         ord
     }
 
-    /// The fixture market is 7.
+    /// The fixture market is 7; 8 rides along with no orders, and one slot is unused.
     fn run(batch: &[Order], accounts: &[Account]) -> Cleared {
-        clear_with_balances(7, batch, accounts)
+        clear_with_balances(&[7, 8, 0], batch, accounts)
     }
 
     #[test]
@@ -110,7 +131,7 @@ mod tests {
         assert_eq!(c.fills, clear(&batch));
         // Worst cases 3×120 and 3×90 are covered exactly; actual costs 3×115 and 3×85.
         assert_eq!(c.balances, vec![360 - 345, 270 - 255]);
-        assert_eq!(c.price, Some(115));
+        assert_eq!(c.prices, vec![Some(115), None, None]);
     }
 
     #[test]
@@ -118,7 +139,7 @@ mod tests {
         let batch = [o(Side::Yes, 60, 3), with_account(o(Side::No, 45, 3), 9)];
         let c = run(&batch, &[acct(42, 359), acct(9, 270)]);
         assert!(c.fills.is_empty(), "YES needs 360, has 359");
-        assert_eq!((c.balances, c.price), (vec![359, 270], None));
+        assert_eq!((c.balances, c.prices), (vec![359, 270], vec![None; 3]));
         assert!(
             run(&batch, &[acct(42, 1000)]).fills.is_empty(),
             "no row for 9"
@@ -126,15 +147,40 @@ mod tests {
     }
 
     #[test]
-    fn other_markets_are_dummies() {
-        let mut other = with_account(o(Side::No, 45, 3), 9);
-        other.market = 8;
-        let c = run(
-            &[o(Side::Yes, 60, 3), other],
-            &[acct(42, 1000), acct(9, 1000)],
+    fn markets_clear_apart_with_their_own_prices() {
+        let in_market = |mut ord: Order, m: u32| {
+            ord.market = m;
+            ord
+        };
+        let batch = [
+            o(Side::Yes, 60, 3),
+            in_market(o(Side::Yes, 90, 1), 8),
+            with_account(o(Side::No, 45, 3), 9),
+            with_account(in_market(o(Side::No, 30, 1), 8), 9),
+        ];
+        let c = run(&batch, &[acct(42, 1000), acct(9, 1000)]);
+        // 7: YES 60 × NO 45 at 115. 8: YES 90 × NO 30 at 160. Never YES 90 × NO 45.
+        assert_eq!(c.prices, vec![Some(115), Some(160), None]);
+        assert_eq!(c.fills.len(), 2);
+        assert!(
+            c.fills
+                .iter()
+                .all(|f| batch[f.yes].market == batch[f.no].market)
         );
-        assert!(c.fills.is_empty());
-        assert_eq!(c.balances, vec![1000, 1000], "nothing reserved or debited");
+    }
+
+    #[test]
+    fn unlisted_markets_are_dummies_and_reserve_nothing() {
+        let mut other = o(Side::Yes, 99, 5);
+        other.market = 9; // not in [7, 8, 0]: reserves nothing, so the next order fits
+        let batch = [
+            other,
+            o(Side::Yes, 60, 3),
+            with_account(o(Side::No, 45, 3), 9),
+        ];
+        let c = run(&batch, &[acct(42, 360), acct(9, 1000)]);
+        assert_eq!(c.fills.len(), 1);
+        assert_eq!(c.balances, vec![360 - 345, 1000 - 255]);
     }
 
     #[test]
