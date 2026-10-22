@@ -34,6 +34,7 @@ TOML, one file per relayer (`config/r{0,1,2}.toml` are the local examples). Path
 | `oracle_lightwalletd` | The chain the markets are about (default `https://zec.rocks:443`, mainnet): tip height in `/health` and market progress, and the oracle resolvers. `""` = offline |
 | `escrow_lightwalletd` | The chain the escrow lives on (default `https://testnet.zec.rocks:443`): deposit scanning and payouts (settle). Never used for market data |
 | `batch_size` | Slots per batch, N; must be 16 (`zpredict_circuit::N`) for the real matcher |
+| `table_rows` | Balance-table rows per batch (default 32): the most funded accounts this deployment holds. ~15 s per market per window at 32, ~23 s at 64 |
 | `window_secs` | Batch window; batches start on wall-clock multiples of it |
 | `expire_batches` | A pending order missing from the intersection this long becomes `unfilled` |
 | `judge`, `judge_credit` | `POST /judge/claim` (mock), credit in half-ticks |
@@ -48,7 +49,7 @@ Every window, each relayer:
 1. Connects to both peers over **Noise `KK`** (`peers.rs`): X25519 static keys from config, ChaCha20-Poly1305, BLAKE2s. A handshake only completes with the expected peer key, and everything after it (coordination and all MPC traffic) is encrypted and authenticated. Party `i` dials higher parties and accepts lower ones.
 2. Swaps a hello: its pending orderIds, and from relayer 0 the balance-table row ids and the open market ids. The batch is the **sorted intersection** of the three pending sets, capped at N; the batch number is the max of the three. Orders past N wait for the next batch.
 3. Relayers 1 and 2 append zero-share rows for any table rows relayer 0 added (see Balances).
-4. Pads orders to N and the table to 16 rows with all-zero shares. A zero order rebuilds to price 0, which the circuit treats as a dummy; a zero row has balance 0.
+4. Pads orders to N and the table to `table_rows` rows with all-zero shares. A zero order rebuilds to price 0, which the circuit treats as a dummy; a zero row has balance 0.
 5. Runs the matcher (`mpc/`). A matcher that filters by market runs once per open market: fill shares XOR together and balances chain from run to run. The current circuit ignores the market, so it runs once.
 6. Stores its fill share per order, its new balance share per row and any public prices as one fsynced event, and expires orders that are `expire_batches` old and not in the intersection. These are orders where one of the browser's three POSTs never arrived.
 
@@ -68,9 +69,9 @@ The circuit (#46) checks collateral against a **balance table** of 16 rows (`id 
 ## Matchers
 
 - **`Polytune` (default, real):** `zpredict_circuit::run_party_on(links, party, orders, accounts)` over our Noise links (the relayer implements polytune's `Channel` for them). It returns fill shares and new balance shares.
-- **`InsecureLocalMatcher`:** parties 1 and 2 send their shares to party 0. Party 0 rebuilds the orders and the table, clears one market at a time with `zpredict_core::clear_with_balances`, and hands back fresh shares and the price. This mirrors the circuit once #49 lands. It is compiled only for tests or with `--features dev-insecure`, and even then used only when the config sets `insecure_matcher = true`. It prints a warning at startup. Never deploy it.
+- **`InsecureLocalMatcher`:** parties 1 and 2 send their shares to party 0. Party 0 rebuilds the orders and the table, clears one market at a time with `zpredict_core::clear_with_balances`, and hands back fresh shares and the price. It mirrors the circuit. It is compiled only for tests or with `--features dev-insecure`, and even then used only when the config sets `insecure_matcher = true`. It prints a warning at startup. Never deploy it.
 
-When #49 adds the market filter and a price output, `Polytune::per_market` returns true and `Cleared::price` comes from the circuit. The batch loop and storage already handle both.
+`Polytune` runs the circuit once per open market (`per_market`), passing that window's public credits in the first run, and takes `Cleared::price` from the circuit's public output.
 
 ## State (`state.rs`, `store.rs`)
 
@@ -88,8 +89,8 @@ There are no access logs, no client addresses (the peer address is never read), 
 
 ## Known gaps
 
-- **Market filter and public price (#49, circuit):** until they land, the real matcher can cross orders from different markets in one batch, and `lastPrice`/`history` stay empty. The relayer side is ready for both (see Matchers).
-- **Table size (#48):** a batch carries only the first 16 rows. Orders from accounts in later rows become dummies until the table grows.
-- **Top-up rows:** a credit to an account whose row has already been batched lands in a new row with the same id. The circuit spends only from the first row, and `/accounts` shows only the first row, so that money is held but not usable until the circuit merges rows with the same id or takes credits as an input.
+- **Table size (#48):** a batch carries only the first `table_rows` rows. Orders from accounts in later rows become dummies; rows are never reclaimed yet (that needs the withdrawal path, see DESIGN.md).
+- **Pending top-ups:** a credit to an account whose row has already been batched waits for the next window's MPC (one runs even without orders), so `/accounts` shows it a window late.
+- **Credits trust relayer 0:** relayers 1 and 2 take relayer 0's announced credits as given. They should check them against their own escrow scan once the settle scanner feeds deposits.
 - **Outcome signatures:** markets resolve from the oracle lightwalletd, but `outcomeSig` waits for the FROST signer.
 - **Crash between MPC and fsync:** a relayer that crashes in that gap re-pends orders its peers recorded as filled, and its balance shares go stale. They then expire on that relayer, and the sdk reports a disagreement for those orders.

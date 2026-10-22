@@ -3,10 +3,12 @@
 //!    (random and public), and from relayer 0 the balance-table row ids and the open
 //!    markets. The batch is the sorted intersection of the pending sets, capped at N;
 //!    the batch number is the max of the three, so counters stay in sync;
-//! 2. relayers 1 and 2 append zero-share rows for table rows relayer 0 added;
+//! 2. relayers 1 and 2 append zero-share rows for table rows relayer 0 added, and all
+//!    take relayer 0's pending credits (public deposit amounts per row);
 //! 3. pad orders to N and the table to its row count with all-zero shares;
 //! 4. run the [`Matcher`] as one MPC party: once per open market if it filters by market
-//!    (fill shares XOR together, balances chain), else once;
+//!    (fill shares XOR together, balances chain, credits go in the first run), else
+//!    once. A window with credits but no orders still runs, so top-ups land;
 //! 5. store fill shares, new balance shares and public prices in one event, and expire
 //!    orders that never reached all three relayers (`unfilled`).
 //!
@@ -44,9 +46,12 @@ pub struct Batcher<M> {
 struct Hello {
     batch: u64,
     pending: Vec<String>,
-    /// Relayer 0 only: table row ids in order, and open market ids.
+    /// Relayer 0 only: table row ids in order, open market ids, and pending credits
+    /// per row (half-ticks).
     rows: Vec<u64>,
     markets: Vec<u32>,
+    #[serde(default)]
+    credits: Vec<u64>,
 }
 
 /// Runs forever. The matcher's futures need not be `Send`, so call this through
@@ -89,6 +94,7 @@ impl<M: Matcher> Batcher<M> {
                 pending: s.pending(),
                 rows: s.table.ids(),
                 markets: open.map(|m| m.id).collect(),
+                credits: s.table.credits(self.rows, self.rows),
             }
         };
         let hello = serde_json::to_vec(&mine)?;
@@ -108,6 +114,12 @@ impl<M: Matcher> Batcher<M> {
         let lead = lead.unwrap_or(mine);
         let ids: Vec<String> = common.iter().take(self.slots).cloned().collect();
         let n = lead.rows.len().min(self.rows);
+        // Rows past `n` sit out this batch, so their credits wait too.
+        let mut credits = vec![0u64; self.rows];
+        for (c, l) in credits.iter_mut().zip(&lead.credits).take(n) {
+            *c = *l;
+        }
+        let run = !ids.is_empty() || credits.iter().any(|&c| c > 0);
         let (expired, orders, accounts) = {
             let mut s = self.state.lock().expect("state lock");
             if links.party != 0 {
@@ -115,7 +127,7 @@ impl<M: Matcher> Batcher<M> {
                 if !missing.is_empty() {
                     s.record(Event::Rows { ids: missing })?;
                 }
-            } else if !ids.is_empty() {
+            } else if run {
                 s.record(Event::Seal { rows: n })?;
             }
             let mut orders = vec![[0u8; ORDER_LEN]; self.slots];
@@ -129,14 +141,14 @@ impl<M: Matcher> Batcher<M> {
             (expired, orders, s.table.shares(n, self.rows))
         };
 
-        let (fills, balances, prices) = if ids.is_empty() {
-            Default::default()
-        } else {
-            self.clear(&links, &lead.markets, &orders, &accounts)
+        let (fills, balances, prices) = if run {
+            self.clear(&links, &lead.markets, &credits, &orders, &accounts)
                 .await?
+        } else {
+            Default::default()
         };
         let mut s = self.state.lock().expect("state lock");
-        if ids.is_empty() && expired.is_empty() {
+        if !run && expired.is_empty() {
             s.batch = batch + 1;
             return Ok(ids);
         }
@@ -147,32 +159,42 @@ impl<M: Matcher> Batcher<M> {
             balances: balances.iter().take(n).map(hex::encode).collect(),
             prices,
             expired,
+            credits: if run { credits } else { Vec::new() },
         })?;
         Ok(ids)
     }
 
-    /// Runs the matcher once per open market (or once, if it ignores the market).
+    /// Runs the matcher once per open market (or once, if it ignores the market, or if
+    /// no market is open and only credits are due). Credits go in the first run only.
     async fn clear(
         &self,
         links: &Links,
         markets: &[u32],
+        credits: &[u64],
         orders: &[[u8; ORDER_LEN]],
         accounts: &[[u8; ACCOUNT_LEN]],
     ) -> Result<(Vec<[u8; FILL_LEN]>, Vec<[u8; 8]>, Vec<(u32, u16)>)> {
-        let passes = if self.matcher.per_market() {
+        let mut passes = if self.matcher.per_market() {
             markets.to_vec()
         } else {
             vec![0]
         };
+        if passes.is_empty() {
+            passes.push(0);
+        }
+        let zero = vec![0u64; credits.len()];
         let mut fills = vec![[0u8; FILL_LEN]; orders.len()];
         let mut table = accounts.to_vec();
         let mut prices = Vec::new();
-        for market in passes {
+        for (k, market) in passes.into_iter().enumerate() {
+            let credits = if k == 0 { credits } else { &zero };
             let Cleared {
                 fills: f,
                 balances,
                 price,
-            } = self.matcher.clear(links, market, orders, &table).await?;
+            } = (self.matcher)
+                .clear(links, market, credits, orders, &table)
+                .await?;
             if f.len() < orders.len() || balances.len() < table.len() {
                 return Err(Error::Mpc("matcher returned too few shares".into()));
             }

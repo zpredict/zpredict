@@ -120,7 +120,9 @@ impl State {
                 balances,
                 prices,
                 expired,
+                credits,
             } => {
+                self.table.applied(&credits);
                 let balances: Vec<[u8; BALANCE_LEN]> =
                     (balances.iter()).map(|b| hex_array(b)).collect();
                 self.table.set_balances(&balances);
@@ -217,9 +219,9 @@ impl State {
     }
 
     /// Deposit entry point (settle scanner, judge mode). Every relayer sees the amount
-    /// anyway (shared viewing key), so a deposit of A is shared `(A, 0, 0)`: relayer 0
-    /// credits its row (`table.rs`); relayers 1 and 2 pick the row up from relayer 0 at
-    /// the next batch, with zero shares, so for them this is a no-op.
+    /// anyway (shared viewing key), so relayer 0 credits it (`table.rs`): into a fresh
+    /// row's `(A, 0, 0)` share, or as a public credit the next batch's circuit adds.
+    /// Relayers 1 and 2 learn both from relayer 0 at the next batch; here a no-op.
     pub fn credit(&mut self, tag: &str, amount: u64) -> Result<()> {
         if self.index != 0 {
             return Ok(());

@@ -36,6 +36,9 @@ pub enum Event {
         balances: Vec<String>,
         prices: Vec<(u32, u16)>,
         expired: Vec<String>,
+        /// Public credits the batch added to each row (relayer 0 clears them as pending).
+        #[serde(default)]
+        credits: Vec<u64>,
     },
     /// Relayer 0: account `id` was credited `amount` half-ticks (see `table.rs`).
     Credit { id: u64, amount: u64 },
