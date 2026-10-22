@@ -1,5 +1,5 @@
-# Static server for apps/landing and apps/web. TLS ends at Traefik (Coolify); this
-# listens on plain :8080 as an unprivileged user. No `log` directive, so no access
+# Static server for apps/landing and apps/web. TLS ends at Cloudflare and the host nginx
+# (deploy/production/nginx.conf); this listens on plain :8080 as an unprivileged user. No `log` directive, so no access
 # logs and no client IPs are ever written.
 {
 	admin off
