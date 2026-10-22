@@ -1,41 +1,44 @@
-# PENDING (needs apps/relayer on main, PR #47): the three hosted testnet relayers as one
-# Coolify "Docker Compose" resource. Each API is published on loopback only; host nginx
-# (nginx.conf) serves it as https://rN.zpredict.site.
+# The three hosted testnet relayers as one Coolify "Docker Compose" resource. Each API is
+# published on loopback only; host nginx (nginx.conf) serves it as https://rN.zpredict.site.
 # MPC peer traffic (Noise KK, encrypted) stays on the internal `peers` network.
 #
 # Demo only: all three run on one VM, so one operator could read every share. The
 # security model needs three independent operators; see deploy/README.md.
 #
 # Secrets: set in Coolify (Environment Variables), never in git. R{0,1,2}_KEY are the
-# Noise private keys, R{0,1,2}_PUB the public keys (`zpredict-relayer keygen`).
-# R{0,1,2}_MEMO_PUB (optional): deposit-memo public keys from `settle memo-key`.
+# Noise private keys, R{0,1,2}_PUB the public keys (hex). Compose mounts them as files
+# under /run/secrets, so the private key is never in a container's environment.
+# Deposit-memo public keys (`settle memo-key`), once they exist: add secrets rN_memo_pub
+# (environment: RN_MEMO_PUB) and ZPREDICT_MEMO_KEY_FILE=/run/secrets/rN_memo_pub per service.
 
+# The image is built once (by r0) and shared, so three cargo builds never run at once.
 x-relayer: &relayer
-  build:
-    context: ../..
-    dockerfile: deploy/production/relayer.Dockerfile
+  image: zpredict-relayer:local
+  pull_policy: never
   restart: unless-stopped
-  # Measured on an M4 Pro (#66): peak RSS ~0.63 GB per party at batch_size 8 and 32
-  # rows (compile included); 16 slots peaks at 1.0-1.4 GB and would not fit this cap.
-  mem_limit: 1g
+  # Peak RSS in a real batch on the VPS (8 slots, 32 rows; docker stats, ~2 s samples):
+  # r0 496 MiB, r1 303, r2 354. Party 0 does more of the work, so it gets a larger cap.
+  mem_limit: 512m
+  memswap_limit: 512m
   cpus: 2
-  read_only: true
-  tmpfs:
-    - /run/zpredict:mode=0700,uid=10001,size=1m
-    - /tmp
-  environment: &env
-    RELAYER_PUB_0: ${R0_PUB:?}
-    RELAYER_PUB_1: ${R1_PUB:?}
-    RELAYER_PUB_2: ${R2_PUB:?}
+  # No read_only: compose copies env-sourced secrets into the container filesystem.
 
 services:
   r0:
     <<: *relayer
+    build:
+      context: ../..
+      dockerfile: deploy/production/relayer.Dockerfile
+    pull_policy: build
+    mem_limit: 768m
+    memswap_limit: 768m
     environment:
-      <<: *env
       ZPREDICT_INDEX: 0
-      RELAYER_KEY: ${R0_KEY:?}
-      MEMO_PUB: ${R0_MEMO_PUB:-}
+    secrets:
+      - { source: r0_key, target: relayer_key }
+      - r0_pub
+      - r1_pub
+      - r2_pub
     volumes: [r0-data:/data]
     ports: ["127.0.0.1:3172:8080"]
     networks:
@@ -43,11 +46,15 @@ services:
       peers: { ipv4_address: 10.0.250.10 }
   r1:
     <<: *relayer
+    depends_on: [r0]
     environment:
-      <<: *env
       ZPREDICT_INDEX: 1
-      RELAYER_KEY: ${R1_KEY:?}
-      MEMO_PUB: ${R1_MEMO_PUB:-}
+      ZPREDICT_JUDGE: "false"
+    secrets:
+      - { source: r1_key, target: relayer_key }
+      - r0_pub
+      - r1_pub
+      - r2_pub
     volumes: [r1-data:/data]
     ports: ["127.0.0.1:3173:8080"]
     networks:
@@ -55,16 +62,28 @@ services:
       peers: { ipv4_address: 10.0.250.11 }
   r2:
     <<: *relayer
+    depends_on: [r0]
     environment:
-      <<: *env
       ZPREDICT_INDEX: 2
-      RELAYER_KEY: ${R2_KEY:?}
-      MEMO_PUB: ${R2_MEMO_PUB:-}
+      ZPREDICT_JUDGE: "false"
+    secrets:
+      - { source: r2_key, target: relayer_key }
+      - r0_pub
+      - r1_pub
+      - r2_pub
     volumes: [r2-data:/data]
     ports: ["127.0.0.1:3174:8080"]
     networks:
       default:
       peers: { ipv4_address: 10.0.250.12 }
+
+secrets:
+  r0_key: { environment: R0_KEY }
+  r1_key: { environment: R1_KEY }
+  r2_key: { environment: R2_KEY }
+  r0_pub: { environment: R0_PUB }
+  r1_pub: { environment: R1_PUB }
+  r2_pub: { environment: R2_PUB }
 
 networks:
   peers:

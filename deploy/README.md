@@ -4,7 +4,7 @@
 |---|---|
 | `regtest/` | Local Zebra regtest + lightwalletd (`scripts/regtest-up.sh`) |
 | `static/` | Caddyfile and build step shared by `apps/landing/Dockerfile` and `apps/web/Dockerfile` |
-| `production/` | Hosted demo: relayer image, compose, host nginx |
+| `production/` | Hosted demo: relayer image, compose, config, host nginx |
 
 ## Hosted demo
 
@@ -17,7 +17,7 @@
 |---|---|---|
 | https://zpredict.site | app `landing` (`apps/landing/Dockerfile`) | 3170 |
 | https://app.zpredict.site | app `web` (`apps/web/Dockerfile`) | 3171 |
-| https://r0.zpredict.site … r2 | compose `relayers` (`production/compose.yaml`), **pending #47** | 3172–3174 |
+| https://r0.zpredict.site … r2 | compose `relayers` (`production/compose.yaml`) | 3172–3174 |
 
 Request path: browser → Cloudflare (proxied) → host nginx on the VPS (TLS, `production/nginx.conf`) → container on `127.0.0.1:<port>`. Coolify builds the images on the VPS from this repo; nothing is pushed to a registry.
 
@@ -36,13 +36,16 @@ Request path: browser → Cloudflare (proxied) → host nginx on the VPS (TLS, `
 
 ### Rollback
 
-Coolify UI → resource → **Deployments** → pick an earlier build → **Redeploy** (keeps the old image), or point the resource at an older commit/branch and deploy. Relayer state lives in the volumes `r{0,1,2}-data` and survives redeploys; never delete them while orders are open.
+Coolify UI → resource → **Deployments** → pick an earlier build → **Redeploy** (keeps the old image), or point the resource at an older commit/branch and deploy. The relayers share one `zpredict-relayer:local` tag, so their rollback is a redeploy of an older commit (a rebuild, ~3.5 min). Relayer state lives in the volumes `r{0,1,2}-data` and survives redeploys; never delete them while orders are open.
 
-### Relayers (pending #47)
+### Relayers
 
-1. Generate three key pairs (`zpredict-relayer keygen rN`) on a trusted machine.
-2. Coolify → project `zpredict` → **+ New → Docker Compose** from this repo, compose file `deploy/production/compose.yaml`. It publishes r0/r1/r2 on `127.0.0.1:3172–3174`; set no Coolify domains (host nginx serves them).
-3. Secrets, in the resource's **Environment Variables** (never in git): `R0_KEY`, `R1_KEY`, `R2_KEY` (private, hex) and `R0_PUB`, `R1_PUB`, `R2_PUB`. Coolify stores them encrypted; `entrypoint.sh` writes them to a tmpfs and removes the private key from the environment before the relayer starts. FROST key shares and the viewing-key passphrase go in the same place once the signer lands.
-4. Deploy, then check `https://rN.zpredict.site/health` (`peers` all `true`). Measure memory over a few batches with `docker stats` and set `mem_limit` (1 GiB placeholder).
+`production/compose.yaml` runs three containers from one image (`production/relayer.Dockerfile`: `cargo build --release` on the VPS, then only the binary on distroless `cc-debian13:nonroot`). They share `production/relayer.toml`; `ZPREDICT_INDEX` picks the party, and judge mode is served by relayer 0 only (testnet). MPC traffic runs on the internal `peers` network (static IPs, Noise KK). Each party has its own volume `r{0,1,2}-data` for its event log.
 
-lightwalletd is `testnet.zec.rocks:443` (no local Zebra: not enough disk or RAM on this VM). Containers restart `unless-stopped`; Docker's healthcheck polls `/health`.
+- **Secrets:** Coolify → `relayers` → Environment Variables: `R0_KEY`, `R1_KEY`, `R2_KEY` (Noise private keys, hex) and `R0_PUB`, `R1_PUB`, `R2_PUB`. Compose mounts them as files under `/run/secrets` (so the private key never sits in a container's environment); Coolify stores them encrypted. New keys: `zpredict-relayer keygen rN` (or any X25519 pair), replace all six, redeploy. FROST key shares and the viewing-key passphrase go in the same place once the signer lands.
+- **Health:** `https://rN.zpredict.site/health` (`peers` all `true` once a batch has run); the Docker healthcheck runs `zpredict-relayer health 127.0.0.1:8080` (the image has no shell). `restart: unless-stopped`.
+- **Measured** on the VPS (8 slots, 32 table rows, three markets in one multi-market MPC run, two crossing judge orders): one batch ≈ 23 s at about one core per party; peak RSS r0 496 MiB, r1 303 MiB, r2 354 MiB; ~15–55 MiB idle. Order to fill in the browser: 35 s. So `window_secs = 25` (batch + 2) and caps r0 768 MiB, r1/r2 512 MiB. If the host gets tight, raise `window_secs` rather than lowering the caps.
+- **Markets:** keep the deployed list to the three demo markets (NU7 activation, Ironwood ≥ 900k notes, ≥ 5 shielded actions). One MPC run clears up to 4 markets; a fifth would need a second run per window and slow every judge's fill.
+- **Build** takes about 3.5 min on the VPS (`CARGO_BUILD_JOBS=4` keeps rustc's memory down; r1/r2 reuse r0's image). Each build leaves several GB of BuildKit cache; the host's cron runs `docker builder prune -af` every 6 h, so after many redeploys in a row run it by hand and keep > 10 GB free.
+
+lightwalletd: the oracle reads mainnet (`zec.rocks:443`), the escrow testnet (`testnet.zec.rocks:443`). No local Zebra: not enough disk or RAM on this VM.
