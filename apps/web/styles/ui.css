@@ -1,0 +1,191 @@
+/* Primitives: pills, buttons, CTA, badges, cards, panes. */
+
+.pill {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 46px;
+	padding: 16px;
+	border-radius: var(--r-pill);
+	font-family: var(--font-display);
+	font-weight: 500;
+	font-size: 16px;
+	line-height: 14px;
+	white-space: nowrap;
+	transition: background-color 0.18s ease;
+}
+
+.pill:hover,
+.pill.is-active {
+	background: rgba(255, 255, 255, 0.1);
+}
+
+.btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 46px;
+	padding: 0 16px;
+	border-radius: var(--r-pill);
+	border: 1px solid transparent;
+	font-family: var(--font-display);
+	font-weight: 500;
+	font-size: 16px;
+	letter-spacing: -0.02em;
+	white-space: nowrap;
+}
+
+.btn--white {
+	background: var(--white);
+	color: var(--ink);
+	min-width: 132px;
+}
+
+.btn--ghost {
+	background: transparent;
+	border-color: var(--hairline);
+}
+
+.btn--ghost:hover {
+	background: rgba(255, 255, 255, 0.06);
+}
+
+/* Template CTA: a label block and an arrow block, both white, overlapping by 8px. */
+.cta {
+	position: relative;
+	display: flex;
+	width: 244px;
+	height: 63px;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var(--ink);
+	text-align: left;
+}
+
+.cta__label {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 189px;
+	height: 63px;
+	padding: 10px 24px;
+	border-radius: var(--r-cta);
+	background: var(--white);
+	font-family: var(--font-display);
+	font-weight: 500;
+	font-size: 19px;
+	line-height: 19px;
+	white-space: nowrap;
+}
+
+.cta__arrow {
+	position: absolute;
+	left: 181px;
+	top: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 63px;
+	height: 63px;
+	border-radius: var(--r-cta);
+	background: var(--white);
+	transition: transform 0.25s var(--ease);
+}
+
+.cta__arrow .arrow {
+	transform: rotate(90deg);
+}
+
+.cta:not(:disabled):hover .cta__arrow {
+	transform: translateX(4px);
+}
+
+.badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 34px;
+	padding: 0 14px;
+	border: 1px solid var(--hairline);
+	border-radius: var(--r-tag);
+	background: var(--tag-fill);
+	color: rgba(255, 255, 255, 0.8);
+	font-size: 14px;
+	line-height: 18px;
+	white-space: nowrap;
+}
+
+.badge--sm {
+	height: 24px;
+	padding: 0 10px;
+	font-size: 12px;
+}
+
+.badge--mock {
+	color: var(--zec);
+	border-color: var(--zec-line);
+	background: var(--zec-soft);
+}
+
+.badge--yes {
+	color: var(--yes);
+	border-color: rgba(143, 227, 168, 0.35);
+}
+
+.badge--no {
+	color: var(--no);
+	border-color: rgba(255, 155, 143, 0.35);
+}
+
+.badge--you {
+	color: var(--ink);
+	background: var(--zec);
+	border-color: var(--zec);
+	font-family: var(--font-mono);
+	letter-spacing: 0;
+}
+
+.badge--live::before {
+	content: "";
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--yes);
+	box-shadow: 0 0 8px var(--yes);
+}
+
+.card {
+	border: 1px solid var(--hairline);
+	border-radius: var(--r-card);
+	background: var(--surface-card);
+	padding: 20px;
+}
+
+.pane {
+	position: relative;
+	border-radius: var(--r-pane);
+	overflow: hidden;
+	min-width: 0;
+}
+
+.pane--surface {
+	background: var(--surface-pane);
+}
+
+.pane--media {
+	background: #070707;
+}
+
+.dot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: #555;
+	flex: none;
+}
+
+.dot.is-up {
+	background: var(--yes);
+	box-shadow: 0 0 10px rgba(143, 227, 168, 0.6);
+}

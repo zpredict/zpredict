@@ -1,0 +1,104 @@
+.tm {
+	display: grid;
+	align-content: start;
+	gap: 22px;
+	padding: clamp(22px, 4vw, 48px);
+}
+
+.tm__eyebrow {
+	font-size: 14px;
+	opacity: 0.45;
+}
+
+.tm__title {
+	font-family: var(--font-display);
+	font-weight: 500;
+	font-size: clamp(48px, 7vw, 96px);
+	line-height: 0.9;
+	letter-spacing: -0.05em;
+	text-transform: uppercase;
+	animation: line-enter 420ms 200ms var(--ease) both;
+}
+
+.tm__statement {
+	max-width: 640px;
+	font-family: var(--font-display);
+	font-size: clamp(18px, 1.8vw, 24px);
+	line-height: 1.25;
+}
+
+.ttable {
+	overflow-x: auto;
+	border: 1px solid var(--hairline);
+	border-radius: var(--r-card);
+	background: var(--surface-card);
+}
+
+.ttable table {
+	width: 100%;
+	min-width: 640px;
+	border-collapse: collapse;
+}
+
+.ttable th,
+.ttable td {
+	padding: 16px 18px;
+	border-bottom: 1px solid var(--hairline);
+	text-align: left;
+	vertical-align: top;
+	font-size: 15px;
+	line-height: 1.45;
+}
+
+.ttable tr:last-child > * {
+	border-bottom: 0;
+}
+
+.ttable thead th {
+	color: var(--dim);
+	font-size: 12px;
+	font-weight: 400;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.ttable tbody th {
+	font-family: var(--font-display);
+	font-weight: 500;
+	font-size: 17px;
+	white-space: nowrap;
+}
+
+.ttable td {
+	color: rgba(255, 255, 255, 0.75);
+}
+
+.tm__cards {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--gap);
+}
+
+.bullets__title {
+	margin-bottom: 12px;
+	font-family: var(--font-display);
+	font-weight: 500;
+	font-size: 20px;
+	letter-spacing: -0.03em;
+}
+
+.bullets ul {
+	display: grid;
+	gap: 8px;
+	margin: 0;
+	padding-left: 18px;
+	color: rgba(255, 255, 255, 0.78);
+	font-size: 14px;
+	line-height: 1.5;
+}
+
+@media (max-width: 899.98px) {
+	.tm__cards {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
