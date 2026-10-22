@@ -6,6 +6,7 @@
 
 mod backend;
 mod chain;
+mod error;
 mod fixture;
 mod market;
 mod outcome;
@@ -14,10 +15,9 @@ mod resolver;
 
 pub use backend::Lightwalletd;
 pub use chain::{Block, CONFIRMATIONS, Chain, confirmed_block};
+pub use error::{Error, Result};
 pub use fixture::FixtureChain;
 pub use market::{Market, Status};
 pub use outcome::{Outcome, Resolution};
 pub use registry::Registry;
 pub use resolver::Resolver;
-
-pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;

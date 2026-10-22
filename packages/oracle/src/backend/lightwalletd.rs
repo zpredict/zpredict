@@ -12,7 +12,7 @@ use std::time::Duration;
 use prost::Message;
 
 use self::proto::{BlockId, ChainSpec, CompactBlock, RawTransaction, TxFilter};
-use crate::{Block, Chain, Result};
+use crate::{Block, Chain, Error, Result};
 
 pub struct Lightwalletd {
     url: String,
@@ -32,11 +32,18 @@ impl Lightwalletd {
         })
     }
 
-    fn call<Req: Message, Resp: Message + Default>(&self, method: &str, req: &Req) -> Result<Resp> {
-        let len = u32::try_from(req.encoded_len())?;
+    /// One unary gRPC call: a 5-byte frame header (compressed flag, length)
+    /// followed by the protobuf message, both ways.
+    fn call<Req: Message, Resp: Message + Default>(
+        &self,
+        method: &'static str,
+        req: &Req,
+    ) -> Result<Resp> {
+        let msg = req.encode_to_vec();
+        let len = u32::try_from(msg.len()).expect("request messages are tiny");
         let mut body = vec![0u8]; // uncompressed
         body.extend_from_slice(&len.to_be_bytes());
-        req.encode(&mut body)?;
+        body.extend_from_slice(&msg);
         let url = format!(
             "{}/cash.z.wallet.sdk.rpc.CompactTxStreamer/{method}",
             self.url
@@ -52,12 +59,15 @@ impl Lightwalletd {
         // Errors arrive as a trailers-only response, i.e. in the headers.
         if let Some(status) = resp.headers().get("grpc-status").filter(|s| *s != "0") {
             let msg = resp.headers().get("grpc-message");
-            return Err(format!("{method}: grpc-status {status:?} {msg:?}").into());
+            let status = format!("{status:?} {msg:?}");
+            return Err(Error::Grpc { method, status });
         }
         let bytes = resp.bytes()?;
-        match bytes.first() {
-            Some(0) => Ok(Resp::decode(&bytes[5..])?),
-            _ => Err(format!("{method}: empty or compressed gRPC response").into()),
+        match bytes.split_at_checked(5) {
+            Some((head, msg)) if head[0] == 0 => Ok(Resp::decode(msg)?),
+            _ => Err(Error::BadReply(format!(
+                "{method}: empty or compressed gRPC response"
+            ))),
         }
     }
 }
@@ -65,7 +75,7 @@ impl Lightwalletd {
 impl Chain for Lightwalletd {
     fn tip(&self) -> Result<u32> {
         let id: BlockId = self.call("GetLatestBlock", &ChainSpec {})?;
-        Ok(u32::try_from(id.height)?)
+        to_u32(id.height, "tip height")
     }
 
     fn block(&self, height: u32) -> Result<Option<Block>> {
@@ -82,7 +92,7 @@ impl Chain for Lightwalletd {
             .vtx
             .iter()
             .find(|t| t.index == 0)
-            .ok_or("block has no coinbase")?;
+            .ok_or_else(|| Error::BadReply(format!("block {height} has no coinbase")))?;
         let filter = TxFilter {
             block: None,
             index: 0,
@@ -95,10 +105,10 @@ impl Chain for Lightwalletd {
             .map(|t| t.spends.len() + t.outputs.len() + t.actions.len() + t.ironwood_actions.len())
             .sum();
         Ok(Some(Block {
-            height: u32::try_from(b.height)?,
+            height: to_u32(b.height, "block height")?,
             hash: b.hash.iter().rev().map(|x| format!("{x:02x}")).collect(),
             branch_id: branch_id(&raw.data)?,
-            shielded_actions: u32::try_from(actions)?,
+            shielded_actions: to_u32(actions, "action count")?,
             ironwood_notes: b
                 .chain_metadata
                 .map_or(0, |m| m.ironwood_commitment_tree_size),
@@ -110,14 +120,20 @@ impl Chain for Lightwalletd {
 /// 8..12 (header, nVersionGroupId, nConsensusBranchId); older versions have none.
 fn branch_id(tx: &[u8]) -> Result<u32> {
     let word = |i: usize| -> Result<u32> {
-        let b = tx.get(i..i + 4).ok_or("transaction too short")?;
-        Ok(u32::from_le_bytes(b.try_into()?))
+        let b = tx.get(i..i + 4).and_then(|b| b.try_into().ok());
+        let b = b.ok_or_else(|| Error::BadReply("transaction too short".into()))?;
+        Ok(u32::from_le_bytes(b))
     };
     Ok(if word(0)? & 0x7fff_ffff >= 5 {
         word(8)?
     } else {
         0
     })
+}
+
+fn to_u32(v: impl TryInto<u32>, what: &str) -> Result<u32> {
+    v.try_into()
+        .map_err(|_| Error::BadReply(format!("{what} overflows u32")))
 }
 
 #[cfg(test)]

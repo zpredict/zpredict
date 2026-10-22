@@ -1,6 +1,6 @@
 //! In-memory [`Chain`] for tests.
 
-use crate::{Block, Chain, Result};
+use crate::{Block, Chain, Error, Result};
 
 #[derive(Default)]
 pub struct FixtureChain {
@@ -17,7 +17,9 @@ impl Chain for FixtureChain {
         if height > self.tip {
             return Ok(None);
         }
-        let block = self.blocks.iter().find(|b| b.height == height);
-        Ok(Some(block.cloned().ok_or("fixture has no such block")?))
+        let block = self.blocks.iter().find(|b| b.height == height).cloned();
+        let block =
+            block.ok_or_else(|| Error::BadReply(format!("fixture has no block {height}")))?;
+        Ok(Some(block))
     }
 }

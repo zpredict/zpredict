@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use crate::{Chain, Market, Resolution, Resolver, Result};
+use crate::{Chain, Error, Market, Resolution, Resolver, Result};
 
 #[derive(Default)]
 pub struct Registry(HashMap<String, Box<dyn Resolver>>);
@@ -18,7 +18,7 @@ impl Registry {
         let resolver = self
             .0
             .get(&market.plugin)
-            .ok_or_else(|| format!("unknown plugin {:?}", market.plugin))?;
+            .ok_or_else(|| Error::UnknownPlugin(market.plugin.clone()))?;
         resolver.resolve(market, chain)
     }
 }
