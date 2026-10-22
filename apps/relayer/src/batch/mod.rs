@@ -30,7 +30,9 @@
 mod clear;
 mod hello;
 mod resolution;
+mod rows;
 
+use std::sync::atomic::AtomicUsize;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -46,7 +48,7 @@ use crate::mpc::Matcher;
 use crate::peers::Peering;
 use crate::state::Shared;
 use crate::store::Event;
-use hello::{Agreed, Hello};
+use hello::Hello;
 
 pub struct Batcher<M: Matcher> {
     pub state: Shared,
@@ -67,6 +69,8 @@ pub struct Batcher<M: Matcher> {
     pub escrow: Option<Arc<Escrow>>,
     /// The preprocessed clearing run this relayer holds, with its id (see the module docs).
     pub pre: Mutex<Option<(u64, M::Pre)>>,
+    /// Relayer 0: table rows in use at the last log line.
+    pub logged_rows: AtomicUsize,
 }
 
 /// Runs forever. The matcher's futures need not be `Send`, so call this through
@@ -124,6 +128,7 @@ impl<M: Matcher> Batcher<M> {
         };
         let a = hello::exchange(&links, mine).await?;
         let n = a.lead.rows.len().min(self.rows);
+        self.log_rows(links.party, a.lead.rows.len());
         if links.party != 0 {
             let mut s = self.state.lock().expect("state lock");
             let missing = s.table.missing(&a.lead.rows)?;
@@ -228,34 +233,5 @@ impl<M: Matcher> Batcher<M> {
             *self.pre.lock().expect("pre lock") = Some((a.batch, pre));
         }
         Ok(ids)
-    }
-
-    /// This batch's credit per row: relayer 0's judge credits (only where this relayer
-    /// runs judge mode too) plus every deposit all three scanned whose account has one
-    /// of the first `n` rows. Returns the credits and the deposits they include.
-    fn credits(&self, a: &Agreed, n: usize) -> Result<(Vec<u64>, Vec<String>)> {
-        let mut credits = vec![0u64; self.rows];
-        if a.lead.credits.iter().any(|&c| c > 0) {
-            if !self.judge {
-                return Err(Error::Peer(
-                    "relayer 0 announced credits no scan backs".into(),
-                ));
-            }
-            // Rows past `n` sit out this batch, so their credits wait too.
-            for (c, l) in credits.iter_mut().zip(&a.lead.credits).take(n) {
-                *c = *l;
-            }
-        }
-        let mut applied = Vec::new();
-        for key in &a.deposits {
-            let Some((account, amount)) = hello::deposit(key) else {
-                continue;
-            };
-            if let Some(r) = a.lead.rows[..n].iter().position(|&id| id == account) {
-                credits[r] += amount;
-                applied.push(key.clone());
-            }
-        }
-        Ok((credits, applied))
     }
 }

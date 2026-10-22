@@ -25,6 +25,7 @@ pub fn app(index: usize, name: &str, judge: bool) -> (Router, crate::state::Shar
     let api = Api {
         state: state.clone(),
         origin: ORIGIN.into(),
+        table_rows: 2,
         judge_credit,
         memo_key: Some(memo_vector(index)),
         group_key: None,
@@ -179,37 +180,12 @@ async fn orders_contract() {
 }
 
 #[tokio::test]
-async fn health_accounts_judge_and_cors() {
+async fn health_and_cors() {
     let (app, _) = app(0, "api-misc", true);
     let (_, h) = call(&app, "GET", "/health", None).await;
     assert_eq!(
         h,
         json!({"relayer": 0, "height": 0, "batch": 1, "peers": [true, false, false]})
-    );
-
-    let (id, share) = ("07".repeat(8), "5a".repeat(16));
-    let claim = json!({"account": id, "keyShare": share});
-    let (code, _) = call(&app, "POST", "/judge/claim", Some(claim.clone())).await;
-    assert_eq!(code, StatusCode::OK);
-    let again = call(&app, "POST", "/judge/claim", Some(claim)).await.0;
-    assert_eq!(again, StatusCode::CONFLICT, "no second credit, no key swap");
-    let get = |id: &str, key: &str| {
-        let (app, path) = (app.clone(), format!("/accounts/{id}?key={key}"));
-        async move { call(&app, "GET", &path, None).await }
-    };
-    let (_, acct) = get(&id, &share).await;
-    assert_eq!(
-        acct,
-        json!({"balanceShare": hex::encode(5000u64.to_le_bytes())})
-    );
-    // Without this relayer's key share nobody reads the account's balance share.
-    assert_eq!(get(&id, &"5b".repeat(16)).await.0, StatusCode::FORBIDDEN);
-    let (_, zero) = get(&"ab".repeat(8), &share).await;
-    assert_eq!(zero, json!({"balanceShare": "0000000000000000"}));
-    assert_eq!(get("xyz", &share).await.0, StatusCode::NOT_FOUND);
-    assert_eq!(
-        call(&app, "GET", &format!("/accounts/{id}"), None).await.0,
-        StatusCode::NOT_FOUND
     );
 
     let pre = Request::builder()
@@ -235,36 +211,5 @@ async fn health_accounts_judge_and_cors() {
         res.headers()
             .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
             .is_none()
-    );
-}
-
-#[tokio::test]
-async fn judge_claims_register_keys_and_only_relayer_zero_credits() {
-    let claim = json!({"account": "01".repeat(8), "keyShare": "02".repeat(16)});
-    let (off, _) = app(0, "api-judge-off", false);
-    assert_eq!(
-        call(&off, "POST", "/judge/claim", Some(claim.clone()))
-            .await
-            .0,
-        StatusCode::NOT_FOUND
-    );
-    let (r1, state) = app(1, "api-judge-r1", true);
-    assert_eq!(
-        call(&r1, "POST", "/judge/claim", Some(claim)).await.0,
-        StatusCode::OK
-    );
-    let registered = {
-        let s = state.lock().unwrap();
-        let id = u64::from_le_bytes([1; 8]);
-        s.table.key_matches(id, &[2; 16]) && s.table.ids().is_empty()
-    };
-    assert!(
-        registered,
-        "relayer 1 registers the key, relayer 0 owns rows"
-    );
-    let bad = json!({"account": "01".repeat(8), "keyShare": "02"});
-    assert_eq!(
-        call(&r1, "POST", "/judge/claim", Some(bad)).await.0,
-        StatusCode::BAD_REQUEST
     );
 }

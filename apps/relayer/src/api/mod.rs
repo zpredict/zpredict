@@ -3,6 +3,8 @@
 //! Privacy: nothing here logs, reads the peer address, or sets cookies; CORS answers only
 //! the configured web origin; bodies are capped at 1 KiB.
 
+#[cfg(test)]
+mod account_tests;
 mod accounts;
 mod info;
 mod judge;
@@ -27,6 +29,8 @@ use crate::state::Shared;
 pub struct Api {
     pub state: Shared,
     pub origin: Arc<str>,
+    /// Balance-table rows a batch carries (`table_rows`): accounts past it wait.
+    pub table_rows: usize,
     /// `Some(credit)` when judge mode is on (relayer 0 only serves it).
     pub judge_credit: Option<u64>,
     /// This relayer's deposit-memo public key (X25519), served at `GET /memo-key`.

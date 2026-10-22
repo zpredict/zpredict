@@ -73,6 +73,7 @@ pub(super) fn relayers<M: Matcher>(
                 judge: true,
                 escrow: None,
                 pre: Default::default(),
+                logged_rows: Default::default(),
             };
             Relayer { http, batcher }
         })
