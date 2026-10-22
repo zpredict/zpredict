@@ -1,13 +1,14 @@
-//! `GET /health`, `GET /markets`, `GET /view`.
+//! `GET /health`, `GET /markets`, `GET /view`, `GET /memo-key`.
 
 use axum::Json;
 use axum::extract::{Query, State};
+use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use zpredict_oracle::Market;
 
-use super::Api;
+use super::{Api, fail};
 
 /// Most items one `/view` call returns.
 const VIEW_PAGE: usize = 200;
@@ -60,4 +61,13 @@ pub async fn view(State(api): State<Api>, Query(q): Query<After>) -> Response {
         .expect("state lock")
         .view_after(q.after, VIEW_PAGE);
     Json(json!({ "items": items })).into_response()
+}
+
+/// The X25519 key the browser encrypts this relayer's slot of the deposit memo to.
+pub async fn memo_key(State(api): State<Api>) -> Response {
+    let Some(key) = api.memo_key else {
+        return fail(StatusCode::NOT_FOUND, "memo key not configured");
+    };
+    let relayer = api.state.lock().expect("state lock").index;
+    Json(json!({ "relayer": relayer, "memoKey": hex::encode(key) })).into_response()
 }

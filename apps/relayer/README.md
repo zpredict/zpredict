@@ -37,6 +37,7 @@ TOML, one file per relayer (`config/r{0,1,2}.toml` are the local examples). Path
 | `window_secs` | Batch window; batches start on wall-clock multiples of it |
 | `expire_batches` | A pending order missing from the intersection this long becomes `unfilled` |
 | `judge`, `judge_credit` | `POST /judge/claim` (mock), credit in half-ticks |
+| `memo_key_file` | Optional. Hex file holding this relayer's deposit-memo public key: the `pubkey` printed by `settle memo-key`, whose sealed secret stays with the escrow scanner. It is served at `GET /memo-key`, and without it that route answers 404. `ZPREDICT_STORE_KEY` (the settle store key) is never read as config |
 | `data_dir` | Event log directory |
 | `insecure_matcher` | Plaintext dev matcher; needs the `dev-insecure` cargo feature as well |
 | `[[markets]]` | The `Market` records served by `/markets` |

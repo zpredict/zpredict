@@ -75,11 +75,13 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
     }
 
     let judge_credit = c.judge.then_some(c.judge_credit);
+    let memo_key = c.memo_key_file.as_deref().map(read_key).transpose()?;
     let origin = c.web_origin.as_str().into();
     let app = api::router(Api {
         state,
         origin,
         judge_credit,
+        memo_key,
     });
     axum::serve(http, app).await?;
     Ok(())
