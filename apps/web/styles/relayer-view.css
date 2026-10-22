@@ -258,7 +258,7 @@
 
 @keyframes row-in {
 	from {
-		opacity: 0;
+		opacity: 0.3;
 		filter: blur(3px);
 		transform: translateY(-6px);
 	}

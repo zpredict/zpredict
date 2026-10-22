@@ -13,10 +13,8 @@ for (const b of bots) account(b).bal = 10n ** 12n;
 /** Drifting fair YES price per market, in cents. */
 const fair = new Map(markets.map((m) => [m.id, rnd(40, 64)]));
 
-function order(m) {
-	const f = clamp(fair.get(m.id) + rnd(-1, 1), 15, 85);
-	fair.set(m.id, f);
-	const side = rnd(0, 1);
+function order(m, side) {
+	const f = fair.get(m.id);
 	const price = clamp((side === 0 ? f : 100 - f) + rnd(-6, 8), 1, 99);
 	const bytes = encodeOrder({
 		market: m.id,
@@ -31,7 +29,11 @@ function order(m) {
 	});
 }
 
-/** One order per market per tick, so every batch has counterparties on both sides. */
+/** A YES and a NO quote per market per tick, so every batch has counterparties on both sides. */
 export function botOrders() {
-	for (const m of markets) order(m);
+	for (const m of markets) {
+		fair.set(m.id, clamp(fair.get(m.id) + rnd(-1, 1), 30, 70));
+		order(m, 0);
+		order(m, 1);
+	}
 }

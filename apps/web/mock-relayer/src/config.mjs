@@ -1,7 +1,7 @@
 // Mock relayer settings; override with env vars.
 export const PORTS = (process.env.MOCK_PORTS ?? "4101,4102,4103").split(",").map(Number);
 export const BATCH_MS = Number(process.env.MOCK_BATCH_MS ?? 5000);
-export const BOT_MS = Number(process.env.MOCK_BOT_MS ?? 1500);
+export const BOT_MS = Number(process.env.MOCK_BOT_MS ?? 2000);
 /** Judge mode credit: 25 units in half-ticks (1 unit = 200). */
 export const JUDGE_CREDIT = 25n * 200n;
 /** View items kept per relayer. */
