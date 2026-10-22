@@ -1,6 +1,7 @@
 "use client";
-// The demo account: a random tag kept only in this browser, and its balance,
+// The account: a random tag kept only in this browser, and its balance,
 // combined from the three relayers' XOR balance shares.
+import { newTag } from "@zpredict/sdk";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { POLL_MS } from "@/lib/config";
 import { claimJudge, fetchBalance } from "@/lib/relayer";
@@ -11,6 +12,8 @@ interface Account {
 	tag: string | null;
 	balance: bigint | null;
 	claim: () => Promise<void>;
+	/** A fresh tag made in this browser, for a real deposit; never sent anywhere in clear. */
+	create: () => string;
 	forget: () => void;
 	refresh: () => Promise<void>;
 }
@@ -41,6 +44,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 		setTag(r.tag);
 	}, []);
 
+	const create = useCallback(() => {
+		const t = newTag();
+		save(KEYS.tag, t);
+		setTag(t);
+		return t;
+	}, []);
+
 	const forget = useCallback(() => {
 		save(KEYS.tag, null);
 		save(KEYS.orders, null);
@@ -48,5 +58,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 		setBalance(null);
 	}, []);
 
-	return <Ctx.Provider value={{ tag, balance, claim, forget, refresh }}>{children}</Ctx.Provider>;
+	return (
+		<Ctx.Provider value={{ tag, balance, claim, create, forget, refresh }}>{children}</Ctx.Provider>
+	);
 }

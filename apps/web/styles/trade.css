@@ -291,6 +291,65 @@
 	margin-top: 10px;
 }
 
+.deposit__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.deposit__actions .btn {
+	margin-top: 0;
+}
+
+.denoms {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 8px;
+	margin: 8px 0 0;
+	padding: 0;
+	border: 0;
+}
+
+.denom {
+	position: relative;
+	display: grid;
+	justify-items: center;
+	gap: 2px;
+	padding: 10px 6px;
+	border: 1px solid var(--hairline);
+	border-radius: 12px;
+	cursor: pointer;
+	font-family: var(--font-display);
+	font-weight: 500;
+	transition: background-color 0.18s ease;
+}
+
+.denom input {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.denom:hover {
+	background: rgba(255, 255, 255, 0.06);
+}
+
+.denom:has(input:focus-visible) {
+	outline: 2px solid rgba(255, 255, 255, 0.75);
+	outline-offset: 3px;
+}
+
+.denom.is-on {
+	background: var(--white);
+	border-color: var(--white);
+	color: var(--ink);
+}
+
+.denom.is-on .dim {
+	color: inherit;
+	opacity: 0.7;
+}
+
 @media (max-width: 599.98px) {
 	.trader {
 		padding: 18px;

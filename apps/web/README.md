@@ -23,6 +23,13 @@ Other scripts:
 
 Relayer URLs are baked in at build time from `NEXT_PUBLIC_RELAYERS="url0,url1,url2"`; the default is the hosted testnet relayers `https://r{0,1,2}.zpredict.site`.
 
+**Deposits** (trade page, "Deposit") work like this:
+1. Pick 1, 5 or 25 units.
+2. Create an account tag in the browser, or keep the judge tag.
+3. Copy or open the ZIP 321 payment request: the escrow UA, the exact amount, and a memo holding the tag encrypted to each relayer's `GET /memo-key`. Every view builds a fresh memo.
+
+The escrow address is baked in from `NEXT_PUBLIC_ESCROW_UA` (published by the DKG). Without it, the flow says it isn't live yet and points to judge mode. Try it locally with `NEXT_PUBLIC_ESCROW_UA=utest1… pnpm --filter @zpredict/web dev:mock`: the mock relayers serve memo keys, but they don't scan deposits.
+
 ## Privacy gate
 
 `scripts/privacy.mjs` runs after every build and fails it if any file in `out/` references a real host other than ours. Inert strings are allowed and listed in the script: XML namespaces, the core-js license banner, and doc links inside React/Next error messages (never fetched).
