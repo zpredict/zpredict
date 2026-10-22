@@ -4,17 +4,17 @@
 //! [`Chain`] and returns a [`Resolution`] carrying the block it used, so anyone
 //! can recompute the outcome against their own node.
 
+mod backend;
 mod chain;
 mod fixture;
-mod lightwalletd;
 mod market;
 mod outcome;
 mod registry;
 mod resolver;
 
+pub use backend::Lightwalletd;
 pub use chain::{Block, CONFIRMATIONS, Chain, confirmed_block};
 pub use fixture::FixtureChain;
-pub use lightwalletd::Lightwalletd;
 pub use market::{Market, Status};
 pub use outcome::{Outcome, Resolution};
 pub use registry::Registry;

@@ -3,14 +3,15 @@
 //! Why gRPC and not Zebra JSON-RPC: public endpoints (`zec.rocks:443`,
 //! `testnet.zec.rocks:443`) only expose lightwalletd; there is no keyless public
 //! Zebra RPC. gRPC is plain HTTP/2 with a 5-byte frame prefix, so this uses
-//! reqwest + prost with hand-written messages: no protoc, no tonic.
-//! Messages mirror `walletrpc/{service,compact_formats}.proto` of
-//! zcash/lightwallet-protocol, keeping only the fields we read.
+//! reqwest + prost with hand-written messages ([`proto`]): no protoc, no tonic.
+
+mod proto;
 
 use std::time::Duration;
 
 use prost::Message;
 
+use self::proto::{BlockId, ChainSpec, CompactBlock, RawTransaction, TxFilter};
 use crate::{Block, Chain, Result};
 
 pub struct Lightwalletd {
@@ -117,69 +118,6 @@ fn branch_id(tx: &[u8]) -> Result<u32> {
     } else {
         0
     })
-}
-
-#[derive(Clone, PartialEq, Message)]
-struct ChainSpec {}
-
-#[derive(Clone, PartialEq, Message)]
-struct BlockId {
-    #[prost(uint64, tag = "1")]
-    height: u64,
-    #[prost(bytes = "vec", tag = "2")]
-    hash: Vec<u8>,
-}
-
-#[derive(Clone, PartialEq, Message)]
-struct TxFilter {
-    #[prost(message, optional, tag = "1")]
-    block: Option<BlockId>,
-    #[prost(uint64, tag = "2")]
-    index: u64,
-    #[prost(bytes = "vec", tag = "3")]
-    hash: Vec<u8>,
-}
-
-#[derive(Clone, PartialEq, Message)]
-struct RawTransaction {
-    #[prost(bytes = "vec", tag = "1")]
-    data: Vec<u8>,
-}
-
-#[derive(Clone, PartialEq, Message)]
-struct CompactBlock {
-    #[prost(uint64, tag = "2")]
-    height: u64,
-    #[prost(bytes = "vec", tag = "3")]
-    hash: Vec<u8>,
-    #[prost(message, repeated, tag = "7")]
-    vtx: Vec<CompactTx>,
-    #[prost(message, optional, tag = "8")]
-    chain_metadata: Option<ChainMetadata>,
-}
-
-/// Spends, outputs and actions are only counted, so they are kept as raw
-/// bytes: a nested message and `bytes` share the same wire encoding.
-#[derive(Clone, PartialEq, Message)]
-struct CompactTx {
-    #[prost(uint64, tag = "1")]
-    index: u64,
-    #[prost(bytes = "vec", tag = "2")]
-    txid: Vec<u8>,
-    #[prost(bytes = "vec", repeated, tag = "4")]
-    spends: Vec<Vec<u8>>,
-    #[prost(bytes = "vec", repeated, tag = "5")]
-    outputs: Vec<Vec<u8>>,
-    #[prost(bytes = "vec", repeated, tag = "6")]
-    actions: Vec<Vec<u8>>,
-    #[prost(bytes = "vec", repeated, tag = "9")]
-    ironwood_actions: Vec<Vec<u8>>,
-}
-
-#[derive(Clone, PartialEq, Message)]
-struct ChainMetadata {
-    #[prost(uint32, tag = "3")]
-    ironwood_commitment_tree_size: u32,
 }
 
 #[cfg(test)]
