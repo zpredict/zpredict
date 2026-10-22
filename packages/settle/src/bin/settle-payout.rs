@@ -1,8 +1,10 @@
-//! `settle-payout`: batched escrow payouts for scripts. Secrets come only from sealed
-//! files ([`zpredict_settle::store`], key in `ZPREDICT_STORE_KEY`).
+//! `settle-payout`: the escrow key ceremony and batched payouts for scripts. Secrets
+//! are only ever read from or written to sealed files ([`zpredict_settle::store`], key in
+//! `ZPREDICT_STORE_KEY`).
 //!
 //! ```text
-//! settle-payout import-share <frost-client.toml> <out.sealed>
+//! settle-payout dkg <main|test|regtest> <out-dir>   -> `group <ak-hex>`, `address <ua>`;
+//!     writes r{0,1,2}-share.sealed and escrow-ufvk.sealed, nothing in clear
 //! settle-payout create <network> <escrow-wallet-dir> <payouts> > created.pczt
 //! settle-payout sign <network> <payouts> <ufvk.sealed> <share.sealed>... < created.pczt > signed.pczt
 //! ```
@@ -18,13 +20,13 @@ use pczt::Pczt;
 use zcash_protocol::consensus::{Network, Parameters};
 use zpredict_settle::{Error, KeyShare, Payout, Result, keys, payout, store};
 
-const USAGE: &str = "usage: settle-payout import-share <toml> <out> | create <network> <wallet-dir> <payouts> | sign <network> <payouts> <ufvk.sealed> <share.sealed>...";
+const USAGE: &str = "usage: settle-payout dkg <network> <out-dir> | create <network> <wallet-dir> <payouts> | sign <network> <payouts> <ufvk.sealed> <share.sealed>...";
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let args: Vec<&str> = args.iter().map(String::as_str).collect();
     let result = match args.as_slice() {
-        ["import-share", toml, out] => import_share(Path::new(toml), Path::new(out)),
+        ["dkg", network, out] => dkg(network, Path::new(out)),
         [cmd @ ("create" | "sign"), "main", rest @ ..] => run(&Network::MainNetwork, cmd, rest),
         [cmd @ ("create" | "sign"), "test", rest @ ..] => run(&Network::TestNetwork, cmd, rest),
         [cmd @ ("create" | "sign"), "regtest", rest @ ..] => run(&keys::regtest(), cmd, rest),
@@ -36,10 +38,32 @@ fn main() {
     }
 }
 
-fn import_share(toml: &Path, out: &Path) -> Result<()> {
-    let share = KeyShare::from_frost_client_config(&std::fs::read_to_string(toml)?)?;
-    let sealed = store::seal(&store::key_from_env()?, KeyShare::LABEL, &share.to_bytes()?);
-    std::fs::write(out, sealed)?;
+/// DKG, then each share and the escrow UFVK are sealed before anything touches disk.
+fn dkg(network: &str, out: &Path) -> Result<()> {
+    let key = store::key_from_env()?;
+    let shares = zpredict_settle::dkg_local()?;
+    let ak = shares[0].ak()?;
+    let escrow = keys::escrow_keys(&ak, network)?;
+    for (i, s) in shares.iter().enumerate() {
+        let sealed = store::seal(&key, KeyShare::LABEL, &s.to_bytes()?);
+        write_new(&out.join(format!("r{i}-share.sealed")), &sealed)?;
+    }
+    let ufvk = store::seal(&key, "ufvk", escrow.ufvk.as_bytes());
+    write_new(&out.join("escrow-ufvk.sealed"), &ufvk)?;
+    println!("group {}", hex::encode(ak));
+    println!("address {}", escrow.address);
+    Ok(())
+}
+
+/// Never overwrites: a second ceremony into the same directory is a mistake.
+fn write_new(path: &Path, bytes: &[u8]) -> Result<()> {
+    use std::os::unix::fs::OpenOptionsExt;
+    let mut f = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(path)?;
+    f.write_all(bytes)?;
     Ok(())
 }
 
