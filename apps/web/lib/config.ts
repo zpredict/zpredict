@@ -23,4 +23,11 @@ export const LANDING_URL = "https://zpredict.site";
  */
 export const ESCROW_UA = process.env.NEXT_PUBLIC_ESCROW_UA?.trim() || null;
 
-export const POLL_MS = { balance: 2500, fills: 1500, view: 900, health: 4000, markets: 10000 };
+export const POLL_MS = {
+	balance: 2500,
+	fills: 1500,
+	view: 900,
+	health: 4000,
+	markets: 10000,
+	groupKey: 60000,
+};

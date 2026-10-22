@@ -3,6 +3,7 @@
 import { decodeOrder } from "@zpredict/sdk";
 import { clear, fillRecords } from "./clearing.mjs";
 import { HISTORY_KEEP, PORTS, SHARE_TIMEOUT_BATCHES } from "./config.mjs";
+import { roll } from "./rolling.mjs";
 import { split, xor } from "./shares.mjs";
 import { account, chain, markets, orders, see } from "./state.mjs";
 
@@ -76,4 +77,5 @@ export function runBatch() {
 	});
 	chain.batch++;
 	chain.height++;
+	roll(markets, chain.height);
 }

@@ -7,7 +7,8 @@ const CATEGORIES: Record<string, string> = {
 	"shielded-actions": "Shielded activity",
 };
 
-export const category = (m: Market) => CATEGORIES[m.plugin] ?? m.plugin;
+export const category = (m: Market) =>
+	m.rolling ? "Hourly · shielded activity" : (CATEGORIES[m.plugin] ?? m.plugin);
 
 /** YES chance in whole percent from the public last price; null before the first cross. */
 export const chance = (m: Market) => (m.lastPrice === undefined ? null : Math.round(m.lastPrice));
@@ -29,3 +30,25 @@ export function defaultPrice(m: Market, side: Side): number {
 }
 
 export const heightLabel = (h: number) => h.toLocaleString("en-US");
+
+/** Mainnet NU7: 75 s blocks before it, 25 s from it (the relayers' `rolling.fast_from`). */
+export const NU7_HEIGHT = 3_543_405;
+/** Blocks on top of the resolve block before an outcome counts (`zpredict_oracle::CONFIRMATIONS`). */
+export const CONFIRMATIONS = 10;
+
+/** Nominal seconds from `tip` until block `h` is mined; 0 once it is. */
+export function secsUntil(tip: number, h: number): number {
+	const slow = Math.max(0, Math.min(h, NU7_HEIGHT) - Math.min(tip, NU7_HEIGHT));
+	const fast = Math.max(0, h - Math.max(tip, NU7_HEIGHT));
+	return slow * 75 + fast * 25;
+}
+
+/** "~14 min", "~3 h", "~12 d". */
+export function approx(secs: number): string {
+	const min = Math.max(1, Math.round(secs / 60));
+	if (min < 120) return `~${min} min`;
+	const h = Math.round(min / 60);
+	return h < 48 ? `~${h} h` : `~${Math.round(h / 24)} d`;
+}
+
+export const shortHash = (h: string) => `${h.slice(0, 12)}…${h.slice(-8)}`;

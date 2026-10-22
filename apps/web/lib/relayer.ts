@@ -3,6 +3,7 @@
 import {
 	getBalance,
 	getFill,
+	getGroupKey,
 	getMemoKeys,
 	getView,
 	type Health,
@@ -39,6 +40,9 @@ export const fetchBalance = (tag: string) => getBalance(relayers, tag);
 export const fetchFill = (orderId: string) => getFill(relayers, orderId);
 
 export const fetchView = (i: number, after: number) => getView(relayers[i], after);
+
+/** The FROST group key, if all three relayers serve the same one (signing is live). */
+export const fetchGroupKey = () => getGroupKey(relayers).catch(() => null);
 
 /** Each relayer's deposit-memo public key, fetched from that relayer only. */
 export const fetchMemoKeys = () => getMemoKeys(relayers);

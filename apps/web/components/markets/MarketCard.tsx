@@ -2,6 +2,7 @@ import type { Market } from "@zpredict/sdk";
 import Link from "next/link";
 import { category, chance, heightLabel } from "@/lib/markets";
 import Chance from "./Chance";
+import Countdown from "./Countdown";
 import PriceButtons from "./PriceButtons";
 import PrivacyChips from "./PrivacyChips";
 import ProbabilityBar from "./ProbabilityBar";
@@ -11,7 +12,7 @@ import Sparkline from "./Sparkline";
  * The prediction-market card, square and mono: category and block, question, chance with
  * sparkline, ASCII probability bar, Yes/No prices, what stays hidden.
  */
-export default function MarketCard({ market: m }: { market: Market }) {
+export default function MarketCard({ market: m, tip }: { market: Market; tip: number | null }) {
 	return (
 		<article className="mcard">
 			<header className="mcard__top">
@@ -21,6 +22,7 @@ export default function MarketCard({ market: m }: { market: Market }) {
 			<h3 className="mcard__q">
 				<Link href={`/trade/?m=${m.id}`}>{m.question}</Link>
 			</h3>
+			<Countdown market={m} tip={tip} />
 			<div className="mcard__odds">
 				<Chance market={m} />
 				<Sparkline className="mcard__spark" points={m.history ?? []} />
