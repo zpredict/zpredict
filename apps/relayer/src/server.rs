@@ -93,6 +93,7 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
         frost: frost.map(Arc::new),
         judge: c.judge,
         escrow: escrow.clone(),
+        pre: Default::default(),
     };
     let handle = tokio::runtime::Handle::current();
     tokio::task::spawn_blocking(move || handle.block_on(batch::run(b)));

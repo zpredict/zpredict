@@ -36,7 +36,19 @@ struct Reply {
 }
 
 impl Matcher for InsecureLocalMatcher {
-    async fn clear(&self, links: &Links, public: &Public, shares: &Shares<'_>) -> Result<Outcome> {
+    type Pre = ();
+
+    async fn preprocess(&self, _: &Links, _: usize, _: usize) -> Result<()> {
+        Ok(())
+    }
+
+    async fn clear(
+        &self,
+        links: &Links,
+        public: &Public,
+        shares: &Shares<'_>,
+        _: Option<()>,
+    ) -> Result<Outcome> {
         let held = Held {
             orders: shares.orders.to_vec(),
             accounts: shares.accounts.to_vec(),

@@ -43,6 +43,10 @@ async fn three_relayers_real_mpc() {
     submit(&r, &id(1), yes, &[0, 1, 2]).await;
     submit(&r, &id(2), no, &[0, 1, 2]).await;
     assert_eq!(batch_all(&r).await[0], [id(1), id(2)]);
+    // That batch preprocessed inline, then all three preprocessed the next run.
+    let held = |x: &Relayer<Polytune>| x.batcher.pre.lock().unwrap().as_ref().map(|p| p.0);
+    let first = held(&r[0]);
+    assert!(first.is_some() && r.iter().all(|x| held(x) == first));
     let want = fill_records(&[yes, no], &clear(&[yes, no]));
     assert_eq!(fill(&r, &id(1)).await, Some(want[0]));
     assert_eq!(fill(&r, &id(2)).await, Some(want[1]));
@@ -76,6 +80,8 @@ async fn three_relayers_real_mpc() {
         };
         x.batcher.state.lock().unwrap().record(e).unwrap();
     }
-    batch_all(&r).await;
+    batch_all(&r).await; // on the run held since the first batch
     assert_eq!(balance(&r, &b).await, 5000 - 170 - 1000);
+    let next = held(&r[0]);
+    assert!(next.is_some() && next != first, "used, then replaced");
 }
