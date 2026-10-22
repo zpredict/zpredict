@@ -13,7 +13,7 @@ NEXT_PUBLIC_RELAYERS=http://localhost:4101,http://localhost:4102,http://localhos
   pnpm --filter @zpredict/web dev         # http://localhost:3000
 ```
 
-`dev.sh` generates Noise keys into `config/keys/` on first run (gitignored) and keeps state in `config/data/` (gitignored; delete it to start fresh). The web app needs only `NEXT_PUBLIC_RELAYERS`; the configs already allow `http://localhost:3000` as the CORS origin. Click **Judge mode**, place an order, and its fill share appears after the next batch: at most one 12 s window plus about 5 s of MPC (8 order slots, 32 table rows, all open markets in one run; startup compiles the circuit first, ~6 s).
+`dev.sh` generates Noise keys into `config/keys/` on first run (gitignored) and keeps state in `config/data/` (gitignored; delete it to start fresh). The web app needs only `NEXT_PUBLIC_RELAYERS`; the configs already allow `http://localhost:3000` as the CORS origin. Click **Judge mode**, place an order, and its fill share appears about half a 4 s window plus 0.5 s of MPC later once the relayers hold a preprocessed run (8 order slots, 32 table rows, all open markets in one run; startup compiles the circuit, ~6 s, then preprocesses the first run, ~6 s).
 
 `INSECURE=1 apps/relayer/scripts/dev.sh` uses the plaintext dev matcher instead (see below): batches finish instantly, and **relayer 0 sees every order**.
 
@@ -35,7 +35,7 @@ TOML, one file per relayer (`config/r{0,1,2}.toml` are the local examples). Path
 | `escrow_lightwalletd` | The chain the escrow lives on (default `https://testnet.zec.rocks:443`): deposit scanning and payouts (settle). Never used for market data |
 | `batch_size` | Order slots per batch, N, shared by all open markets (2..=21). Crossing costs ~N² gates: at 32 rows, 8 ≈ 5 s and 16 ≈ 13.5 s per window on an M4 Pro |
 | `table_rows` | Balance-table rows per batch (default 32): the most funded accounts this deployment holds. ~8k AND gates per row |
-| `window_secs` | Batch window; batches start on wall-clock multiples of it |
+| `window_secs` | Batch window; batches start on wall-clock multiples of it. With a preprocessed run held it only needs to cover the online part (~0.5 s on an M4 Pro), so a few seconds |
 | `expire_batches` | A pending order missing from the intersection this long becomes `unfilled` |
 | `judge`, `judge_credit` | `POST /judge/claim` (mock), credit in half-ticks |
 | `memo_key_file` | Optional. Hex file holding this relayer's deposit-memo public key: the `pubkey` printed by `settle memo-key`, whose sealed secret stays with the escrow scanner. It is served at `GET /memo-key`, and without it that route answers 404. `ZPREDICT_STORE_KEY` (the settle store key) is never read as config |
@@ -57,6 +57,7 @@ Every window, each relayer:
 6. Runs the matcher (`mpc/`) once per group of up to 4 open markets (`zpredict_circuit::DEFAULT_MARKETS`), padded with unused slots: one run for the demo's three markets. With more markets, fill shares XOR together and balances chain from run to run. Which markets have orders never changes what runs.
 7. Stores its fill share per order, its new balance share per row, public prices, the deposits credited and each withdrawal slot's result as one fsynced event, and expires orders that are `expire_batches` old and not in the intersection. These are orders where one of the browser's three POSTs never arrived.
 8. With `[settlement]` on, pays debited withdrawals (`escrow/payout.rs`): relayer 0 syncs the escrow wallet, builds one PCZT for all of them and proves it in the background; relayers 0 and 1 each run verify-then-sign against their own ledger's payout vector, exchanging FROST round messages over the Noise links; relayer 0 aggregates, combines and broadcasts, recording `paying` first so a crash can never pay twice, then sends both peers the txid.
+9. If it holds no preprocessed clearing run, preprocesses the next one with its peers (`batch/mod.rs`, #94): ~92% of a run, input-independent. The next window with work runs only the online part. The hello carries each relayer's held run id; a run is used only if all three hold the same one, otherwise each drops its own and the batch preprocesses inline.
 
 A failed or aborted batch (peer down, MPC abort, timeout) changes no shares, and its orders run again next window. `/health.peers` shows which peers the last attempt reached.
 
