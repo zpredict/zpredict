@@ -3,3 +3,6 @@
 /public/*.ico
 /public/site.webmanifest
 /public/white/
+# Written by next dev
+/AGENTS.md
+/CLAUDE.md
