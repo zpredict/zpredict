@@ -1,12 +1,12 @@
-//! "Will the Ironwood pool hold at least N notes at height H?" — H is the
-//! market's resolve height; N counts Ironwood note commitments ever created
-//! (the Ironwood commitment tree size at the end of block H).
+//! Market: "Will the Ironwood pool hold ≥ N notes at height H?"
 //!
-//! Why notes and not ZEC: the pool value lives in Zebra's `getblock` /
-//! `getblockchaininfo` `valuePools` (id `ironwood`), but no public node exposes
-//! Zebra JSON-RPC. Public lightwalletd/Zaino servers expose the tree size in
-//! `CompactBlock.chainMetadata`, which anyone can recheck. Switch to value once
-//! relayers run their own Zebra.
+//! H is the market's resolve height. N counts Ironwood note commitments ever
+//! created: the Ironwood commitment tree size at the end of block H, which any
+//! lightwalletd/Zaino server returns in `CompactBlock.chainMetadata`.
+//!
+//! A ZEC-value variant ("≥ X ZEC") needs Zebra JSON-RPC (`getblock` →
+//! `valuePools`, id `ironwood`); our relayers run their own Zebra, so it can be
+//! added as a second `Chain` backend.
 //!
 //! Params: `{"minNotes": 100000}`.
 
@@ -39,7 +39,7 @@ mod tests {
 
     fn market(height: u32, min_notes: u32) -> Market {
         serde_json::from_value(serde_json::json!({
-            "id": 2, "question": "Will the Ironwood pool reach this many notes?",
+            "id": 2, "question": "Will the Ironwood pool hold ≥ N notes at height H?",
             "plugin": "ironwood-pool", "params": {"minNotes": min_notes},
             "closeHeight": height - 100, "resolveHeight": height, "status": "closed"
         }))
