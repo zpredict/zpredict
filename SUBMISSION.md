@@ -7,44 +7,48 @@ Working target. Code is built to make every sentence below true. Update the "Rea
 - **Project name:** zPredict
 - **Track:** Private Markets
 - **Code repository:** https://github.com/zpredict/zpredict
-- **Working demo:** https://<demo-host>
+- **Working demo:** https://app.zpredict.site (site: https://zpredict.site)
 - **Demo video:** https://<video-link> (2:00)
 
 ## Description (≤ 2,000 characters — paste as-is)
 
 <!-- DESCRIPTION START -->
 WHAT IT DOES
-zPredict is the first prediction market on Zcash, and the first where nobody can see that you bet. Polymarket traders keep getting traced to real names; on zPredict, no chain observer, no operator and no counterparty learns who bet, which side, or how much.
+zPredict is the first prediction market on Zcash where nobody can see that you bet. Polymarket traders keep getting traced to real names; here no chain observer, no single operator and no counterparty learns who bet, which side or how much. Price public, participants private.
 
 HOW
-- Escrow: a FROST 2-of-3 shielded address. Three relayers ran DKG; none can move funds alone.
-- Orders: secret-shared in your browser; each share goes straight to a different relayer.
-- Matching: the relayers cross YES and NO orders at the midpoint inside 3-party MPC (polytune). Unfilled orders are never opened.
-- Resolution: markets resolve from Zcash chain data, so anyone can check the outcome.
-- Settlement: one batched, FROST-signed Ironwood transaction per epoch pays each winner to a fresh shielded address.
+- Orders: split into XOR shares in your browser; each share goes only to its own relayer.
+- Matching: three relayers cross YES/NO orders at the midpoint inside 3-party MPC (polytune garbled circuits), with balances checked in-circuit. Only fills and a public clearing price come out.
+- Accounts: your account secret never leaves the browser whole; the circuit checks it, so no relayer can spend for you.
+- Escrow: a FROST 2-of-3 Ironwood address from a DKG. Withdrawals are batched and every signer re-derives the sighash before signing.
+- Resolution: markets resolve from Zcash mainnet block data (incl. hourly rolling markets); outcomes are FROST-signed and checkable in the browser.
 
 WHY IT DOES NOT LEAK
-- Chain: shielded only. No transparent address in any path: deposits, payouts, change.
-- Amounts: deposits are fixed denominations, so they never reveal a bet size.
-- Timing: payouts are batched, breaking deposit→payout links.
-- Operators: one relayer sees only random shares. Order privacy needs all three to collude; moving funds needs two. We state this split openly.
-- Metadata: static frontend, no third-party requests, no analytics, no IP logs. Full audit in PRIVACY.md.
+- Chain: shielded (Ironwood) only; no transparent address in any path.
+- One relayer sees uniformly random shares and digests. Reading orders needs all three; moving funds needs two.
+- Fixed deposit denominations; batched payouts to fresh addresses.
+- Static frontend, strict CSP, zero third-party requests, no analytics, no IP logs. Red-team audit + verification commands in PRIVACY.md.
 
 WHAT IS REAL / WHAT IS A MOCK
-Real: FROST DKG and threshold signing, shielded deposits and payouts on testnet, 3-party MPC matching, chain-data resolution, Relayer View.
-Mock: <fill in honestly before submitting>
+Real: 3-party MPC matching, in-circuit balances and credentials, FROST DKG and 2-of-3 Ironwood spends (regtest e2e incl. forged-withdrawal rejection), chain-data resolution, live relayers.
+Demo limits: judge mode credits testnet collateral without a deposit; all three relayers run on one VM (the model needs independent operators); relayers see deposit/withdrawal amounts and timing.
 
 TRY IT
-Open the demo, choose judge mode (prefunded testnet wallet), bet on a live market. The Relayer View shows what each relayer sees: noise.
+app.zpredict.site → Judge mode → bet. The Relayer View shows what each relayer holds: noise.
 <!-- DESCRIPTION END -->
 
 ## Video script (2:00)
 
+Colosseum-style: a pitch, not a feature tour. One idea per shot.
+
 | Time | Shot | Line |
 |---|---|---|
-| 0:00–0:15 | Headline: a Polymarket whale traced to a real name | "On today's prediction markets, every bet is public — and people get found." |
-| 0:15–0:35 | zPredict: a live market on NU7 activation; deposit, buy YES | "zPredict is a prediction market on Zcash. Your collateral goes to an escrow no one controls alone." |
-| 0:35–1:05 | **Split screen**: three relayers showing random shares; the trader's fill appears | "Three relayers matched this bet. None of them knows what you bet." |
-| 1:05–1:20 | Block explorer: one shielded transaction, nothing readable | "On chain: nothing." |
-| 1:20–1:30 | Market resolves from a block; payout lands in a fresh address | "It resolves from the chain itself, and pays you somewhere new." |
-| 1:30–2:00 | Threat-model table | "Here is exactly what each party can and can't learn. Price public. Participants private." |
+| 0:00–0:12 | Headline: a Polymarket whale traced to a real name | "Every bet on today's prediction markets is public, and people get found." |
+| 0:12–0:25 | zpredict.site hero: the ASCII Z, lime strips | "zPredict is a prediction market on Zcash. Price public. Participants private." |
+| 0:25–0:50 | app.zpredict.site → Judge mode → YES on a rolling market. **Relayer View**: three panels of grey noise, your shares lit lime | "Your browser splits the order into three random shares. Each relayer sees noise." |
+| 0:50–1:05 | The fill lands: "YES · 55¢ · filled", visible only to you | "Three relayers matched it inside MPC. None of them knows what you bet." |
+| 1:05–1:20 | Terminal: e2e run where each relayer forges a withdrawal → refused; real withdrawal mined (v6, Ironwood-only) | "No single relayer can move your money, or even pretend to be you." |
+| 1:20–1:35 | Resolved market: outcome, block hash, "Signed by 2-of-3 ✓" | "Markets resolve from Zcash block data, signed by the relayers, checkable by anyone." |
+| 1:35–2:00 | Threat-model table from PRIVACY.md, then the logo | "Here's exactly who learns what. Price public. Participants private. zPredict." |
+
+Record against the live demo. Keep golden-path tx ids and screenshots from earlier runs as a fallback.
