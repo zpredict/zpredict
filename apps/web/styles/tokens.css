@@ -1,0 +1,43 @@
+/* Design tokens from the MotionSites "Crypto Vault" template, plus zPredict accents. */
+:root {
+	color-scheme: dark;
+	--panel-bg: #020202;
+	--pane-base: #262626;
+	--pane-top: #313131;
+	--pane-bottom: #111212;
+	--card-top: #1a1b1b;
+	--card-bottom: #111212;
+	--white: #ffffff;
+	--ink: #000000;
+	--hairline: rgba(255, 255, 255, 0.1);
+	--tag-fill: rgba(255, 255, 255, 0.05);
+	--glass-fill: rgba(0, 0, 0, 0.1);
+	--glass-line: rgba(255, 255, 255, 0.14);
+	--dim: rgba(255, 255, 255, 0.55);
+
+	--r-panel: 33px;
+	--r-pane: 26px;
+	--r-card: 20px;
+	--r-cta: 14px;
+	--r-pill: 10px;
+	--r-tag: 29px;
+
+	--surface-pane:
+		linear-gradient(0deg, var(--pane-bottom) 0%, var(--pane-top) 100%), var(--pane-base);
+	--surface-card: linear-gradient(0deg, var(--card-bottom) 0%, var(--card-top) 100%);
+
+	--font-display: "Figtree", "Helvetica Neue", Arial, sans-serif;
+	--font-body: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+	--font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+
+	/* Accents: Zcash gold marks the trader's own shares; YES / NO sides. */
+	--zec: #f4b728;
+	--zec-soft: rgba(244, 183, 40, 0.12);
+	--zec-line: rgba(244, 183, 40, 0.55);
+	--yes: #8fe3a8;
+	--no: #ff9b8f;
+
+	--ease: cubic-bezier(0.22, 1, 0.36, 1);
+	--gap: 10px;
+	--topbar-h: 66px;
+}

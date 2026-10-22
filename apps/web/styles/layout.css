@@ -1,0 +1,101 @@
+/* Shell: the near-black panel holding a top bar and two rounded panes. */
+
+.shell {
+	display: flex;
+	flex-direction: column;
+	min-height: 100dvh;
+	padding: 0 var(--gap) var(--gap);
+}
+
+.topbar {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	height: var(--topbar-h);
+	padding: 0 20px;
+}
+
+.brand {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-right: 18px;
+	font-family: var(--font-display);
+	font-weight: 500;
+	font-size: 20px;
+	letter-spacing: -0.04em;
+}
+
+.navlinks {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.topbar__right {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-left: auto;
+}
+
+.topbar__right .badge .num {
+	color: var(--white);
+}
+
+.panel {
+	flex: 1;
+	display: grid;
+	gap: var(--gap);
+	min-height: calc(100dvh - var(--topbar-h) - var(--gap));
+}
+
+.split {
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.split--trade {
+	grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+}
+
+@media (max-width: 1099.98px) {
+	.split,
+	.split--trade {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+@media (max-width: 899.98px) {
+	.topbar {
+		flex-wrap: wrap;
+		height: auto;
+		padding: 14px 6px 10px;
+		row-gap: 10px;
+	}
+	.navlinks {
+		order: 3;
+		width: 100%;
+		overflow-x: auto;
+		scrollbar-width: none;
+	}
+	.pill {
+		height: 38px;
+		padding: 12px;
+		font-size: 15px;
+	}
+	.panel {
+		min-height: 0;
+	}
+}
+
+@media (max-width: 599.98px) {
+	.brand span {
+		display: none;
+	}
+	.btn--white {
+		min-width: 0;
+	}
+	.topbar__right .badge .dim {
+		display: none;
+	}
+}
