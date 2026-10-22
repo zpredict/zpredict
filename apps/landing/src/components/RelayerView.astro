@@ -1,0 +1,113 @@
+---
+import Panel from "./ui/Panel.astro";
+import SectionHeading from "./ui/SectionHeading.astro";
+import Tag from "./ui/Tag.astro";
+
+const relayers = ["A", "B", "C"];
+---
+
+<Panel id="relayer-view" class="split">
+	<div>
+		<Tag class="eyebrow">Relayer View</Tag>
+		<SectionHeading lines={["What a", "relayer sees"]} align="left" />
+		<p class="lede">
+			Your order is <code>{"{market, side, price, size}"}</code>. Before it leaves your browser
+			it becomes three random-looking shares, one per relayer. Each relayer sees only noise.
+			Only all three together, inside MPC, can cross it.
+		</p>
+		<p class="note">Illustration. The app's Relayer View shows the live shares.</p>
+	</div>
+
+	<div class="relayers" aria-label="Three relayers, each holding a random share">
+		{
+			relayers.map((name) => (
+				<div class="relayer">
+					<div class="head">
+						<span>Relayer {name}</span>
+						<span class="live">share</span>
+					</div>
+					<pre class="share js-share" aria-hidden="true" />
+				</div>
+			))
+		}
+		<div class="relayer relayer--you">
+			<div class="head"><span>You, after a fill</span></div>
+			<p class="plain">YES · 0.71 · 5 units · filled</p>
+		</div>
+	</div>
+</Panel>
+
+<script>
+	import "../scripts/relayer-noise";
+</script>
+
+<style>
+	.split {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+		gap: clamp(32px, 5vw, 80px);
+		align-items: center;
+	}
+	.eyebrow {
+		margin-bottom: 20px;
+	}
+	.relayers {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 14px;
+	}
+	.relayer {
+		padding: 18px;
+		border: 1px solid var(--hairline);
+		border-radius: var(--r-pane);
+		background: var(--surface-card);
+	}
+	.head {
+		display: flex;
+		justify-content: space-between;
+		margin-bottom: 14px;
+		font-size: 14px;
+		opacity: 0.6;
+	}
+	.live::before {
+		content: "";
+		display: inline-block;
+		width: 6px;
+		height: 6px;
+		margin-right: 6px;
+		border-radius: 50%;
+		background: #fff;
+		vertical-align: middle;
+	}
+	.share {
+		margin: 0;
+		min-height: 5.6em;
+		font-size: 12px;
+		line-height: 1.4;
+		white-space: pre-wrap;
+		word-break: break-all;
+		color: rgba(255, 255, 255, 0.55);
+	}
+	.relayer--you {
+		grid-column: 1 / -1;
+		background: #fff;
+		color: #000;
+	}
+	.plain {
+		font-family: var(--font-display);
+		font-weight: 500;
+		font-size: clamp(20px, 2vw, 28px);
+		letter-spacing: -0.04em;
+	}
+
+	@media (max-width: 1199.98px) {
+		.split {
+			grid-template-columns: 1fr;
+		}
+	}
+	@media (max-width: 799.98px) {
+		.relayers {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>
