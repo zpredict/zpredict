@@ -11,7 +11,6 @@ import {
 	getFill,
 	type Order,
 	RELAYERS,
-	type Side,
 	split,
 	submitOrder,
 	tagAccount,
@@ -57,17 +56,17 @@ test("random split: three fresh shares, none equal to the order", () => {
 	assert.notDeepEqual(split(b)[0], shares[0]);
 });
 
-test("fill shares decode the clear() output", () => {
-	for (const f of v.fills) {
-		const want = (cost: number, side: Side) => ({
-			size: f.size,
-			cost,
-			side,
-			filled: true,
-		});
-		assert.deepEqual(decodeFill(fromHex(f.yesFill)), want(f.yesCost, 0));
-		assert.deepEqual(decodeFill(fromHex(f.noFill)), want(f.noCost, 1));
-	}
+test("fill records decode the clear() output", () => {
+	const want = [
+		{ size: 3, totalCost: 315, side: 0, filled: true },
+		{ size: 2, totalCost: 240, side: 0, filled: true },
+		{ size: 5, totalCost: 445, side: 1, filled: true }, // two matches, two midpoints
+		{ size: 0, totalCost: 0, side: 0, filled: false }, // dummy
+	];
+	assert.deepEqual(
+		v.records.map((r: string) => decodeFill(fromHex(r))),
+		want,
+	);
 });
 
 test("rejects malformed orders", () => {
@@ -124,8 +123,7 @@ test("refuses two relayers on one origin", async (t) => {
 });
 
 test("getFill combines the three fill shares", async (t) => {
-	const f = v.fills[0];
-	const shares = split(fromHex(f.yesFill));
+	const shares = split(fromHex(v.records[2]));
 	t.mock.method(globalThis, "fetch", async (url: string) =>
 		Response.json({
 			status: "filled",
@@ -134,6 +132,6 @@ test("getFill combines the three fill shares", async (t) => {
 	);
 	assert.deepEqual(await getFill(RELAYERS, "ab".repeat(16)), {
 		status: "filled",
-		fill: { size: f.size, cost: f.yesCost, side: 0, filled: true },
+		fill: { size: 5, totalCost: 445, side: 1, filled: true },
 	});
 });

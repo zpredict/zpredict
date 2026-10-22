@@ -3,8 +3,13 @@
 
 /** Encoded order length in bytes; also the share length. */
 export const ORDER_LEN = 18;
-/** Fill share length: size u32 LE | cost u16 LE | side u8 | flags u8 (bit0 = filled). */
-export const FILL_LEN = 8;
+/**
+ * Fill record length: size u32 LE | totalCost u32 LE | side u8 | flags u8 (bit0 = filled).
+ * Summed over every match the order took part in; unfilled orders are all zero.
+ */
+export const FILL_LEN = 10;
+/** Mirrors `zpredict_core::MAX_SIZE`: larger orders are rejected. */
+export const MAX_SIZE = 1_000_000;
 /** Balance share length: u64 LE in half-ticks. */
 export const BALANCE_LEN = 8;
 /** Costs and balances are in half-ticks: 1 unit of collateral = 200 half-ticks. */
@@ -25,8 +30,8 @@ export interface Order {
 
 export interface Fill {
 	size: number;
-	/** Half-ticks per contract paid by this order's side. */
-	cost: number;
+	/** Half-ticks paid in total across all matches; average price = totalCost / size / 2 cents. */
+	totalCost: number;
 	side: Side;
 	filled: boolean;
 }
@@ -42,6 +47,7 @@ export function encodeOrder(o: Order): Uint8Array {
 		o.price < 1 ||
 		o.price > 99 ||
 		!u32(o.size) ||
+		o.size > MAX_SIZE ||
 		o.account < 0n ||
 		o.account >= 1n << 64n
 	) {
@@ -63,24 +69,26 @@ export function decodeOrder(b: Uint8Array): Order | null {
 	const v = new DataView(b.buffer, b.byteOffset, b.length);
 	const side = b[4];
 	const price = b[5];
-	if ((side !== 0 && side !== 1) || price < 1 || price > 99) return null;
+	const size = v.getUint32(6, true);
+	if ((side !== 0 && side !== 1) || price < 1 || price > 99 || size > MAX_SIZE)
+		return null;
 	return {
 		market: v.getUint32(0, true),
 		side,
 		price,
-		size: v.getUint32(6, true),
+		size,
 		account: v.getBigUint64(10, true),
 	};
 }
 
 export function decodeFill(b: Uint8Array): Fill {
-	if (b.length !== FILL_LEN) throw new RangeError("fill must be 8 bytes");
+	if (b.length !== FILL_LEN) throw new RangeError("fill must be 10 bytes");
 	const v = new DataView(b.buffer, b.byteOffset, b.length);
 	return {
 		size: v.getUint32(0, true),
-		cost: v.getUint16(4, true),
-		side: (b[6] & 1) as Side,
-		filled: (b[7] & 1) === 1,
+		totalCost: v.getUint32(4, true),
+		side: (b[8] & 1) as Side,
+		filled: (b[9] & 1) === 1,
 	};
 }
 
@@ -155,7 +163,7 @@ export interface OrderAccepted {
 	batch: number;
 }
 
-/** `GET /orders/:orderId`; fillShare hex16 when filled. */
+/** `GET /orders/:orderId`; fillShare hex20 when filled. */
 export interface OrderStatus {
 	status: "pending" | "filled" | "unfilled";
 	fillShare?: string;
