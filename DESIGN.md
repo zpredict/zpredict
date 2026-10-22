@@ -89,7 +89,8 @@ Each relayer is its own origin: `https://r0.zpredict.site`, `https://r1.zpredict
 | `GET /view?after=<seq>` | `{items: [{seq, kind: "order"\|"fill", orderId, share}]}`: exactly what this relayer sees; powers the Relayer View |
 | `POST /judge/claim` | `{tag}`: **mock**, testnet only (see below) |
 
-`Market = {id, question, plugin, params, closeHeight, resolveHeight, status: "open"|"closed"|"resolved", outcome?: "yes"|"no", outcomeSig?: string}`; `outcomeSig` is the FROST signature over the outcome and block hash.
+`Market = {id, question, plugin, params, closeHeight, resolveHeight, status: "open"|"closed"|"resolved", outcome?: "yes"|"no", outcomeSig?: string, lastPrice?: number, history?: number[]}`; `outcomeSig` is the FROST signature over the outcome and block hash.
+- `lastPrice` is the public price: cents per YES contract at the market's latest cross (the clearing midpoint, so it can end in .5). `history` is the last N clearing prices, oldest first, one per batch that crossed. Both are absent until the first fill. They are public by design ("price public, participants private"): the batch reveals that a cross happened and at what price, never who, which orders, how many, or what size.
 
 Encodings (all little-endian, identical in `zpredict-core` and `@zpredict/sdk`; `packages/core/testdata/vectors.json` pins them):
 - **Order share** (18 bytes): `market u32 | side u8 (0 yes, 1 no) | price u8 (1..=99) | size u32 | account u64`, XOR-split as `[r0, r1, order ^ r0 ^ r1]`.
