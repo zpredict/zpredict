@@ -7,8 +7,7 @@ source "$(dirname "$0")/lib/env.sh"
 
 log "fresh run dir $RUN_DIR"
 regtest_down
-stop_frostd
-rm -rf "$RUN_DIR"
+rm -rf "$RUN_DIR" "$ESCROW"
 mkdir -p "$RUN_DIR"
 
 # Wallets need a running chain to be created, and the chain needs a miner address
