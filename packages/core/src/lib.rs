@@ -4,11 +4,13 @@
 //! The MPC circuit rebuilds the orders and runs [`clear`]; this module is the
 //! reference that circuit is tested against, so the two must agree bit for bit.
 
+mod balance;
 mod clearing;
 mod fill;
 mod order;
 mod shares;
 
+pub use balance::{Account, clear_with_balances, worst_case_cost};
 pub use clearing::{Fill, clear};
 pub use fill::fill_records;
 pub use order::{Order, Side};
@@ -20,5 +22,9 @@ pub const TICKS: u16 = 100;
 pub const ORDER_LEN: usize = 18;
 /// Per-order fill record length; also the fill share length.
 pub const FILL_LEN: usize = 10;
+/// Encoded balance-table row length (`id u64 | balance u64`); also its share length.
+pub const ACCOUNT_LEN: usize = 16;
+/// Balance share length: `u64` half-ticks.
+pub const BALANCE_LEN: usize = 8;
 /// Largest order size accepted, so a fill's total cost always fits in its u32 field.
 pub const MAX_SIZE: u32 = 1_000_000;
