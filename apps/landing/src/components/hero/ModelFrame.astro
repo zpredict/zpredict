@@ -5,16 +5,19 @@
  *
  * First paint is a build-time text snapshot of the same view (the LCP element, and the fallback
  * without WebGL or with reduced motion). The live canvas fades in over it once ready
- * (scripts/ascii-live.ts). The framing below must match FRAMING there.
+ * (scripts/ascii-live.ts), which reads --frame-size / --frame-y below. Phones get a coarser
+ * snapshot to match their larger live glyphs (~7.5 px wide, mobileCellPx).
  */
 import { asciiSnapshot } from "@zpredict/ascii";
 
-const snapshot = asciiSnapshot({ cols: 103, rows: 69 });
+const fine = asciiSnapshot({ cols: 103, rows: 69 });
+const coarse = asciiSnapshot({ cols: 50, rows: 33 });
 ---
 
 <div class="frame js-frame" data-surface="dark">
 	<div class="stage js-stage" role="img" aria-label="The zPredict mark as live ASCII glyphs on a dotted ground">
-		<pre class="snapshot" aria-hidden="true">{snapshot}</pre>
+		<pre class="snapshot snapshot--fine" aria-hidden="true">{fine}</pre>
+		<pre class="snapshot snapshot--coarse" aria-hidden="true">{coarse}</pre>
 		<canvas class="canvas js-ascii" aria-hidden="true"></canvas>
 	</div>
 </div>
@@ -61,8 +64,8 @@ const snapshot = asciiSnapshot({ cols: 103, rows: 69 });
 		transition: opacity 800ms ease;
 	}
 	/*
-	 * 103 × 69 glyphs on the framing square. The text is laid out at 12 px (natural box
-	 * 741.6 × 741.6) and scaled to the square (--snap-scale), so it never counts as small text.
+	 * Glyphs on the framing square: laid out in a 741.6 px box (103 × 69 at 12 px, or 50 × 33 at
+	 * 24.72 px on phones) and scaled to the square (--snap-scale), so it never counts as small text.
 	 */
 	.snapshot {
 		--side: calc(var(--frame-size) * min(100cqw, 100cqh));
@@ -80,6 +83,19 @@ const snapshot = asciiSnapshot({ cols: 103, rows: 69 });
 		transform-origin: top left;
 		transition: opacity 800ms ease;
 		user-select: none;
+	}
+	.snapshot--coarse {
+		display: none;
+		font-size: 24.72px;
+		line-height: 22.473px;
+	}
+	@media (max-width: 900px) {
+		.snapshot--fine {
+			display: none;
+		}
+		.snapshot--coarse {
+			display: block;
+		}
 	}
 	:global(.hero[data-ready="true"]) .canvas {
 		opacity: 1;
