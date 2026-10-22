@@ -7,8 +7,8 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use zpredict_settle::memo::{self, MemoKey};
 use zpredict_settle::{DENOMINATIONS, UNIT_ZATS};
 
-/// The memo's non-zero prefix: `0xFF | 0x01 | epk | 3 slots`; bytes 130..512 are zero.
-const PREFIX: usize = 2 + 32 + 3 * 32;
+/// The memo's non-zero prefix: `0xFF | 0x02 | epk | 3 slots`; bytes 154..512 are zero.
+const PREFIX: usize = 2 + 32 + 3 * 40;
 
 fn vectors() -> String {
     let keys: Vec<MemoKey> = (0..3u8)
@@ -39,12 +39,15 @@ fn vectors() -> String {
         .map(|(tag, esk)| {
             let m = memo::encode_with_esk(tag, &pks, *esk);
             assert!(m[PREFIX..].iter().all(|b| *b == 0));
+            let shares = memo::key_shares(tag);
             for (i, k) in keys.iter().enumerate() {
-                assert_eq!(memo::decode(&m, i, k), Some(*tag));
+                assert_eq!(memo::decode(&m, i, k), Some((memo::account_id(tag), shares[i])));
             }
             format!(
-                r#"{{"tag": "{}", "esk": "{}", "memo": "{}", "uriMemo": "{}"}}"#,
+                r#"{{"tag": "{}", "account": "{}", "keyShares": {:?}, "esk": "{}", "memo": "{}", "uriMemo": "{}"}}"#,
                 hex::encode(tag),
+                hex::encode(memo::account_id(tag).to_le_bytes()),
+                shares.map(hex::encode),
                 hex::encode(esk),
                 hex::encode(&m[..PREFIX]),
                 URL_SAFE_NO_PAD.encode(&m[..PREFIX])
