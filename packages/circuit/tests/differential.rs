@@ -24,9 +24,7 @@ fn unchecked(orders: &[[u8; 18]]) -> Vec<[u8; 10]> {
 }
 
 fn eval(b: &Batch, public: [&Public; 3]) -> Result<Outcome, Error> {
-    let orders = [0, 1, 2].map(|p| b.order_shares[p].as_slice());
-    let accounts = [0, 1, 2].map(|p| b.account_shares[p].as_slice());
-    eval_in_clear(public, orders, accounts)
+    eval_in_clear(public, [0, 1, 2].map(|p| b.shares(p)))
 }
 
 fn agreed(b: &Batch) -> Outcome {
@@ -47,8 +45,8 @@ fn circuit_matches_clear_with_balances() {
         refused += usize::from(unchecked(&batch.orders) != want.fills);
         priced += want.prices.iter().flatten().count();
         withdrawn += want.withdrawn.iter().filter(|w| **w).count();
-        overdrawn += (want.withdrawn.iter().zip(&batch.public.debits))
-            .filter(|(w, d)| !**w && **d > 0)
+        overdrawn += (want.withdrawn.iter().zip(&batch.public.withdrawals))
+            .filter(|(w, a)| !**w && **a > 0)
             .count();
         let credits = std::mem::replace(&mut batch.public.credits, vec![0; 16]);
         credited += usize::from(expected(&batch).fills != want.fills);
@@ -90,11 +88,11 @@ fn disagreement_is_an_error() {
         credits: vec![1; 16],
         ..ours.clone()
     };
-    let more_debits = Public {
-        debits: vec![1; 16],
+    let other_withdrawals = Public {
+        withdrawals: vec![1; ours.withdrawals.len()],
         ..ours.clone()
     };
-    for theirs in [&other_markets, &more_credits, &more_debits] {
+    for theirs in [&other_markets, &more_credits, &other_withdrawals] {
         let got = eval(&batch, [ours, ours, theirs]);
         assert!(matches!(got, Err(Error::Disagreement)));
     }

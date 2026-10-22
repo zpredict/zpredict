@@ -15,7 +15,7 @@ pub use balance::{Account, Cleared, clear_with_balances, worst_case_cost};
 pub use clearing::{Fill, clear, clearing_price};
 pub use fill::fill_records;
 pub use order::{Order, Side};
-pub use settle::{apply_flows, resolve};
+pub use settle::{Withdrawal, apply_flows, resolve};
 pub use shares::{combine, split};
 
 /// Prices are in ticks of 1/100 of a unit: a YES bid at 63 pays up to 0.63.

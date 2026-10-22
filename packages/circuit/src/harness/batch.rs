@@ -1,12 +1,12 @@
 //! Seeded clearing batches and what the clearing circuit must output for them.
 
 use zpredict_core::{
-    ACCOUNT_LEN, Account, MAX_SIZE, ORDER_LEN, Order, Side, apply_flows, clear_with_balances,
-    fill_records,
+    ACCOUNT_LEN, Account, MAX_SIZE, ORDER_LEN, Order, Side, Withdrawal, apply_flows,
+    clear_with_balances, fill_records,
 };
 
 use super::{Rng, decoded, localhost, split3};
-use crate::{Error, Outcome, Public, run_party};
+use crate::{DEFAULT_WITHDRAWALS, Error, Outcome, Public, Shares, run_party};
 
 /// The markets every generated batch clears (two used slots, two unused); a few orders
 /// are for [`UNLISTED`], which the batch does not clear.
@@ -17,10 +17,24 @@ pub const UNLISTED: u32 = 9;
 pub struct Batch {
     pub orders: Vec<[u8; ORDER_LEN]>,
     pub accounts: Vec<Account>,
-    /// [`MARKETS`] plus public credits and withdrawals per row, applied before clearing.
+    /// [`MARKETS`], public credits per row and withdrawal amounts per slot.
     pub public: Public,
+    /// The withdrawals in the clear (their amounts are in `public`).
+    pub withdrawals: Vec<Withdrawal>,
     pub order_shares: [Vec<[u8; ORDER_LEN]>; 3],
     pub account_shares: [Vec<[u8; ACCOUNT_LEN]>; 3],
+    pub withdrawal_shares: [Vec<[u8; 8]>; 3],
+}
+
+impl Batch {
+    /// Party `p`'s secret-shared inputs.
+    pub fn shares(&self, p: usize) -> Shares<'_> {
+        Shares {
+            orders: &self.order_shares[p],
+            accounts: &self.account_shares[p],
+            withdrawals: &self.withdrawal_shares[p],
+        }
+    }
 }
 
 /// Random [`MARKETS`] batch of `slots` orders over a `rows`-row table (at least 4), with
@@ -99,22 +113,39 @@ pub fn random_batch(rng: &mut Rng, slots: usize, rows: usize) -> Batch {
             _ => rng.below(3000), // a deposit: may fund an order that couldn't afford it
         })
         .collect();
-    let debits = accounts
-        .iter()
-        .map(|a| match (a.id, rng.below(5)) {
-            (0, _) | (_, 1..) => 0,
-            _ => 1 + rng.below(5000), // a withdrawal: fits some balances, not others
+    // Unused slots, withdrawals that fit some balances and not others, an account with
+    // two in one batch, and accounts with no row.
+    let withdrawals: Vec<Withdrawal> = (0..DEFAULT_WITHDRAWALS)
+        .map(|_| match rng.below(6) {
+            0 | 1 => Withdrawal {
+                account: 0,
+                amount: 0,
+            },
+            2 => Withdrawal {
+                account: rng.next_u64(),
+                amount: 1 + rng.below(100),
+            },
+            _ => Withdrawal {
+                account: live[rng.below(live.len() as u64) as usize],
+                amount: 1 + rng.below(5000),
+            },
         })
         .collect();
     let rows: Vec<[u8; ACCOUNT_LEN]> = accounts.iter().map(Account::encode).collect();
+    let ids: Vec<[u8; 8]> = withdrawals
+        .iter()
+        .map(|w| w.account.to_le_bytes())
+        .collect();
     Batch {
         public: Public {
             markets: MARKETS.to_vec(),
             credits,
-            debits,
+            withdrawals: withdrawals.iter().map(|w| w.amount).collect(),
         },
         order_shares: split3(rng, &orders),
         account_shares: split3(rng, &rows),
+        withdrawal_shares: split3(rng, &ids),
+        withdrawals,
         orders,
         accounts,
     }
@@ -125,7 +156,7 @@ pub fn random_batch(rng: &mut Rng, slots: usize, rows: usize) -> Batch {
 /// went through, with every slot that fails `Order::decode` treated as a size-0 dummy.
 pub fn expected(b: &Batch) -> Outcome {
     let batch = decoded(&b.orders);
-    let (table, withdrawn) = apply_flows(&b.accounts, &b.public.credits, &b.public.debits);
+    let (table, withdrawn) = apply_flows(&b.accounts, &b.public.credits, &b.withdrawals);
     let c = clear_with_balances(&b.public.markets, &batch, &table);
     Outcome {
         fills: fill_records(&batch, &c.fills),
@@ -143,10 +174,11 @@ pub fn combine(shares: &[Outcome; 3]) -> Outcome {
 /// Runs all three parties concurrently in this task over localhost TCP.
 pub async fn run_local(batch: &Batch, base_port: u16) -> Result<[Outcome; 3], Error> {
     let peers = localhost(base_port);
-    let party = |p: usize| {
-        let (orders, accounts) = (&batch.order_shares[p], &batch.account_shares[p]);
-        run_party(p, &peers, &batch.public, orders, accounts)
-    };
-    let (a, b, c) = tokio::join!(party(0), party(1), party(2));
+    let (s0, s1, s2) = (batch.shares(0), batch.shares(1), batch.shares(2));
+    let (a, b, c) = tokio::join!(
+        run_party(0, &peers, &batch.public, &s0),
+        run_party(1, &peers, &batch.public, &s1),
+        run_party(2, &peers, &batch.public, &s2),
+    );
     Ok([a?, b?, c?])
 }

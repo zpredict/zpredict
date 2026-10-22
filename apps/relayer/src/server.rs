@@ -39,7 +39,8 @@ pub async fn run(c: Config) -> Result<()> {
         )));
     }
     let markets = zpredict_circuit::DEFAULT_MARKETS;
-    let _ = zpredict_circuit::program(c.batch_size, c.table_rows, markets);
+    let withdrawals = zpredict_circuit::DEFAULT_WITHDRAWALS;
+    let _ = zpredict_circuit::program(c.batch_size, c.table_rows, markets, withdrawals);
     serve(c, Polytune).await
 }
 

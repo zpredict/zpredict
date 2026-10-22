@@ -2,13 +2,12 @@ use std::net::SocketAddr;
 
 use polytune::channel::Channel;
 use polytune::garble_lang::GarbleProgram;
-use zpredict_core::{ACCOUNT_LEN, ORDER_LEN};
 
 use crate::{
     Error,
-    io::{self, Outcome, Public},
+    io::{self, Outcome, Public, Shares},
     net::TcpChannel,
-    program::{circuit, program},
+    program::{circuit, shape},
 };
 
 /// The garbled-circuit evaluator.
@@ -22,22 +21,18 @@ pub async fn run_party(
     party: usize,
     peers: &[SocketAddr; 3],
     public: &Public,
-    orders: &[[u8; ORDER_LEN]],
-    accounts: &[[u8; ACCOUNT_LEN]],
+    shares: &Shares<'_>,
 ) -> Result<Outcome, Error> {
     let channel = TcpChannel::connect(party, peers).await?;
-    run_party_on(&channel, party, public, orders, accounts).await
+    run_party_on(&channel, party, public, shares).await
 }
 
 /// Same as [`run_party`] over any polytune channel (e.g. one carried over HTTPS).
 ///
-/// - `public`: the batch's markets, credits and withdrawals ([`Public`]), the same at
-///   all three. Orders only cross within their own market.
-/// - `orders`: this relayer's share of each order slot, padded with zero shares; its
-///   length (2..=[`MAX_SLOTS`](crate::MAX_SLOTS), e.g.
-///   [`DEFAULT_SLOTS`](crate::DEFAULT_SLOTS)) picks the program.
-/// - `accounts`: this relayer's share of every balance-table row (`Account::encode`),
-///   in the same order at all three; its length picks the table size.
+/// - `public`: the batch's markets, credits and withdrawal amounts ([`Public`]), the
+///   same at all three. Orders only cross within their own market.
+/// - `shares`: this relayer's shares of the orders, the balance table and the
+///   withdrawals' accounts ([`Shares`]).
 ///
 /// Returns [`Error::Disagreement`] if the parties' public inputs differ: then nothing
 /// was cleared, credited or withdrawn.
@@ -51,21 +46,20 @@ pub async fn run_party_on(
     channel: &impl Channel,
     party: usize,
     public: &Public,
-    orders: &[[u8; ORDER_LEN]],
-    accounts: &[[u8; ACCOUNT_LEN]],
+    shares: &Shares<'_>,
 ) -> Result<Outcome, Error> {
-    let rows = accounts.len();
-    if !(2..=crate::MAX_SLOTS).contains(&orders.len())
+    let (slots, rows) = (shares.orders.len(), shares.accounts.len());
+    if !(2..=crate::MAX_SLOTS).contains(&slots)
         || public.credits.len() != rows
-        || public.debits.len() != rows
+        || public.withdrawals.len() != shares.withdrawals.len()
     {
         return Err(Error::Circuit(
-            "need 2..=21 order slots and one credit and one debit per table row".into(),
+            "need 2..=21 order slots, a credit per row and a share per withdrawal".into(),
         ));
     }
-    let prg = program(orders.len(), rows, public.markets.len());
-    let mask = Outcome::random(orders.len(), rows);
-    let input = io::input_bits(prg, party, public, orders, accounts, &mask)?;
+    let prg = shape(public, shares);
+    let mask = Outcome::random(slots, rows);
+    let input = io::input_bits(prg, party, public, shares, &mask)?;
     let out = io::decode_output(prg, &mpc(channel, prg, &input, party).await?)?;
     if party == EVALUATOR {
         return Ok(out.xor(&mask));

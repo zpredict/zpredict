@@ -12,7 +12,7 @@ use std::{
 use zpredict_core::{BALANCE_LEN, FILL_LEN};
 
 use zpredict_circuit::{
-    DEFAULT_POSITIONS, DEFAULT_ROWS, DEFAULT_SLOTS, Outcome, and_gates,
+    DEFAULT_POSITIONS, DEFAULT_ROWS, DEFAULT_SLOTS, DEFAULT_WITHDRAWALS, Outcome, and_gates,
     harness::{MARKETS, Rng, combine, expected, localhost, random_batch},
     net::TcpChannel,
     program, resolve_program, run_party_on,
@@ -31,7 +31,7 @@ async fn main() {
     let (runs, rows) = (arg(1, 3), arg(2, DEFAULT_ROWS as u64) as usize);
     let slots = arg(3, DEFAULT_SLOTS as u64) as usize;
     let t = Instant::now();
-    let gates = and_gates(program(slots, rows, MARKETS.len()));
+    let gates = and_gates(program(slots, rows, MARKETS.len(), DEFAULT_WITHDRAWALS));
     println!(
         "N = {slots}, {rows} rows, {} market slots, {gates} AND gates, compiled in {:.1?}",
         MARKETS.len(),
@@ -82,12 +82,11 @@ async fn main() {
 }
 
 async fn party(p: usize, seed: u64, rows: usize, slots: usize) {
-    program(slots, rows, MARKETS.len()); // compile before connecting: keeps it out of the timing
+    program(slots, rows, MARKETS.len(), DEFAULT_WITHDRAWALS); // compile now, not in the timing
     let batch = random_batch(&mut Rng(seed), slots, rows);
     let channel = TcpChannel::connect(p, &localhost(PORT)).await.unwrap();
     let t = Instant::now(); // MPC only: excludes compile and waiting for peers
-    let (orders, accounts) = (&batch.order_shares[p], &batch.account_shares[p]);
-    let out = run_party_on(&channel, p, &batch.public, orders, accounts)
+    let out = run_party_on(&channel, p, &batch.public, &batch.shares(p))
         .await
         .unwrap();
     let bytes = out

@@ -6,27 +6,43 @@ use crate::balance::Account;
 use crate::order::{Order, Side};
 use crate::{FILL_LEN, HALF_TICKS_PER_UNIT};
 
-/// Adds `credits[r]` to row `r`, then takes `debits[r]` (a withdrawal) only if the row
-/// can cover it. Returns the new table and, per row, whether its withdrawal went through.
-/// Both vectors are public: every relayer sees deposit amounts and must know withdrawal
-/// amounts to pay them out, so they reveal nothing new; `withdrawn` tells them only that
-/// the account held at least the amount.
+/// One withdrawal request: the account (secret-shared in the circuit, like an order's)
+/// and the amount in half-ticks (public: the payout needs it). Amount 0 is an unused slot.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Withdrawal {
+    pub account: u64,
+    pub amount: u64,
+}
+
+/// Adds `credits[r]` to row `r` (deposits are public to every relayer anyway), then, in
+/// slot order, takes each withdrawal from the first row of its account only if that row
+/// covers it. Returns the new table and, per slot, whether the withdrawal went through.
+/// Relayers learn amounts and the `ok` bits, never whose withdrawal it was.
 pub fn apply_flows(
     accounts: &[Account],
     credits: &[u64],
-    debits: &[u64],
+    withdrawals: &[Withdrawal],
 ) -> (Vec<Account>, Vec<bool>) {
-    accounts
-        .iter()
-        .zip(credits)
-        .zip(debits)
-        .map(|((a, &c), &d)| {
-            let balance = a.balance + c;
-            let ok = d > 0 && balance >= d;
-            let balance = if ok { balance - d } else { balance };
-            (Account { balance, ..*a }, ok)
+    let mut table: Vec<Account> = (accounts.iter().zip(credits))
+        .map(|(a, c)| Account {
+            balance: a.balance + c,
+            ..*a
         })
-        .unzip()
+        .collect();
+    let ok = withdrawals
+        .iter()
+        .map(|w| {
+            let row = table.iter().position(|a| a.id == w.account);
+            match row {
+                Some(r) if w.amount > 0 && table[r].balance >= w.amount => {
+                    table[r].balance -= w.amount;
+                    true
+                }
+                _ => false,
+            }
+        })
+        .collect();
+    (table, ok)
 }
 
 /// New balances once `market` resolves to `outcome`: every position (an order and its
@@ -60,6 +76,7 @@ mod tests {
 
     #[test]
     fn credits_then_withdrawals_that_fit() {
+        let w = |account, amount| Withdrawal { account, amount };
         let accts = [
             Account {
                 id: 1,
@@ -71,14 +88,12 @@ mod tests {
             },
             Account { id: 3, balance: 0 },
         ];
-        let (after, ok) = apply_flows(&accts, &[0, 50, 10], &[100, 151, 0]);
-        assert_eq!(ok, vec![true, false, false]);
+        // Account 3 withdraws twice: the second no longer fits; 9 has no row; 0 is unused.
+        let ws = [w(1, 100), w(2, 151), w(3, 6), w(3, 6), w(9, 1), w(1, 0)];
+        let (after, ok) = apply_flows(&accts, &[0, 50, 10], &ws);
+        assert_eq!(ok, vec![true, false, true, false, false, false]);
         let b: Vec<u64> = after.iter().map(|a| a.balance).collect();
-        assert_eq!(
-            b,
-            vec![0, 150, 10],
-            "a refused withdrawal leaves the credit"
-        );
+        assert_eq!(b, vec![0, 150, 4], "a refused withdrawal leaves the credit");
     }
 
     #[test]

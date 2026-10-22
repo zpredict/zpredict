@@ -15,8 +15,10 @@ pub struct Public {
     pub markets: Vec<u32>,
     /// Half-ticks added to each table row before clearing (deposits, judge credits).
     pub credits: Vec<u64>,
-    /// Half-ticks withdrawn from each row (0 = none), taken only if the row covers them.
-    pub debits: Vec<u64>,
+    /// Each withdrawal slot's amount in half-ticks (0 = unused slot), taken from its
+    /// account's row only if the row covers it. Its length picks the program: keep it
+    /// fixed, e.g. [`DEFAULT_WITHDRAWALS`](crate::DEFAULT_WITHDRAWALS).
+    pub withdrawals: Vec<u64>,
 }
 
 impl Public {
@@ -25,9 +27,23 @@ impl Public {
         Self {
             markets: markets.to_vec(),
             credits: vec![0; rows],
-            debits: vec![0; rows],
+            withdrawals: vec![0; crate::DEFAULT_WITHDRAWALS],
         }
     }
+}
+
+/// One relayer's secret-shared inputs to a batch.
+#[derive(Clone, Copy, Debug)]
+pub struct Shares<'a> {
+    /// Its share of each order slot, padded with zero shares; the length (2..=
+    /// [`MAX_SLOTS`](crate::MAX_SLOTS)) picks the program.
+    pub orders: &'a [[u8; ORDER_LEN]],
+    /// Its share of every balance-table row (`Account::encode`), in the same order at all
+    /// three; the length picks the table size.
+    pub accounts: &'a [[u8; ACCOUNT_LEN]],
+    /// Its share of each withdrawal slot's account id (`u64` LE), one per
+    /// `Public::withdrawals` entry; zero shares for unused slots.
+    pub withdrawals: &'a [[u8; 8]],
 }
 
 /// What one relayer gets back from a batch.
@@ -40,7 +56,7 @@ pub struct Outcome {
     /// Each market slot's public clearing price (`zpredict_core::clearing_price`), in the
     /// order the markets were passed; `None` if nothing crossed. Not a share.
     pub prices: Vec<Option<u16>>,
-    /// Per row, whether its withdrawal (`Public::debits`) went through. Public.
+    /// Per withdrawal slot (`Public::withdrawals`), whether it went through. Public.
     pub withdrawn: Vec<bool>,
 }
 
@@ -107,8 +123,7 @@ pub(crate) fn input_bits(
     prg: &GarbleProgram,
     party: usize,
     public: &Public,
-    orders: &[[u8; ORDER_LEN]],
-    accounts: &[[u8; ACCOUNT_LEN]],
+    shares: &Shares,
     mask: &Outcome,
 ) -> Result<Vec<bool>, Error> {
     let u64s = |v: &[u64]| nums(v.iter().copied(), UnsignedNumType::U64);
@@ -117,13 +132,14 @@ pub(crate) fn input_bits(
         UnsignedNumType::U32,
     );
     let fields = vec![
-        ("accounts", rows(accounts)),
+        ("accounts", rows(shares.accounts)),
         ("balance_mask", rows(&mask.balances)),
         ("credits", u64s(&public.credits)),
-        ("debits", u64s(&public.debits)),
         ("fill_mask", rows(&mask.fills)),
         ("markets", markets),
-        ("orders", rows(orders)),
+        ("orders", rows(shares.orders)),
+        ("withdraw_accounts", rows(shares.withdrawals)),
+        ("withdrawals", u64s(&public.withdrawals)),
     ];
     party_bits(prg, party, fields)
 }

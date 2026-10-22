@@ -18,10 +18,11 @@
 //! The list is every open market, so the same circuit runs whichever markets have
 //! orders. Credits (deposits, judge credits: amounts every relayer already sees) are
 //! added to their rows before clearing, so a top-up lands in the account's existing
-//! row. Then each withdrawal (a public debit per row) is taken only if its row covers
-//! it, before any order reserves funds, and the public `withdrawn` output says which
-//! went through: relayers need the amount to pay it out, and learn only that the
-//! account held at least that much. If the parties disagree on any public input,
+//! row. Then each withdrawal (a public amount; whose it is stays secret-shared, like an
+//! order's account) is taken only if its account's row covers it, before any order
+//! reserves funds, and the public `withdrawn` output says which went through: relayers
+//! need the amount to pay it out, and never learn whose withdrawal it was, so they
+//! cannot link a deposit to a payout. If the parties disagree on any public input,
 //! nothing moves and [`run_party_on`] returns [`Error::Disagreement`]. Each market's price is [`zpredict_core::clearing_price`]: the
 //! volume-weighted YES cost of its fills, revealed to all three; sizes and counts stay
 //! hidden.
@@ -69,14 +70,15 @@
 //! | slots | rows | AND gates | MPC per batch | compile | peak RSS     |
 //! |-------|------|-----------|---------------|---------|--------------|
 //! | 8     | 16   | 167,949   | 3.6 s         | 2.5 s   | 0.36 GB      |
-//! | 8     | 32   | 266,533   | 5.8 s         | 5.7 s   | 0.63 GB      |
+//! | 8     | 32   | 269,753   | 5.9 s         | 5.9 s   | 0.63 GB      |
 //! | 16    | 16   | 490,829   | 10.5 s        | 14 s    | 0.7–1.0 GB   |
 //! | 16    | 32   | 622,597   | 13.5 s        | 21 s    | 1.0–1.4 GB   |
 //!
 //! Crossing costs ~N² AND gates and each table row ~8k; four market slots cost ~24k
 //! together, so one run replaces one run per market. Each party uses about one core.
 //! Traffic scales with AND gates (16 slots, one market sent 0.5–0.6 GB per party).
-//! The 8-slot rows predate withdrawals except 8 × 32, measured with them (+30k gates).
+//! The other rows predate withdrawals; 8 × 32 includes [`DEFAULT_WITHDRAWALS`] = 2
+//! withdrawal slots (~9k gates each).
 //! A resolution run of [`DEFAULT_POSITIONS`] = 16 positions over 32 rows is 125,087 AND
 //! gates (~2.8 s by the same rate).
 //!
@@ -96,10 +98,10 @@ mod program;
 pub mod resolve;
 
 pub use error::Error;
-pub use io::{Outcome, Public};
+pub use io::{Outcome, Public, Shares};
 pub use party::{run_party, run_party_on};
 pub use program::{
-    DEFAULT_MARKETS, DEFAULT_ROWS, DEFAULT_SLOTS, MAX_SLOTS, and_gates, eval_in_clear, program,
-    resolve_program,
+    DEFAULT_MARKETS, DEFAULT_ROWS, DEFAULT_SLOTS, DEFAULT_WITHDRAWALS, MAX_SLOTS, and_gates,
+    eval_in_clear, program, resolve_program,
 };
 pub use resolve::{DEFAULT_POSITIONS, Position, resolve_in_clear, run_resolution_on};

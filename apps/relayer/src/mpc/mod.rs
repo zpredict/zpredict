@@ -60,9 +60,14 @@ impl Matcher for Polytune {
         let public = zpredict_circuit::Public {
             markets: markets.to_vec(),
             credits: credits.to_vec(),
-            debits: vec![0; accounts.len()],
+            withdrawals: vec![0; zpredict_circuit::DEFAULT_WITHDRAWALS],
         };
-        let out = zpredict_circuit::run_party_on(links, links.party, &public, orders, accounts)
+        let shares = zpredict_circuit::Shares {
+            orders,
+            accounts,
+            withdrawals: &[[0; 8]; zpredict_circuit::DEFAULT_WITHDRAWALS],
+        };
+        let out = zpredict_circuit::run_party_on(links, links.party, &public, &shares)
             .await
             .map_err(|e| Error::Mpc(e.to_string()))?;
         Ok(Cleared {
