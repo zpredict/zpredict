@@ -1,0 +1,19 @@
+[package]
+name = "zpredict-circuit"
+description = "Garble clearing circuit and 3-party polytune runner for zPredict"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+# Pinned git rev: the 0.2.0-alpha.4 release pins aes 0.9.0-rc.2, which can't coexist with the
+# stable aes 0.9 that orchard (packages/settle) needs. This rev uses aes 0.9.1.
+polytune = { git = "https://github.com/sine-fdn/polytune", rev = "47dc37840a241ba0e27c1b2234059746a1ba05b7" }
+rand = "0.10"
+thiserror = "2"
+tokio = { version = "1", features = ["io-util", "net", "rt", "sync", "time"] }
+zpredict-core = { path = "../core" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
