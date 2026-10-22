@@ -1,0 +1,32 @@
+# Zebra regtest (NU6.3 Ironwood + NU7 active from height 1) + lightwalletd.
+# Ephemeral: every `up` starts a fresh chain. Ports bind to localhost only.
+# Driven by scripts/regtest-up.sh, which sets MINER_ADDRESS to a fresh Orchard-only
+# unified address; with NU6.3 active, Zebra pays the coinbase into Ironwood.
+services:
+  zebra:
+    image: zfnd/zebra:7.0.0@sha256:a70d2be8ffef3a4b6e37355724e36a0e6c1838e46baa28bfb216739f00cf2d34
+    command: ["zebrad", "-c", "/etc/zebrad.toml", "start"]
+    environment:
+      ZEBRA_MINING__MINER_ADDRESS: ${MINER_ADDRESS:?set MINER_ADDRESS to a shielded unified address}
+    volumes:
+      - ./zebrad.toml:/etc/zebrad.toml:ro
+    ports:
+      - "127.0.0.1:18232:18232"
+
+  lightwalletd:
+    # No arm64 image is published; runs under amd64 emulation on Apple silicon.
+    image: electriccoinco/lightwalletd:v0.6.0@sha256:abc8199dae800e050415a3459f71c7850aeefeb1ca6a681e9b9eda7249ce8613
+    platform: linux/amd64
+    depends_on: [zebra]
+    command:
+      - --no-tls-very-insecure
+      - --grpc-bind-addr=0.0.0.0:9067
+      - --rpchost=zebra
+      - --rpcport=18232
+      # Zebra runs without cookie auth on regtest; lightwalletd still wants these set.
+      - --rpcuser=zpredict
+      - --rpcpassword=regtest
+      - --data-dir=/tmp/lwd
+      - --log-file=/dev/stdout
+    ports:
+      - "127.0.0.1:9067:9067"

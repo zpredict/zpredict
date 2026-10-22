@@ -1,0 +1,28 @@
+# Zebra regtest for the zPredict settlement spike (issue #5).
+# Every upgrade through NU6.3 (Ironwood) and NU7 is active from height 1,
+# so Ironwood is the live shielded pool and transactions are v5/v6 only.
+
+[network]
+network = "Regtest"
+listen_addr = "0.0.0.0:18344"
+cache_dir = false
+
+[network.testnet_parameters.activation_heights]
+NU5 = 1
+NU6 = 1
+"NU6.1" = 1
+"NU6.2" = 1
+"NU6.3" = 1
+NU7 = 1
+
+[mining]
+# miner_address is set at runtime via ZEBRA_MINING__MINER_ADDRESS (compose.yaml).
+# Blocks are mined on demand with the `generate` RPC; no internal miner.
+
+[rpc]
+# localhost-only in compose; no cookie so lightwalletd and scripts can call it.
+listen_addr = "0.0.0.0:18232"
+enable_cookie_auth = false
+
+[state]
+ephemeral = true
