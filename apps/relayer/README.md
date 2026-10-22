@@ -39,9 +39,11 @@ TOML, one file per relayer (`config/r{0,1,2}.toml` are the local examples). Path
 | `expire_batches` | A pending order missing from the intersection this long becomes `unfilled` |
 | `judge`, `judge_credit` | `POST /judge/claim` (mock), credit in half-ticks |
 | `memo_key_file` | Optional. Hex file holding this relayer's deposit-memo public key: the `pubkey` printed by `settle memo-key`, whose sealed secret stays with the escrow scanner. It is served at `GET /memo-key`, and without it that route answers 404. `ZPREDICT_STORE_KEY` (the settle store key) is never read as config |
-| `data_dir` | Event log directory |
+| `frost_share_file` | Optional. Sealed FROST key share (`settle-payout dkg` → `rN-share.sealed`), opened with `ZPREDICT_STORE_KEY`. With it, outcomes all three relayers agree on are FROST-signed 2-of-3 (`outcome.rs`) and `GET /group-key` serves the group key; without it outcomes stay unsigned and that route answers 404 |
+| `data_dir` | Event log directory, plus `markets.json` (rolling markets and signed outcomes, kept across restarts) |
 | `insecure_matcher` | Plaintext dev matcher; needs the `dev-insecure` cargo feature as well |
-| `[[markets]]` | The `Market` records served by `/markets` |
+| `[rolling]` | Optional hourly markets (`markets/rolling.rs`): `plugin` (`shielded-actions`), `interval_secs`, `horizon_secs`, `close_secs`, `sample_blocks` (median for N), `keep_resolved`, `fast_from` (NU7: 25 s blocks from here). See DESIGN.md "Resolution" |
+| `[[markets]]` | The `Market` records served by `/markets` (ids below 1,000,000; rolling markets use the rest) |
 
 ## How a batch runs (`batch.rs`)
 
