@@ -6,20 +6,13 @@ import { motionOk } from "@/lib/scramble";
 /** Target glyph cell in CSS px, matching the snapshot's cells (AsciiHero GRID). */
 const CELL_CSS = { desktop: 7.9, phone: 7.5 };
 
-/**
- * CSS px of one design px of cell width, as @zpredict/ascii sizes a canvas: a 1600 x 1000
- * artboard, or 900 across (with cells shrunk by 450 / w) when the canvas is ≤ 900 px wide.
- */
-const cellScale = (w: number, h: number) =>
-	w <= 900 ? (w / 900) * Math.min(1, 450 / w) : Math.min(w / 1600, h / 1000);
-
 /** Loads Three.js (its own chunk) and starts the scene. Throws without WebGL. */
 async function mount(el: HTMLCanvasElement): Promise<AsciiScene> {
-	const { createAsciiScene } = await import("@zpredict/ascii");
+	const { cellForCssPx, createAsciiScene } = await import("@zpredict/ascii");
 	const css = matchMedia("(max-width: 900px)").matches ? CELL_CSS.phone : CELL_CSS.desktop;
 	return createAsciiScene(el, {
 		framing: { size: 1, x: 0.5, y: 0.5 },
-		cell: css / cellScale(el.clientWidth, el.clientHeight),
+		cell: cellForCssPx(css, el.clientWidth, el.clientHeight),
 	});
 }
 

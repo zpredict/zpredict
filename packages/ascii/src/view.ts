@@ -28,6 +28,15 @@ export function designScale(width: number, height: number): number {
 	return width <= 900 ? width / 900 : Math.min(width / 1600, height / 1000);
 }
 
+/**
+ * The `cell` option (design px) that draws glyphs `cssPx` wide on a `width` × `height` canvas:
+ * the inverse of the engine's sizing, including the ≤ 900 px `450 / width` shrink.
+ */
+export function cellForCssPx(cssPx: number, width: number, height: number): number {
+	const shrink = width <= 900 ? Math.min(1, 450 / width) : 1;
+	return cssPx / (designScale(width, height) * shrink);
+}
+
 /** Orthographic frustum (world units, relative to the mark centre) for a w × h design-px view. */
 export function frustum(w: number, h: number, framing: Framing = DEFAULT_FRAMING) {
 	const side = framing.size * Math.min(w, h);
