@@ -39,8 +39,11 @@
 
 mod error;
 mod io;
+pub mod net;
+mod party;
 mod program;
 
 pub use error::Error;
 pub use io::{FillShares, OrderShares};
+pub use party::{run_party, run_party_on};
 pub use program::{N, and_gates, eval_in_clear, program};
