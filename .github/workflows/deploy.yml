@@ -1,0 +1,46 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  coolify:
+    name: Coolify (landing, web)
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      COOLIFY_URL: ${{ vars.COOLIFY_URL }}
+      COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+      # Space-separated Coolify resource uuids, e.g. "landing-uuid web-uuid".
+      COOLIFY_RESOURCES: ${{ vars.COOLIFY_RESOURCES }}
+    steps:
+      - name: Trigger deploys
+        run: |
+          if [ -z "$COOLIFY_TOKEN" ] || [ -z "$COOLIFY_URL" ] || [ -z "$COOLIFY_RESOURCES" ]; then
+            echo "::warning::COOLIFY_URL, COOLIFY_TOKEN or COOLIFY_RESOURCES is not set; skipping deploy."
+            exit 0
+          fi
+          for uuid in $COOLIFY_RESOURCES; do
+            code=$(curl -s -o /tmp/deploy.json -w '%{http_code}' -X POST \
+              -H "Authorization: Bearer $COOLIFY_TOKEN" \
+              "$COOLIFY_URL/api/v1/deploy?uuid=$uuid")
+            if [ "$code" != "200" ]; then
+              echo "::error::deploy $uuid failed with HTTP $code"
+              exit 1
+            fi
+            echo "queued $uuid"
+          done
