@@ -1,0 +1,9 @@
+# zPredict
+
+> Shielded prediction market on Zcash. Prices are public; nobody learns who bet, which side, or how much.
+
+FROST 2-of-3 escrow, orders secret-shared across 3 relayers, YES/NO matched in MPC, batched shielded payouts.
+
+- [App](https://app.zpredict.site/): markets, order ticket, Relayer View, judge mode
+- [Threat model](https://app.zpredict.site/threat-model/): what each party can and cannot learn
+- [Source and design](https://github.com/zpredict/zpredict): code, DESIGN.md, MIT licence

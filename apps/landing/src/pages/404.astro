@@ -1,0 +1,22 @@
+---
+import Button from "../components/ui/Button.astro";
+import Panel from "../components/ui/Panel.astro";
+import SectionHeading from "../components/ui/SectionHeading.astro";
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="Not found · zPredict">
+	<meta slot="head" name="robots" content="noindex" />
+	<main>
+		<Panel class="lost">
+			<SectionHeading lines={["Nothing", "here"]} />
+			<Button variant="cta" href="/">Back to zPredict</Button>
+		</Panel>
+	</main>
+</Base>
+
+<style>
+	.lost {
+		text-align: center;
+	}
+</style>
