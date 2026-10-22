@@ -12,3 +12,4 @@ zpredict-oracle = { path = "../../oracle" }
 
 [dev-dependencies]
 serde_json = "1"
+zpredict-oracle = { path = "../../oracle", features = ["fixture"] }

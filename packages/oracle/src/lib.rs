@@ -7,6 +7,7 @@
 mod backend;
 mod chain;
 mod error;
+#[cfg(any(test, feature = "fixture"))]
 mod fixture;
 mod market;
 mod outcome;
@@ -16,6 +17,7 @@ mod resolver;
 pub use backend::Lightwalletd;
 pub use chain::{Block, CONFIRMATIONS, Chain, confirmed_block};
 pub use error::{Error, Result};
+#[cfg(any(test, feature = "fixture"))]
 pub use fixture::FixtureChain;
 pub use market::{Market, Status};
 pub use outcome::{Outcome, Resolution};
