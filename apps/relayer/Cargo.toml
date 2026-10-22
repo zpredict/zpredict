@@ -1,0 +1,34 @@
+[package]
+name = "zpredict-relayer"
+description = "zPredict relayer: share intake, batching and the 3-party MPC clearing party"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+# Plaintext matcher for local dev: relayer 0 sees every order. Even when built in, the
+# binary refuses to use it unless the config also sets `insecure_matcher = true`.
+dev-insecure = []
+
+[dependencies]
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "query", "tokio"] }
+getrandom = "0.3"
+hex = "0.4"
+# Same rev as zpredict-circuit (needed to implement its `Channel` trait); don't `cargo update` it.
+polytune = { git = "https://github.com/sine-fdn/polytune", rev = "47dc37840a241ba0e27c1b2234059746a1ba05b7" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+snow = { version = "0.10", default-features = false, features = ["std", "use-blake2", "use-chacha20poly1305", "use-curve25519", "use-getrandom"] }
+tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
+toml = "1"
+zpredict-circuit = { path = "../../packages/circuit" }
+zpredict-core = { path = "../../packages/core" }
+zpredict-oracle = { path = "../../packages/oracle" }
+zpredict-plugin-ironwood-pool = { path = "../../packages/plugins/ironwood-pool" }
+zpredict-plugin-nu7-activation = { path = "../../packages/plugins/nu7-activation" }
+zpredict-plugin-shielded-actions = { path = "../../packages/plugins/shielded-actions" }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+zpredict-oracle = { path = "../../packages/oracle", features = ["fixture"] }

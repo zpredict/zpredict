@@ -8,7 +8,9 @@ peers = ["10.0.250.10:9000", "10.0.250.11:9000", "10.0.250.12:9000"]
 key_file = "/run/zpredict/self.key"
 peer_keys = ["/run/zpredict/r0.pub", "/run/zpredict/r1.pub", "/run/zpredict/r2.pub"]
 web_origin = "https://app.zpredict.site"
-lightwalletd = "https://testnet.zec.rocks:443"
+# Markets resolve from mainnet; the escrow and deposits are on testnet.
+oracle_lightwalletd = "https://zec.rocks:443"
+escrow_lightwalletd = "https://testnet.zec.rocks:443"
 batch_size = 16
 window_secs = 15
 expire_batches = 3
