@@ -1,0 +1,25 @@
+{
+	"name": "@zpredict/ascii",
+	"version": "0.1.0",
+	"description": "Live ASCII rendering of the extruded zPredict mark (Three.js) and its static text snapshot",
+	"license": "MIT",
+	"type": "module",
+	"exports": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist",
+		"!dist/*.test.*"
+	],
+	"scripts": {
+		"build": "tsc",
+		"test": "tsc && node --test dist/*.test.js"
+	},
+	"dependencies": {
+		"three": "0.186.1"
+	},
+	"devDependencies": {
+		"@types/node": "^24.19.2",
+		"@types/three": "0.186.0",
+		"typescript": "^7.0.2"
+	}
+}
