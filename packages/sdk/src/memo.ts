@@ -1,0 +1,102 @@
+// The deposit memo: the account tag, encrypted separately to each relayer. Mirrors
+// `zpredict_settle::memo` byte for byte; packages/settle/testdata/memo-vectors.json pins it.
+//
+//   0xFF | 0x01 | epk (32) | slot0 | slot1 | slot2, zero after byte 130 (512 bytes)
+//   slot_i = ChaCha20-Poly1305(k_i, nonce 0, tag), 16-byte ciphertext ‖ 16-byte MAC
+//   k_i    = BLAKE2b-256(personal "zPredictMemoKey1", X25519(esk, pk_i) ‖ epk ‖ pk_i)
+//
+// X25519 is WebCrypto. WebCrypto has neither ChaCha20-Poly1305 nor BLAKE2b, so those come
+// from @noble/ciphers and @noble/hashes: audited, zero-dependency, the usual choice.
+
+import { chacha20poly1305 } from "@noble/ciphers/chacha.js";
+import { blake2b } from "@noble/hashes/blake2.js";
+import { fromHex, random } from "./bytes.js";
+
+/** A Zcash memo is 512 bytes. */
+export const MEMO_LEN = 512;
+/** Zatoshis in one unit of collateral (0.01 ZEC). Mirrors `zpredict_settle::UNIT_ZATS`. */
+export const UNIT_ZATS = 1_000_000n;
+/** The only deposit sizes the relayers credit, in units. Anything else is never credited. */
+export const DENOMINATIONS = [1, 5, 25] as const;
+export type Denomination = (typeof DENOMINATIONS)[number];
+
+/** The three relayers' memo public keys (hex64), in relayer order. */
+export type MemoKeys = readonly [string, string, string];
+
+const VERSION = 0x01;
+const PREFIX = 2 + 32 + 3 * 32;
+const PERSONAL = new TextEncoder().encode("zPredictMemoKey1");
+// PKCS#8 header of an X25519 private key: WebCrypto's only way to import raw key bytes.
+const PKCS8_X25519 = fromHex("302e020100300506032b656e04220420");
+const X25519 = { name: "X25519" } as const;
+
+function bytes(hex: string, n: number, what: string): Uint8Array<ArrayBuffer> {
+	const b = new Uint8Array(fromHex(hex));
+	if (b.length !== n) throw new RangeError(`${what} must be ${n} bytes`);
+	return b;
+}
+
+/**
+ * The 512-byte memo for a deposit to account `tag` (hex32), readable by each relayer.
+ * Pass `esk` only in tests: a fresh one per memo is what keeps the zero nonce safe.
+ */
+export async function encodeMemo(
+	tag: string,
+	keys: MemoKeys,
+	esk: Uint8Array = random(32),
+): Promise<Uint8Array> {
+	const t = bytes(tag, 16, "tag");
+	const pks = keys.map((k) => bytes(k, 32, "memo key"));
+	const priv = await crypto.subtle.importKey(
+		"pkcs8",
+		new Uint8Array([...PKCS8_X25519, ...esk]),
+		X25519,
+		true,
+		["deriveBits"],
+	);
+	const jwk = await crypto.subtle.exportKey("jwk", priv);
+	const epk = bytes(base64urlToHex(jwk.x ?? ""), 32, "epk");
+
+	const memo = new Uint8Array(MEMO_LEN);
+	memo.set([0xff, VERSION]);
+	memo.set(epk, 2);
+	for (const [i, pk] of pks.entries()) {
+		const pub = await crypto.subtle.importKey("raw", pk, X25519, false, []);
+		// Throws on a low-order key (all-zero shared secret), as the relayer would reject it.
+		const shared = new Uint8Array(
+			await crypto.subtle.deriveBits({ ...X25519, public: pub }, priv, 256),
+		);
+		const k = blake2b(new Uint8Array([...shared, ...epk, ...pk]), {
+			dkLen: 32,
+			personalization: PERSONAL,
+		});
+		memo.set(chacha20poly1305(k, new Uint8Array(12)).encrypt(t), 2 + 32 + 32 * i);
+	}
+	return memo;
+}
+
+/** The memo as a ZIP 321 `memo=` value: base64url, no padding, trailing zeros dropped. */
+export function memoParam(memo: Uint8Array): string {
+	return btoa(String.fromCharCode(...memo.subarray(0, PREFIX)))
+		.replaceAll("+", "-")
+		.replaceAll("/", "_")
+		.replace(/=+$/, "");
+}
+
+/** `units` of collateral as a ZEC decimal string, e.g. 5 → "0.05". */
+export function unitsToZec(units: Denomination): string {
+	const zats = BigInt(units) * UNIT_ZATS;
+	const frac = (zats % 100_000_000n).toString().padStart(8, "0").replace(/0+$/, "");
+	return `${zats / 100_000_000n}${frac ? `.${frac}` : ""}`;
+}
+
+/** ZIP 321 payment request a wallet can open: one fixed-denomination note plus the memo. */
+export function depositUri(escrow: string, units: Denomination, memo: Uint8Array): string {
+	if (!DENOMINATIONS.includes(units)) throw new RangeError("not a deposit denomination");
+	return `zcash:${escrow}?amount=${unitsToZec(units)}&memo=${memoParam(memo)}`;
+}
+
+function base64urlToHex(s: string): string {
+	const bin = atob(s.replaceAll("-", "+").replaceAll("_", "/"));
+	return Array.from(bin, (c) => c.charCodeAt(0).toString(16).padStart(2, "0")).join("");
+}

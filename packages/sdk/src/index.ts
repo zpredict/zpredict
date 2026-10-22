@@ -1,6 +1,12 @@
 // Browser side of zPredict: mirrors `zpredict-core` byte for byte and talks to the
 // three relayers. Each relayer only ever receives its own share.
 
+import { fromHex, random, toHex } from "./bytes.js";
+import type { MemoKeys } from "./memo.js";
+
+export { fromHex, random, toHex } from "./bytes.js";
+export * from "./memo.js";
+
 /** Encoded order length in bytes; also the share length. */
 export const ORDER_LEN = 18;
 /**
@@ -97,8 +103,6 @@ export function decodeBalance(b: Uint8Array): bigint {
 	return new DataView(b.buffer, b.byteOffset, b.length).getBigUint64(0, true);
 }
 
-export const random = (n: number) => crypto.getRandomValues(new Uint8Array(n));
-
 /** Three XOR shares `[r0, r1, b ^ r0 ^ r1]`; pass `r0`, `r1` only in tests. */
 export function split(
 	b: Uint8Array,
@@ -110,17 +114,6 @@ export function split(
 
 export function combine(shares: readonly Uint8Array[]): Uint8Array {
 	return shares[0].map((_, i) => shares.reduce((x, s) => x ^ s[i], 0));
-}
-
-export const toHex = (b: Uint8Array) =>
-	Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
-
-// A single character class keeps matching linear (no nested quantifier to backtrack into).
-const HEX = /^[0-9a-f]*$/i;
-
-export function fromHex(h: string): Uint8Array {
-	if (h.length % 2 !== 0 || !HEX.test(h)) throw new SyntaxError("bad hex");
-	return Uint8Array.from(h.match(/../g) ?? [], (x) => Number.parseInt(x, 16));
 }
 
 /** A fresh account tag: 16 random bytes, hex. */
@@ -274,3 +267,21 @@ export async function getBalance(relayers: Relayers, tag: string) {
 export const getMarkets = (url: string) => call<Market[]>(at(url, "/markets"));
 
 export const getView = (url: string, after = 0) => call<View>(at(url, `/view?after=${after}`));
+
+/** `GET /memo-key`: the relayer's X25519 public key for its deposit-memo slot. */
+export interface MemoKeyReply {
+	relayer: 0 | 1 | 2;
+	memoKey: string;
+}
+
+/** The three memo keys, each fetched from its own relayer and checked to be in order. */
+export async function getMemoKeys(relayers: Relayers): Promise<MemoKeys> {
+	distinct(relayers);
+	const res = await Promise.all(relayers.map((u) => call<MemoKeyReply>(at(u, "/memo-key"))));
+	res.forEach((r, i) => {
+		if (r.relayer !== i || !/^[0-9a-f]{64}$/.test(r.memoKey)) {
+			throw new Error(`relayer ${i} returned a bad memo key`);
+		}
+	});
+	return [res[0].memoKey, res[1].memoKey, res[2].memoKey];
+}
