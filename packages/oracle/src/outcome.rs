@@ -17,6 +17,9 @@ impl From<bool> for Outcome {
     }
 }
 
+/// Domain separation for outcome signatures.
+pub const MESSAGE_PREFIX: &[u8] = b"zPredict outcome v1\n";
+
 /// An outcome plus the exact block it was computed from, so anyone can
 /// recompute it against their own node.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -39,10 +42,12 @@ impl Resolution {
         }
     }
 
-    /// The bytes the relayers sign.
-    // TODO(settle): FROST 2-of-3 signs these bytes; the signature goes into
-    // `Market::outcome_sig`. Until the settle crate lands, outcomes are unsigned.
+    /// The bytes the relayers FROST-sign into `Market::outcome_sig`:
+    /// [`MESSAGE_PREFIX`] then the compact JSON
+    /// `{"market":7,"outcome":"yes","height":100,"blockHash":"00ab…"}` (this field order).
+    /// `@zpredict/sdk` rebuilds the same bytes to verify.
     pub fn message(&self) -> Vec<u8> {
-        serde_json::to_vec(self).expect("plain struct serializes")
+        let json = serde_json::to_vec(self).expect("plain struct serializes");
+        [MESSAGE_PREFIX, &json].concat()
     }
 }
