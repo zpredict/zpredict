@@ -1,9 +1,7 @@
 ---
 import "@fontsource/figtree/500.css";
 import "@fontsource/instrument-sans/400.css";
-import "../styles/tokens.css";
-import "../styles/reset.css";
-import "../styles/typography.css";
+import "../styles/global.css";
 import { site } from "../data/site";
 
 interface Props {
@@ -21,6 +19,10 @@ const ogImage = new URL(site.ogImage, Astro.site);
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<!-- Cascade layer order must be declared before any bundled CSS; see styles/global.css. -->
+		<style is:inline>
+			@layer reset, base, ui;
+		</style>
 		<title>{title}</title>
 		<meta name="description" content={description} />
 		<meta name="referrer" content="no-referrer" />
