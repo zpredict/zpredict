@@ -1,0 +1,14 @@
+{
+	"name": "zpredict",
+	"private": true,
+	"packageManager": "pnpm@10.20.0",
+	"scripts": {
+		"check": "biome check .",
+		"fix": "biome check --write .",
+		"prepare": "husky"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.6.2",
+		"husky": "^9.1.7"
+	}
+}
