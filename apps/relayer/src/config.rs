@@ -76,7 +76,39 @@ pub struct Config {
     /// Hourly rolling markets (`markets/rolling.rs`); absent = off.
     #[serde(default)]
     pub rolling: Option<Rolling>,
+    /// Real deposits and payouts (`[settlement]`); absent, deposits come only from judge
+    /// mode and nothing is paid out. Turn on once the escrow key ceremony is done.
+    #[serde(default)]
+    pub settlement: Option<Settlement>,
     pub markets: Vec<Market>,
+}
+
+/// The escrow side of a relayer. The three secrets are sealed files
+/// (`zpredict_settle::store`, key in `ZPREDICT_STORE_KEY`) from the key ceremony.
+#[derive(Clone, Debug, Deserialize)]
+pub struct Settlement {
+    /// The escrow's network: `main`, `test` or `regtest`.
+    pub network: String,
+    /// Sealed escrow UFVK (shared by all three).
+    pub ufvk: PathBuf,
+    /// Sealed memo key: opens this relayer's slot in deposit memos.
+    pub memo_key: PathBuf,
+    /// Sealed FROST key share.
+    pub key_share: PathBuf,
+    /// First escrow block to scan.
+    pub start_height: u32,
+    /// Blocks a deposit needs before it is credited (payouts spend after 10).
+    #[serde(default = "default_confirmations")]
+    pub confirmations: u32,
+    /// Relayer 0 only, the prover: the zcash-devtool binary, its escrow wallet (unsealed
+    /// by the operator, ideally on tmpfs) and the lightwalletd it syncs and broadcasts to.
+    pub devtool: Option<PathBuf>,
+    pub wallet_dir: Option<PathBuf>,
+    pub devtool_server: Option<String>,
+}
+
+fn default_confirmations() -> u32 {
+    10
 }
 
 /// `ZPREDICT_*` variables that are not config keys: `ZPREDICT_STORE_KEY` unseals the
@@ -111,6 +143,12 @@ impl Config {
             .chain(c.peer_keys.iter_mut())
             .chain(c.memo_key_file.as_mut())
             .chain(c.frost_share_file.as_mut())
+            .chain(c.settlement.iter_mut().flat_map(|s| {
+                [&mut s.ufvk, &mut s.memo_key, &mut s.key_share]
+                    .into_iter()
+                    .chain(s.devtool.as_mut())
+                    .chain(s.wallet_dir.as_mut())
+            }))
         {
             *p = base.join(&*p);
         }

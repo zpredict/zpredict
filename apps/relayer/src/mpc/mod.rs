@@ -1,6 +1,6 @@
-//! The batch matcher: one relayer's side of the clearing computation.
+//! The batch matcher: one relayer's side of the clearing and resolution computations.
 //!
-//! [`Polytune`] is the real one: the `zpredict-circuit` Garble program under 3-party
+//! [`Polytune`] is the real one: the `zpredict-circuit` Garble programs under 3-party
 //! polytune MPC, carried over our Noise links. [`InsecureLocalMatcher`] reveals every
 //! order to relayer 0 and exists only for tests and local dev (`dev-insecure` feature).
 
@@ -9,72 +9,58 @@ mod insecure;
 
 #[cfg(any(test, feature = "dev-insecure"))]
 pub use insecure::InsecureLocalMatcher;
-use zpredict_core::{ACCOUNT_LEN, BALANCE_LEN, FILL_LEN, ORDER_LEN};
+use zpredict_circuit::{Outcome, Position, Public, Shares};
+use zpredict_core::{ACCOUNT_LEN, BALANCE_LEN, Side};
 
 use crate::error::{Error, Result};
 use crate::peers::Links;
 
-/// One relayer's output of one matcher run.
-#[derive(Debug, Default)]
-pub struct Cleared {
-    /// This relayer's XOR share of each slot's `zpredict_core::fill_records` record.
-    pub fills: Vec<[u8; FILL_LEN]>,
-    /// This relayer's XOR share of each table row's new balance.
-    pub balances: Vec<[u8; BALANCE_LEN]>,
-    /// Each market slot's public clearing price (YES half-ticks), in the order the
-    /// markets were passed; identical at all three relayers.
-    pub prices: Vec<Option<u16>>,
-}
-
 pub trait Matcher {
-    /// Clears one batch for `markets` (exactly [`zpredict_circuit::DEFAULT_MARKETS`]
-    /// slots, `0` = unused; orders of other markets come back as zero records).
-    /// `orders[k]` / `accounts[r]` are this relayer's shares of slot `k` / table row
-    /// `r`. Padding is all-zero shares: price 0 orders (dummies) and rows with balance 0.
-    /// `credits[r]` (public, the same at all three relayers) is added to row `r` before
-    /// clearing.
+    /// Clears one batch: `public` holds exactly [`zpredict_circuit::DEFAULT_MARKETS`]
+    /// market slots (`0` = unused), a credit per table row and
+    /// [`zpredict_circuit::DEFAULT_WITHDRAWALS`] withdrawal amounts; `shares` this
+    /// relayer's shares of the orders, the table and the withdrawals' accounts. Padding
+    /// is all-zero shares: price 0 orders (dummies), rows with balance 0, account 0.
     #[allow(async_fn_in_trait)] // runs on the batch thread via block_on; no Send needed
-    async fn clear(
+    async fn clear(&self, links: &Links, public: &Public, shares: &Shares<'_>) -> Result<Outcome>;
+
+    /// Pays `market`'s winners (`outcome`, public) among `positions` into the table;
+    /// returns this relayer's share of every row's new balance.
+    #[allow(async_fn_in_trait)]
+    async fn resolve(
         &self,
         links: &Links,
-        markets: &[u32],
-        credits: &[u64],
-        orders: &[[u8; ORDER_LEN]],
+        market: u32,
+        outcome: Side,
+        positions: &[Position],
         accounts: &[[u8; ACCOUNT_LEN]],
-    ) -> Result<Cleared>;
+    ) -> Result<Vec<[u8; BALANCE_LEN]>>;
 }
 
 /// The real matcher: one circuit run clears up to `DEFAULT_MARKETS` markets, with
-/// balance checks, credits and a public clearing price per market.
+/// balance checks, credits, withdrawals and a public clearing price per market; a
+/// second program pays out resolved markets.
 pub struct Polytune;
 
 impl Matcher for Polytune {
-    async fn clear(
+    async fn clear(&self, links: &Links, public: &Public, shares: &Shares<'_>) -> Result<Outcome> {
+        zpredict_circuit::run_party_on(links, links.party, public, shares)
+            .await
+            .map_err(|e| Error::Mpc(e.to_string()))
+    }
+
+    async fn resolve(
         &self,
         links: &Links,
-        markets: &[u32],
-        credits: &[u64],
-        orders: &[[u8; ORDER_LEN]],
+        market: u32,
+        outcome: Side,
+        positions: &[Position],
         accounts: &[[u8; ACCOUNT_LEN]],
-    ) -> Result<Cleared> {
-        let public = zpredict_circuit::Public {
-            markets: markets.to_vec(),
-            credits: credits.to_vec(),
-            withdrawals: vec![0; zpredict_circuit::DEFAULT_WITHDRAWALS],
-        };
-        let shares = zpredict_circuit::Shares {
-            orders,
-            accounts,
-            withdrawals: &[[0; 8]; zpredict_circuit::DEFAULT_WITHDRAWALS],
-        };
-        let out = zpredict_circuit::run_party_on(links, links.party, &public, &shares)
+    ) -> Result<Vec<[u8; BALANCE_LEN]>> {
+        let party = links.party;
+        zpredict_circuit::run_resolution_on(links, party, market, outcome, positions, accounts)
             .await
-            .map_err(|e| Error::Mpc(e.to_string()))?;
-        Ok(Cleared {
-            fills: out.fills,
-            balances: out.balances,
-            prices: out.prices,
-        })
+            .map_err(|e| Error::Mpc(e.to_string()))
     }
 }
 

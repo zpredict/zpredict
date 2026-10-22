@@ -1,35 +1,42 @@
 //! The batch loop. Every window, all three relayers:
-//! 1. connect over Noise ([`crate::peers`]) and swap a [`Hello`]: pending orderIds
-//!    (random and public), and from relayer 0 the balance-table row ids and the open
-//!    markets. The batch is the sorted intersection of the pending sets, capped at N;
-//!    the batch number is the max of the three, so counters stay in sync;
-//! 2. relayers 1 and 2 append zero-share rows for table rows relayer 0 added, and all
-//!    take relayer 0's pending credits (public deposit amounts per row);
-//! 3. pad orders to N and the table to its row count with all-zero shares;
-//! 4. run the [`Matcher`] as one MPC party, once per group of `DEFAULT_MARKETS` open
-//!    markets (one run for the demo's markets; with more, fill shares XOR together,
-//!    balances chain, credits go in the first run). Every window runs the same circuit
-//!    whichever markets have orders. A window with credits but no orders still runs;
-//! 5. store fill shares, new balance shares and public prices in one event, and expire
-//!    orders that never reached all three relayers (`unfilled`).
+//! 1. connect over Noise ([`crate::peers`]) and swap a [`hello::Hello`]: pending orderIds,
+//!    unapplied deposits from their own escrow scan, withdrawal requests, markets their
+//!    own node resolved, and from relayer 0 the table row ids, open markets and judge
+//!    credits. Only what all three offer counts ([`hello::exchange`]);
+//! 2. relayers 1 and 2 append zero-share rows for table rows relayer 0 added;
+//! 3. if a market resolved on all three nodes alike, pay its winners into the table
+//!    (`resolution.rs`) and stop there for this window;
+//! 4. otherwise clear: orders (capped at N), credits (agreed deposits, plus judge credits
+//!    where judge mode is on), withdrawal slots, all padded with zero shares; one matcher
+//!    run per group of open markets (`clear.rs`). A window with only credits or
+//!    withdrawals still runs;
+//! 5. store fill shares, new balance shares, prices and withdrawal results in one event,
+//!    and expire orders that never reached all three relayers (`unfilled`);
+//! 6. with settlement on, pay debited withdrawals out of the escrow ([`crate::escrow`]).
 //!
 //! A failed or aborted batch changes no shares: its orders stay pending and the next
 //! window re-runs it.
 
+mod clear;
+mod hello;
+mod resolution;
+
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use serde::{Deserialize, Serialize};
 use tokio::time::{Instant, sleep, timeout};
-use zpredict_core::{ACCOUNT_LEN, FILL_LEN, ORDER_LEN};
+use zpredict_circuit::{DEFAULT_WITHDRAWALS, Public, Shares};
+use zpredict_core::ORDER_LEN;
 use zpredict_oracle::Status;
 use zpredict_settle::KeyShare;
 
 use crate::error::{Error, Result};
-use crate::mpc::{Cleared, Matcher};
-use crate::peers::{Links, Peering};
+use crate::escrow::Escrow;
+use crate::mpc::Matcher;
+use crate::peers::Peering;
 use crate::state::Shared;
 use crate::store::Event;
+use hello::{Agreed, Hello};
 
 pub struct Batcher<M> {
     pub state: Shared,
@@ -44,18 +51,10 @@ pub struct Batcher<M> {
     pub expire: u64,
     /// This relayer's FROST share for outcome signing (`outcome.rs`); `None` = unsigned.
     pub frost: Option<Arc<KeyShare>>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct Hello {
-    batch: u64,
-    pending: Vec<String>,
-    /// Relayer 0 only: table row ids in order, open market ids, and pending credits
-    /// per row (half-ticks).
-    rows: Vec<u64>,
-    markets: Vec<u32>,
-    #[serde(default)]
-    credits: Vec<u64>,
+    /// Accept relayer 0's judge-mode credits (they can't be checked against a scan).
+    pub judge: bool,
+    /// Escrow keys and tools; `None` leaves deposits to judge mode and pays nothing out.
+    pub escrow: Option<Arc<Escrow>>,
 }
 
 /// Runs forever. The matcher's futures need not be `Send`, so call this through
@@ -63,8 +62,8 @@ struct Hello {
 pub async fn run<M: Matcher>(b: Batcher<M>) {
     loop {
         sleep(until_next_window(b.window)).await;
-        // Generous: N = 8 takes ~5 s in release on one machine, longer between hosts.
-        let budget = (b.window * 4).max(Duration::from_secs(120));
+        // Generous: a batch takes seconds; a payout adds proving and a broadcast.
+        let budget = (b.window * 4).max(Duration::from_secs(180));
         match timeout(budget, b.once()).await {
             Ok(Ok(_)) => {}
             // Errors name no order, share or address: only what failed.
@@ -100,123 +99,122 @@ impl<M: Matcher> Batcher<M> {
                 rows: s.table.ids(),
                 markets: open.map(|m| m.id).collect(),
                 credits: s.table.credits(self.rows, self.rows),
+                deposits: s.ledger.offered_deposits(),
+                withdrawals: s.ledger.offered_withdrawals(),
+                resolved: s.unpaid_resolutions(),
             }
         };
-        let hello = serde_json::to_vec(&mine)?;
-        let others = || (0..3).filter(|&p| p != links.party);
-        for p in others() {
-            links.send(p, &hello).await?;
-        }
-        let (mut batch, mut common, mut lead) = (mine.batch, mine.pending.clone(), None);
-        for p in others() {
-            let h: Hello = serde_json::from_slice(&links.recv(p).await?)?;
-            batch = batch.max(h.batch);
-            common.retain(|id| h.pending.binary_search(id).is_ok());
-            if p == 0 {
-                lead = Some(h);
+        let a = hello::exchange(&links, mine).await?;
+        let n = a.lead.rows.len().min(self.rows);
+        if links.party != 0 {
+            let mut s = self.state.lock().expect("state lock");
+            let missing = s.table.missing(&a.lead.rows)?;
+            if !missing.is_empty() {
+                s.record(Event::Rows { ids: missing })?;
             }
         }
-        let lead = lead.unwrap_or(mine);
-        let ids: Vec<String> = common.iter().take(self.slots).cloned().collect();
-        let n = lead.rows.len().min(self.rows);
-        // Rows past `n` sit out this batch, so their credits wait too.
-        let mut credits = vec![0u64; self.rows];
-        for (c, l) in credits.iter_mut().zip(&lead.credits).take(n) {
-            *c = *l;
+        if let Some(&(market, outcome)) = a.resolved.iter().min() {
+            self.resolve(&links, market, outcome, n).await?;
+            return Ok(Vec::new());
         }
-        let run = !ids.is_empty() || credits.iter().any(|&c| c > 0);
-        let (expired, orders, accounts) = {
+
+        let ids: Vec<String> = a.pending.iter().take(self.slots).cloned().collect();
+        let (credits, deposits) = self.credits(&a, n)?;
+        let slots: Vec<(&str, u64)> = (a.withdrawals.iter())
+            .filter_map(|w| hello::withdrawal(w))
+            .take(DEFAULT_WITHDRAWALS)
+            .collect();
+        let run = !ids.is_empty() || credits.iter().any(|&c| c > 0) || !slots.is_empty();
+        let (expired, orders, accounts, withdrawal_shares) = {
             let mut s = self.state.lock().expect("state lock");
-            if links.party != 0 {
-                let missing = s.table.missing(&lead.rows)?;
-                if !missing.is_empty() {
-                    s.record(Event::Rows { ids: missing })?;
-                }
-            } else if run {
+            if links.party == 0 && run {
                 s.record(Event::Seal { rows: n })?;
             }
             let mut orders = vec![[0u8; ORDER_LEN]; self.slots];
             for (slot, id) in orders.iter_mut().zip(&ids) {
-                *slot = s
+                let o = s
                     .order(id)
-                    .ok_or_else(|| Error::Peer("order vanished".into()))?
-                    .share;
+                    .ok_or_else(|| Error::Peer("order vanished".into()))?;
+                *slot = o.share;
             }
-            let expired = s.expirable(batch, self.expire, &common);
-            (expired, orders, s.table.shares(n, self.rows))
+            let mut shares = vec![[0u8; 8]; DEFAULT_WITHDRAWALS];
+            for (slot, (id, _)) in shares.iter_mut().zip(&slots) {
+                let w = (s.ledger.withdrawal(id))
+                    .ok_or_else(|| Error::Peer("withdrawal vanished".into()))?;
+                *slot = w.share;
+            }
+            let expired = s.expirable(a.batch, self.expire, &a.pending);
+            (expired, orders, s.table.shares(n, self.rows), shares)
         };
 
-        let (fills, balances, prices) = if run {
-            self.clear(&links, &lead.markets, &credits, &orders, &accounts)
-                .await?
+        let mut withdrawals = vec![0u64; DEFAULT_WITHDRAWALS];
+        (withdrawals.iter_mut().zip(&slots)).for_each(|(w, (_, amount))| *w = *amount);
+        let first = Public {
+            markets: vec![],
+            credits: credits.clone(),
+            withdrawals,
+        };
+        let shares = Shares {
+            orders: &orders,
+            accounts: &accounts,
+            withdrawals: &withdrawal_shares,
+        };
+        let done = if run {
+            self.clear(&links, &a.lead.markets, first, shares).await?
         } else {
             Default::default()
         };
-        let mut s = self.state.lock().expect("state lock");
-        if !run && expired.is_empty() {
-            s.batch = batch + 1;
-            return Ok(ids);
+        {
+            let mut s = self.state.lock().expect("state lock");
+            if !run && expired.is_empty() {
+                s.batch = a.batch + 1;
+            } else {
+                let results = slots.iter().zip(&done.withdrawn);
+                s.record(Event::Batch {
+                    batch: a.batch,
+                    ids: ids.clone(),
+                    fills: done.fills.iter().take(ids.len()).map(hex::encode).collect(),
+                    balances: done.balances.iter().take(n).map(hex::encode).collect(),
+                    prices: done.prices,
+                    expired,
+                    credits: if run { credits } else { Vec::new() },
+                    deposits: if run { deposits } else { Vec::new() },
+                    withdrawals: results.map(|((id, _), ok)| (id.to_string(), *ok)).collect(),
+                })?;
+            }
         }
-        s.record(Event::Batch {
-            batch,
-            ids: ids.clone(),
-            fills: fills.iter().take(ids.len()).map(hex::encode).collect(),
-            balances: balances.iter().take(n).map(hex::encode).collect(),
-            prices,
-            expired,
-            credits: if run { credits } else { Vec::new() },
-        })?;
+        if let Some(escrow) = &self.escrow {
+            crate::escrow::payout::round(escrow, &self.state, &links).await?;
+        }
         Ok(ids)
     }
 
-    /// Runs the matcher once per group of `DEFAULT_MARKETS` open markets, padded with 0,
-    /// so every window runs the same circuit whichever markets have orders (and at least
-    /// once, for credits). Credits go in the first run only.
-    async fn clear(
-        &self,
-        links: &Links,
-        markets: &[u32],
-        credits: &[u64],
-        orders: &[[u8; ORDER_LEN]],
-        accounts: &[[u8; ACCOUNT_LEN]],
-    ) -> Result<(Vec<[u8; FILL_LEN]>, Vec<[u8; 8]>, Vec<(u32, u16)>)> {
-        let width = zpredict_circuit::DEFAULT_MARKETS;
-        let mut passes: Vec<Vec<u32>> = markets.chunks(width).map(<[u32]>::to_vec).collect();
-        if passes.is_empty() {
-            passes.push(Vec::new());
-        }
-        passes.iter_mut().for_each(|p| p.resize(width, 0));
-        let zero = vec![0u64; credits.len()];
-        let mut fills = vec![[0u8; FILL_LEN]; orders.len()];
-        let mut table = accounts.to_vec();
-        let mut prices = Vec::new();
-        for (k, group) in passes.into_iter().enumerate() {
-            let credits = if k == 0 { credits } else { &zero };
-            let Cleared {
-                fills: f,
-                balances,
-                prices: p,
-            } = (self.matcher)
-                .clear(links, &group, credits, orders, &table)
-                .await?;
-            if f.len() < orders.len() || balances.len() < table.len() {
-                return Err(Error::Mpc("matcher returned too few shares".into()));
+    /// This batch's credit per row: relayer 0's judge credits (only where this relayer
+    /// runs judge mode too) plus every deposit all three scanned whose account has one
+    /// of the first `n` rows. Returns the credits and the deposits they include.
+    fn credits(&self, a: &Agreed, n: usize) -> Result<(Vec<u64>, Vec<String>)> {
+        let mut credits = vec![0u64; self.rows];
+        if a.lead.credits.iter().any(|&c| c > 0) {
+            if !self.judge {
+                return Err(Error::Peer(
+                    "relayer 0 announced credits no scan backs".into(),
+                ));
             }
-            fills
-                .iter_mut()
-                .zip(f)
-                .for_each(|(a, b)| a.iter_mut().zip(b).for_each(|(x, y)| *x ^= y));
-            table
-                .iter_mut()
-                .zip(&balances)
-                .for_each(|(row, b)| row[8..].copy_from_slice(b));
-            let priced = group.into_iter().zip(p).filter(|(m, _)| *m != 0);
-            prices.extend(priced.filter_map(|(m, p)| p.map(|p| (m, p))));
+            // Rows past `n` sit out this batch, so their credits wait too.
+            for (c, l) in credits.iter_mut().zip(&a.lead.credits).take(n) {
+                *c = *l;
+            }
         }
-        let balances = table
-            .iter()
-            .map(|r| r[8..].try_into().expect("8 bytes"))
-            .collect();
-        Ok((fills, balances, prices))
+        let mut applied = Vec::new();
+        for key in &a.deposits {
+            let Some((account, amount)) = hello::deposit(key) else {
+                continue;
+            };
+            if let Some(r) = a.lead.rows[..n].iter().position(|&id| id == account) {
+                credits[r] += amount;
+                applied.push(key.clone());
+            }
+        }
+        Ok((credits, applied))
     }
 }

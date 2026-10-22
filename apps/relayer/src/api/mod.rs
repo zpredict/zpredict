@@ -9,6 +9,7 @@ mod judge;
 mod orders;
 #[cfg(test)]
 pub(crate) mod tests;
+mod withdrawals;
 
 use std::sync::Arc;
 
@@ -32,6 +33,8 @@ pub struct Api {
     pub memo_key: Option<[u8; 32]>,
     /// The escrow's FROST group key, which also signs outcomes; `None` = unsigned.
     pub group_key: Option<[u8; 32]>,
+    /// With `[settlement]` on: the escrow's network, for checking payout addresses.
+    pub escrow: Option<Arc<crate::escrow::Escrow>>,
 }
 
 pub fn router(api: Api) -> Router {
@@ -45,6 +48,8 @@ pub fn router(api: Api) -> Router {
         .route("/orders/{id}", get(orders::get))
         .route("/accounts/{tag}", get(accounts::get))
         .route("/judge/claim", post(judge::claim))
+        .route("/withdrawals", post(withdrawals::post))
+        .route("/withdrawals/{id}", get(withdrawals::get))
         .fallback(|| async { fail(StatusCode::NOT_FOUND, "not found") })
         .layer(DefaultBodyLimit::max(1024))
         .layer(middleware::from_fn_with_state(api.clone(), cors))

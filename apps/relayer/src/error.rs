@@ -14,6 +14,8 @@ pub enum Error {
     Peer(String),
     /// The MPC run aborted; the batch is retried next window.
     Mpc(String),
+    /// Escrow scanning, payout building or signing failed.
+    Settle(String),
 }
 
 impl fmt::Display for Error {
@@ -24,6 +26,7 @@ impl fmt::Display for Error {
             Error::Store(m) => write!(f, "store: {m}"),
             Error::Peer(m) => write!(f, "peer: {m}"),
             Error::Mpc(m) => write!(f, "mpc: {m}"),
+            Error::Settle(m) => write!(f, "settle: {m}"),
         }
     }
 }
@@ -39,6 +42,12 @@ impl From<std::io::Error> for Error {
 impl From<snow::Error> for Error {
     fn from(e: snow::Error) -> Self {
         Error::Peer(e.to_string())
+    }
+}
+
+impl From<zpredict_settle::Error> for Error {
+    fn from(e: zpredict_settle::Error) -> Self {
+        Error::Settle(e.to_string())
     }
 }
 

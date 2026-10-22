@@ -50,4 +50,31 @@ async fn three_relayers_real_mpc() {
         let (_, m) = call(&x.http, "GET", "/markets", None).await;
         assert_eq!(m[0]["lastPrice"], json!(57.5));
     }
+
+    // Market 1 resolves YES on every node: the resolution MPC pays a's 2 contracts.
+    for x in &r {
+        let mut s = x.batcher.state.lock().unwrap();
+        s.markets[0].status = zpredict_oracle::Status::Resolved;
+        s.markets[0].outcome = Some(zpredict_oracle::Outcome::Yes);
+    }
+    batch_all(&r).await;
+    assert_eq!(balance(&r, &ta).await, 5000 - 230 + 400);
+
+    // b withdraws 1000 through the clearing MPC, its account only as XOR shares.
+    let shares = [
+        [3u8; 8],
+        [5; 8],
+        (b ^ 0x0303030303030303 ^ 0x0505050505050505).to_le_bytes(),
+    ];
+    for (i, x) in r.iter().enumerate() {
+        let e = crate::store::Event::Withdrawal {
+            id: id(9),
+            share: hex::encode(shares[i]),
+            amount: 1000,
+            address: "ua".into(),
+        };
+        x.batcher.state.lock().unwrap().record(e).unwrap();
+    }
+    batch_all(&r).await;
+    assert_eq!(balance(&r, &tb).await, 5000 - 170 - 1000);
 }

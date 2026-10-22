@@ -16,6 +16,7 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
+use crate::ledger::WithdrawalStatus;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "lowercase")]
@@ -39,6 +40,37 @@ pub enum Event {
         /// Public credits the batch added to each row (relayer 0 clears them as pending).
         #[serde(default)]
         credits: Vec<u64>,
+        /// Deposits (as offered, `note:account:amount`) those credits included.
+        #[serde(default)]
+        deposits: Vec<String>,
+        /// Withdrawal ids that took a slot, and whether each went through.
+        #[serde(default)]
+        withdrawals: Vec<(String, bool)>,
+    },
+    /// This relayer's scanner found a confirmed deposit of `amount` half-ticks for
+    /// `account` in escrow note `note` (`<txid>-<action>`).
+    Deposit {
+        note: String,
+        account: u64,
+        amount: u64,
+    },
+    /// The scanner has read the escrow chain up to `height`.
+    Scanned { height: u32 },
+    /// A withdrawal request: this relayer's share of the account id, the amount in
+    /// half-ticks and the shielded address to pay.
+    Withdrawal {
+        id: String,
+        share: String,
+        amount: u64,
+        address: String,
+    },
+    /// `market`'s winners were paid into the table: rows got new balance shares.
+    Resolved { market: u32, balances: Vec<String> },
+    /// Debited withdrawals `ids` moved to `status` (paying or paid, with the txid).
+    Payout {
+        ids: Vec<String>,
+        status: WithdrawalStatus,
+        txid: Option<String>,
     },
     /// Relayer 0: account `id` was credited `amount` half-ticks (see `table.rs`).
     Credit { id: u64, amount: u64 },

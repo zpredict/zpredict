@@ -10,6 +10,7 @@ use zpredict_core::{BALANCE_LEN, FILL_LEN, ORDER_LEN};
 use zpredict_oracle::Market;
 
 use crate::error::Result;
+use crate::ledger::{Ledger, WithdrawalStatus};
 use crate::store::{Event, Store};
 use crate::table::Table;
 
@@ -64,6 +65,8 @@ pub struct State {
     orders: HashMap<String, Order>,
     /// This relayer's shares of the balance table (`table.rs`).
     pub table: Table,
+    /// Deposits, withdrawals and resolved markets (`ledger.rs`).
+    pub ledger: Ledger,
     /// Market id → public clearing prices in cents (YES side), oldest first.
     history: HashMap<u32, Vec<f64>>,
     view: VecDeque<ViewItem>,
@@ -84,6 +87,7 @@ impl State {
             markets,
             orders: HashMap::new(),
             table: Table::default(),
+            ledger: Ledger::default(),
             history: HashMap::new(),
             view: VecDeque::new(),
             seq: 0,
@@ -121,8 +125,19 @@ impl State {
                 prices,
                 expired,
                 credits,
+                deposits,
+                withdrawals,
             } => {
                 self.table.applied(&credits);
+                self.ledger.apply_deposits(&deposits);
+                for (id, ok) in withdrawals {
+                    let status = if ok {
+                        WithdrawalStatus::Debited
+                    } else {
+                        WithdrawalStatus::Refused
+                    };
+                    self.ledger.set(&id, status, None);
+                }
                 let balances: Vec<[u8; BALANCE_LEN]> =
                     (balances.iter()).map(|b| hex_array(b)).collect();
                 self.table.set_balances(&balances);
@@ -149,6 +164,38 @@ impl State {
                 self.batch = self.batch.max(batch + 1);
             }
             Event::Credit { id, amount } => self.table.credit(id, amount),
+            Event::Deposit {
+                note,
+                account,
+                amount,
+            } => {
+                // Relayer 0 opens a row for a new account; the circuit credits it.
+                if self.index == 0 && !self.table.ids().contains(&account) {
+                    self.table.credit(account, 0);
+                }
+                self.ledger.deposit(note, account, amount);
+            }
+            Event::Scanned { height } => self.ledger.scanned = self.ledger.scanned.max(height),
+            Event::Withdrawal {
+                id,
+                share,
+                amount,
+                address,
+            } => {
+                let share = hex_array(&share);
+                self.ledger.request(id, share, amount, address);
+            }
+            Event::Resolved { market, balances } => {
+                let balances: Vec<[u8; BALANCE_LEN]> =
+                    (balances.iter()).map(|b| hex_array(b)).collect();
+                self.table.set_balances(&balances);
+                self.ledger.resolved.insert(market);
+            }
+            Event::Payout { ids, status, txid } => {
+                for id in ids {
+                    self.ledger.set(&id, status, txid.as_deref());
+                }
+            }
             Event::Rows { ids } => self.table.append_zero(&ids),
             Event::Seal { rows } => self.table.seal(rows),
         }
@@ -239,17 +286,30 @@ impl State {
         self.history.get(&market).map_or(&[], Vec::as_slice)
     }
 
-    /// Settlement hook: this relayer's fill share of every batched order. The payout MPC
-    /// combines these with the other two relayers' (see `settlement::payout`).
-    pub fn positions(&self) -> Vec<(String, [u8; FILL_LEN])> {
+    /// This relayer's share of every position: each batched order with its fill share,
+    /// sorted by order id (the same order at all three relayers). The resolution MPC
+    /// combines them; no relayer knows whose they are or whether they filled.
+    pub fn positions(&self) -> Vec<zpredict_circuit::Position> {
         let mut out: Vec<_> = (self.orders.iter())
             .filter_map(|(id, o)| match o.status {
-                Status::Filled(f) => Some((id.clone(), f)),
+                Status::Filled(f) => Some((id, (o.share, f))),
                 _ => None,
             })
             .collect();
-        out.sort();
-        out
+        out.sort_by(|a, b| a.0.cmp(b.0));
+        out.into_iter().map(|(_, p)| p).collect()
+    }
+
+    /// Markets resolved on this relayer's node whose winners are not yet paid, with the
+    /// outcome (0 = YES, 1 = NO).
+    pub fn unpaid_resolutions(&self) -> Vec<(u32, u8)> {
+        (self.markets.iter())
+            .filter(|m| !self.ledger.resolved.contains(&m.id))
+            .filter_map(|m| match m.outcome? {
+                zpredict_oracle::Outcome::Yes => Some((m.id, 0)),
+                zpredict_oracle::Outcome::No => Some((m.id, 1)),
+            })
+            .collect()
     }
 }
 
