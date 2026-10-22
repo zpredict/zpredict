@@ -1,18 +1,20 @@
-import "@fontsource/figtree/latin-500.css";
-import "@fontsource/instrument-sans/latin-400.css";
-import "@fontsource/instrument-sans/latin-500.css";
+import "@zpredict/brand/tokens.css";
 import "@/styles/tokens.css";
 import "@/styles/base.css";
 import "@/styles/ui.css";
 import "@/styles/layout.css";
+import "@/styles/menu.css";
 import "@/styles/home.css";
 import "@/styles/markets.css";
 import "@/styles/trade.css";
+import "@/styles/ticket.css";
+import "@/styles/xor.css";
 import "@/styles/relayer-view.css";
 import "@/styles/threat-model.css";
 import type { Metadata, Viewport } from "next";
 import Providers from "@/components/layout/Providers";
 import Topbar from "@/components/layout/Topbar";
+import { mono } from "@/lib/font";
 
 export const metadata: Metadata = {
 	title: "zPredict — shielded prediction markets on Zcash",
@@ -33,17 +35,15 @@ export const metadata: Metadata = {
 	},
 };
 
-export const viewport: Viewport = { themeColor: "#020202" };
+export const viewport: Viewport = { themeColor: "#050505" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 	return (
-		<html lang="en">
+		<html className={mono.variable} lang="en">
 			<body>
 				<Providers>
-					<div className="shell">
-						<Topbar />
-						{children}
-					</div>
+					<Topbar />
+					{children}
 				</Providers>
 			</body>
 		</html>

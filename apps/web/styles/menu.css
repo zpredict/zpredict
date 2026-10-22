@@ -1,0 +1,236 @@
+/* Menu button and the top-sheet dialog (template section 16). */
+
+.menu-btn {
+	position: absolute;
+	left: 50%;
+	top: 0;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 320px;
+	height: var(--zp-control-h);
+	padding: 0 16px;
+	border: 0;
+	background: #ffffff14;
+	-webkit-backdrop-filter: blur(40px);
+	backdrop-filter: blur(40px);
+	color: #fff;
+	font-size: 14px;
+	transform: translateX(-50%);
+	transition:
+		background-color 250ms ease,
+		color 250ms ease;
+}
+
+.menu-btn:hover {
+	background: #ffffff24;
+}
+
+.menu-btn:focus-visible {
+	outline-offset: 5px;
+}
+
+/* Two 2px lines, 10px apart. */
+.menu-btn__icon {
+	width: 32px;
+	height: 12px;
+	border-block: 2px solid currentColor;
+}
+
+.topbar.is-on-light .menu-btn {
+	background: #0505050d;
+	color: var(--zp-bg);
+}
+
+.menu {
+	width: 100%;
+	max-width: none;
+	height: 100%;
+	max-height: none;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--zp-panel-text);
+}
+
+.menu::backdrop {
+	background: #05050520;
+}
+
+.menu__shell {
+	position: relative;
+	display: grid;
+	grid-template-columns: 1.35fr 0.9fr 1.1fr;
+	gap: 32px;
+	align-items: center;
+	min-height: 24svh;
+	padding: 20px 184px 20px var(--zp-gutter);
+	background: var(--zp-panel);
+	transition:
+		transform 750ms var(--zp-ease),
+		opacity 450ms ease;
+}
+
+@starting-style {
+	.menu[open] .menu__shell {
+		opacity: 0;
+		transform: translateY(-110%);
+	}
+}
+
+.menu.is-closing .menu__shell {
+	opacity: 0;
+	transform: translateY(-110%);
+}
+
+.menu__close {
+	position: absolute;
+	top: 20px;
+	right: var(--zp-gutter);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 112px;
+	height: 36px;
+	padding: 0 12px;
+	border: 0;
+	background: #ffffff14;
+	font-size: 12px;
+}
+
+/* ✕ from the two icon lines, rotated ±45°. */
+.menu__x {
+	position: relative;
+	width: 20px;
+	height: 20px;
+}
+
+.menu__x::before,
+.menu__x::after {
+	content: "";
+	position: absolute;
+	top: 9px;
+	left: 0;
+	width: 20px;
+	height: 2px;
+	background: currentColor;
+	transform: rotate(45deg);
+}
+
+.menu__x::after {
+	transform: rotate(-45deg);
+}
+
+.menu__nav {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 4px 16px;
+}
+
+.menu__row {
+	overflow: hidden;
+}
+
+.menu__link {
+	position: relative;
+	display: block;
+	padding: 4px 0;
+	font-size: clamp(14px, 1.2vw, 20px);
+	line-height: 1.25;
+	transition:
+		transform 650ms var(--zp-ease),
+		color 250ms ease,
+		padding-left 450ms var(--zp-ease);
+}
+
+@starting-style {
+	.menu[open] .menu__link {
+		transform: translateY(110%);
+	}
+}
+
+.menu__row:nth-child(2) .menu__link {
+	transition-delay: 60ms, 0s, 0s;
+}
+.menu__row:nth-child(3) .menu__link {
+	transition-delay: 100ms, 0s, 0s;
+}
+.menu__row:nth-child(4) .menu__link {
+	transition-delay: 140ms, 0s, 0s;
+}
+
+.menu__link::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 50%;
+	width: 0.38em;
+	height: 0.38em;
+	background: var(--zp-lime);
+	transform: translateY(-50%) scale(0);
+	transition: transform 450ms var(--zp-ease);
+}
+
+.menu__link:is(:hover, :focus-visible, [aria-current="page"]) {
+	padding-left: 0.75em;
+	color: var(--zp-lime);
+}
+
+.menu__link:is(:hover, :focus-visible, [aria-current="page"])::before {
+	transform: translateY(-50%) scale(1);
+}
+
+.menu__info {
+	display: grid;
+	gap: 8px;
+	max-width: 36ch;
+	font-size: 13px;
+	line-height: 1.5;
+}
+
+.menu__label {
+	color: var(--zp-label);
+	font-size: 10px;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+@media (max-width: 1000px) {
+	.menu-btn {
+		width: 220px;
+	}
+}
+
+@media (max-width: 900px) {
+	.menu-btn {
+		position: static;
+		width: 116px;
+		font-size: 13px;
+		transform: none;
+	}
+	.menu-btn__icon {
+		width: 24px;
+	}
+	.menu::backdrop {
+		background: #05050580;
+	}
+	.menu__shell {
+		grid-template-columns: minmax(0, 1fr);
+		align-items: start;
+		gap: 28px;
+		max-height: min(560px, 88svh);
+		overflow-y: auto;
+		padding: 72px 20px 32px;
+	}
+	.menu__close {
+		top: max(16px, env(safe-area-inset-top));
+		right: 20px;
+	}
+	.menu__link {
+		display: flex;
+		align-items: center;
+		min-height: 44px;
+		font-size: 18px;
+	}
+}

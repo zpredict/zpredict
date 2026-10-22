@@ -1,101 +1,131 @@
-/* Shell: the near-black panel holding a top bar and two rounded panes. */
-
-.shell {
-	display: flex;
-	flex-direction: column;
-	min-height: 100dvh;
-	padding: 0 var(--gap) var(--gap);
-}
+/* Fixed header: logo left, Menu centred, balance + CTA right. The bar ignores the pointer;
+   its controls don't. Over lime/paper sections (`.is-on-light`) it turns dark. */
 
 .topbar {
-	display: flex;
+	position: fixed;
+	z-index: 8;
+	top: var(--header-top);
+	left: var(--zp-gutter);
+	right: var(--zp-gutter);
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
 	align-items: center;
-	gap: 8px;
-	height: var(--topbar-h);
-	padding: 0 20px;
+	height: var(--zp-control-h);
+	pointer-events: none;
+}
+
+.topbar > * {
+	pointer-events: auto;
 }
 
 .brand {
 	display: flex;
 	align-items: center;
-	gap: 10px;
-	margin-right: 18px;
-	font-family: var(--font-display);
-	font-weight: 500;
+	gap: 12px;
+	width: fit-content;
+	height: var(--zp-control-h);
+	color: var(--zp-lime);
 	font-size: 20px;
 	letter-spacing: -0.04em;
+	transition: color 250ms ease;
 }
 
-.navlinks {
-	display: flex;
-	align-items: center;
-	gap: 8px;
+.brand__mark {
+	width: 36px;
+	height: 36px;
+	transition: filter 250ms ease;
 }
 
 .topbar__right {
 	display: flex;
 	align-items: center;
+	gap: 6px;
+}
+
+.balance {
+	display: flex;
+	align-items: center;
 	gap: 10px;
-	margin-left: auto;
+	height: var(--zp-control-h);
+	padding: 0 16px;
+	border: 1px solid var(--zp-lime);
+	background: #050505b3;
+	-webkit-backdrop-filter: blur(40px);
+	backdrop-filter: blur(40px);
+	color: var(--zp-lime);
+	font-size: 14px;
+	white-space: nowrap;
+	transition:
+		color 250ms ease,
+		border-color 250ms ease,
+		background-color 250ms ease;
 }
 
-.topbar__right .badge .num {
-	color: var(--white);
+.balance__k {
+	color: var(--zp-muted);
+	font-size: 11px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
 }
 
-.panel {
-	flex: 1;
-	display: grid;
-	gap: var(--gap);
-	min-height: calc(100dvh - var(--topbar-h) - var(--gap));
+.topbar.is-on-light .brand {
+	color: var(--zp-ink);
 }
 
-.split {
-	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+.topbar.is-on-light .brand__mark {
+	filter: brightness(0);
 }
 
-.split--trade {
-	grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+.topbar.is-on-light .cta {
+	color: var(--zp-lime);
 }
 
-@media (max-width: 1099.98px) {
-	.split,
-	.split--trade {
-		grid-template-columns: minmax(0, 1fr);
-	}
+.topbar.is-on-light .cta__label,
+.topbar.is-on-light .cta__sq {
+	background: var(--zp-bg);
 }
 
-@media (max-width: 899.98px) {
+.topbar.is-on-light .balance {
+	border-color: var(--zp-ink);
+	background: transparent;
+	color: var(--zp-ink);
+}
+
+.topbar.is-on-light .balance__k {
+	color: var(--zp-ink-2);
+}
+
+@media (max-width: 900px) {
 	.topbar {
-		flex-wrap: wrap;
-		height: auto;
-		padding: 14px 6px 10px;
-		row-gap: 10px;
+		display: flex;
+		justify-content: space-between;
+		gap: 6px;
 	}
-	.navlinks {
-		order: 3;
-		width: 100%;
-		overflow-x: auto;
-		scrollbar-width: none;
+	.brand {
+		font-size: 16px;
+		gap: 8px;
 	}
-	.pill {
-		height: 38px;
-		padding: 12px;
-		font-size: 15px;
+	.brand__mark {
+		width: 28px;
+		height: 28px;
 	}
-	.panel {
-		min-height: 0;
-	}
-}
-
-@media (max-width: 599.98px) {
-	.brand span {
+	.topbar__right .cta {
 		display: none;
 	}
-	.btn--white {
-		min-width: 0;
+	.balance {
+		padding: 0 10px;
+		font-size: 13px;
 	}
-	.topbar__right .badge .dim {
+}
+
+@media (max-width: 480px) {
+	.balance__k {
+		display: none;
+	}
+}
+
+@media (max-width: 360px) {
+	.brand__word {
 		display: none;
 	}
 }

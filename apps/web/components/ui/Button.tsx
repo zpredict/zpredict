@@ -1,12 +1,12 @@
 import type { ButtonHTMLAttributes } from "react";
 
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
-	variant?: "white" | "ghost";
+	variant?: "lime" | "ghost";
 }
 
-/** 46px pill button: white (primary) or ghost (hairline). */
+/** Square mono button: lime block (primary) or hairline outline (ghost). */
 export default function Button({
-	variant = "white",
+	variant = "lime",
 	className = "",
 	type = "button",
 	...rest

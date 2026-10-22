@@ -1,13 +1,13 @@
 "use client";
-import Button from "@/components/ui/Button";
+import Cta from "@/components/ui/Cta";
 import { useJudge } from "@/hooks/useJudge";
 
-/** Compact judge-mode button for the top bar. */
+/** Compact judge-mode CTA: "Judge mode" until there is a demo account, then "Trade now". */
 export default function JudgeButton() {
 	const { start, busy, error, label } = useJudge();
 	return (
-		<Button disabled={busy} onClick={start}>
+		<Cta disabled={busy} onClick={start}>
 			{error || label}
-		</Button>
+		</Cta>
 	);
 }

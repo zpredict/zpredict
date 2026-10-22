@@ -1,4 +1,5 @@
 import type { Market } from "@zpredict/sdk";
+import ScrambleHeading from "@/components/ui/ScrambleHeading";
 import MarketCard from "./MarketCard";
 import RelayersDown from "./RelayersDown";
 
@@ -12,9 +13,7 @@ export default function MarketGrid({ markets, down }: Props) {
 	return (
 		<section aria-labelledby="markets-title" className="mgrid" id="markets">
 			<header className="mgrid__head">
-				<h2 className="mgrid__title" id="markets-title">
-					Markets
-				</h2>
+				<ScrambleHeading className="mgrid__title" id="markets-title" lines={["Markets."]} />
 				<p className="mgrid__sub">Price public. Participants private.</p>
 			</header>
 			{down && <RelayersDown />}

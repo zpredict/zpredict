@@ -3,14 +3,13 @@ import type { ReactNode } from "react";
 interface Props {
 	children: ReactNode;
 	tone?: "default" | "mock" | "yes" | "no" | "you" | "live";
-	size?: "md" | "sm";
 	title?: string;
 }
 
-/** Hairline pill tag. */
-export default function Badge({ children, tone = "default", size = "md", title }: Props) {
+/** Square uppercase tag. */
+export default function Badge({ children, tone = "default", title }: Props) {
 	return (
-		<span className={`badge badge--${tone} badge--${size}`} title={title}>
+		<span className={`badge badge--${tone}`} title={title}>
 			{children}
 		</span>
 	);

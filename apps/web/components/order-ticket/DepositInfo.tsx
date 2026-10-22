@@ -58,11 +58,8 @@ export default function DepositInfo() {
 			</ol>
 			{!escrowReady && (
 				<p className="dim">
-					<Badge size="sm" tone="mock">
-						Not live
-					</Badge>{" "}
-					The escrow address is published after the relayers&apos; key ceremony. Until then, use
-					judge mode for a demo balance.
+					<Badge tone="mock">Not live</Badge> The escrow address is published after the
+					relayers&apos; key ceremony. Until then, use judge mode for a demo balance.
 				</p>
 			)}
 			{error && <p className="dim">{error}</p>}

@@ -1,0 +1,171 @@
+/* Order ticket: square lime/mono side toggle, number fields, summary; deposit sizes. */
+
+.ticket {
+	display: grid;
+	gap: 14px;
+}
+
+.sides,
+.denoms {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 6px;
+}
+
+.denoms {
+	grid-template-columns: repeat(3, 1fr);
+	margin-top: 8px;
+}
+
+.side,
+.denom {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	border: 1px solid var(--line-strong);
+	text-transform: uppercase;
+	transition:
+		background-color 250ms ease,
+		color 250ms ease,
+		border-color 250ms ease;
+}
+
+.side {
+	height: var(--zp-control-h);
+	font-size: 16px;
+}
+
+.denom {
+	flex-direction: column;
+	gap: 2px;
+	padding: 10px 6px;
+	font-size: 13px;
+}
+
+.side input,
+.denom input {
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.side:hover,
+.denom:hover {
+	border-color: var(--zp-lime);
+}
+
+.side:has(input:focus-visible),
+.denom:has(input:focus-visible) {
+	outline: 2px solid var(--zp-lime);
+	outline-offset: 3px;
+}
+
+.side--yes.is-on,
+.denom.is-on {
+	border-color: var(--zp-lime);
+	background: var(--zp-lime);
+	color: var(--zp-ink);
+}
+
+.side--no.is-on {
+	border-color: var(--zp-text);
+	background: var(--zp-text);
+	color: var(--zp-ink);
+}
+
+.denom.is-on .dim {
+	color: var(--zp-ink-2);
+}
+
+.ticket__fields {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: 6px;
+}
+
+.field {
+	display: grid;
+	gap: 6px;
+}
+
+.field__box {
+	display: flex;
+	align-items: center;
+	height: var(--zp-control-h);
+	border: 1px solid var(--line-strong);
+	transition: border-color 250ms ease;
+}
+
+.field__box:focus-within {
+	border-color: var(--zp-lime);
+}
+
+.field input {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	padding: 0 14px;
+	border: 0;
+	background: transparent;
+	color: var(--zp-lime);
+	font-size: 20px;
+	font-variant-numeric: tabular-nums;
+	outline: none;
+	-moz-appearance: textfield;
+}
+
+.field input::-webkit-inner-spin-button,
+.field input::-webkit-outer-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+
+.field__unit {
+	padding-right: 14px;
+	color: var(--zp-muted);
+	font-size: 12px;
+}
+
+.ticket__sum {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 6px 12px;
+	margin: 0;
+	padding: 12px 0;
+	border-block: 1px dashed var(--line-strong);
+	font-size: 13px;
+}
+
+.ticket__sum dt {
+	color: var(--zp-muted);
+}
+
+.ticket__sum dd {
+	margin: 0;
+	text-align: right;
+}
+
+.ticket__judge {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 12px;
+	font-size: 12px;
+}
+
+.ticket__hint,
+.ticket__err {
+	color: var(--zp-muted);
+	font-size: 12px;
+	line-height: 1.55;
+}
+
+.ticket__err {
+	color: var(--zp-lime);
+}
+
+.ticket__err::before {
+	content: "! ";
+}

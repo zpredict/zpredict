@@ -12,9 +12,7 @@ export default function JudgeCta() {
 				{label}
 			</Cta>
 			<p className="judge__note">
-				<Badge size="sm" tone="mock">
-					Mock
-				</Badge>
+				<Badge tone="mock">Mock</Badge>
 				{error ||
 					(hasAccount
 						? "Demo account ready in this browser."

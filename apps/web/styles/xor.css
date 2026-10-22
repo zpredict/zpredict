@@ -1,0 +1,101 @@
+/* The trader's XOR card: the three shares as the relayers hold them, XORed into the order. */
+
+.xor {
+	display: grid;
+	gap: 8px;
+	border-color: var(--zp-lime);
+}
+
+.xor__head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	margin-bottom: 4px;
+}
+
+.xor__row {
+	display: grid;
+	grid-template-columns: 28px 1fr;
+	align-items: start;
+	color: var(--zp-glyph);
+	transition: color 450ms ease;
+}
+
+.xor__row.is-in {
+	color: var(--zp-text);
+}
+
+.xor__row--plain {
+	padding-top: 10px;
+	border-top: 1px dashed var(--line-strong);
+	color: var(--zp-lime);
+}
+
+.xor__who {
+	color: var(--zp-muted);
+	font-size: 11px;
+	line-height: 18px;
+}
+
+.hexbytes {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 2px 1.6ch;
+	font-size: 12px;
+	line-height: 18px;
+}
+
+.hexbytes__group {
+	display: flex;
+	flex-direction: column;
+}
+
+.f-market,
+.f-size {
+	width: 11ch;
+}
+
+.f-side,
+.f-price {
+	width: 4.5ch;
+	align-items: center;
+}
+
+.f-account {
+	width: 23ch;
+}
+
+.hexbytes__label {
+	color: var(--zp-muted);
+	font-size: 9px;
+	text-transform: uppercase;
+}
+
+.xor__decoded {
+	margin-top: 4px;
+	font-size: 15px;
+}
+
+.xor__fill {
+	color: var(--zp-muted);
+	font-size: 13px;
+}
+
+.xor__fill.is-filled {
+	padding: 8px 10px;
+	background: var(--zp-lime);
+	color: var(--zp-ink);
+}
+
+/* Phones: fixed two-line byte grid (market side price size / account), so every row aligns. */
+@media (max-width: 599.98px) {
+	.hexbytes {
+		display: grid;
+		grid-template-columns: 11ch 4.5ch 4.5ch 11ch;
+		font-size: 11px;
+	}
+	.f-account {
+		grid-column: 1 / -1;
+	}
+}

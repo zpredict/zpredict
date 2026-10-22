@@ -1,20 +1,20 @@
-import Card from "@/components/ui/Card";
+import ScrambleHeading from "@/components/ui/ScrambleHeading";
 
 interface Props {
 	title: string;
 	items: readonly string[];
 }
 
-/** A titled card with a short list: the leak checklist, the mock list. */
+/** A titled list with square lime markers, like the template's process steps. */
 export default function BulletCard({ title, items }: Props) {
 	return (
-		<Card className="bullets">
-			<h2 className="bullets__title">{title}</h2>
-			<ul>
+		<div className="bullets">
+			<ScrambleHeading className="bullets__title" lines={[title]} />
+			<ol>
 				{items.map((it) => (
 					<li key={it}>{it}</li>
 				))}
-			</ul>
-		</Card>
+			</ol>
+		</div>
 	);
 }

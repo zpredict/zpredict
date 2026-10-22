@@ -1,5 +1,4 @@
 "use client";
-import Badge from "@/components/ui/Badge";
 import { useAccount } from "@/hooks/useAccount";
 import { units } from "@/lib/format";
 
@@ -8,9 +7,9 @@ export default function BalancePill() {
 	const { tag, balance } = useAccount();
 	if (!tag) return null;
 	return (
-		<Badge title="Combined in your browser from three XOR balance shares">
-			<span className="dim">Balance</span>
-			<span className="num">{balance === null ? "…" : units(balance)}</span>
-		</Badge>
+		<p className="balance" title="Combined in your browser from three XOR balance shares">
+			<span className="balance__k">Balance</span>
+			<span className="balance__v num">{balance === null ? "…" : units(balance)}</span>
+		</p>
 	);
 }

@@ -1,11 +1,17 @@
 import type { HTMLAttributes } from "react";
 
 interface Props extends HTMLAttributes<HTMLElement> {
-	/** `surface`: graphite gradient (left pane); `media`: dark, holds video or streams. */
-	variant?: "surface" | "media";
+	/** `lime` and `paper` are light surfaces: the header turns dark over them. */
+	variant?: "dark" | "lime" | "paper";
 }
 
-/** One rounded pane of the split panel. */
-export default function Pane({ variant = "surface", className = "", ...rest }: Props) {
-	return <section className={`pane pane--${variant} ${className}`} {...rest} />;
+/** One square section of a page. */
+export default function Pane({ variant = "dark", className = "", ...rest }: Props) {
+	return (
+		<section
+			className={`pane pane--${variant} ${className}`}
+			data-surface={variant === "dark" ? undefined : "light"}
+			{...rest}
+		/>
+	);
 }

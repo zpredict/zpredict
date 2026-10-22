@@ -4,7 +4,7 @@
 	"version": "0.1.0",
 	"type": "module",
 	"scripts": {
-		"prepare:deps": "pnpm --filter @zpredict/sdk build && node scripts/brand.mjs",
+		"prepare:deps": "pnpm --filter @zpredict/sdk --filter @zpredict/ascii build && node scripts/brand.mjs",
 		"predev": "pnpm prepare:deps",
 		"prebuild": "pnpm prepare:deps",
 		"dev": "next dev -p 3000",
@@ -14,8 +14,9 @@
 		"test": "pnpm --filter @zpredict/sdk build && node --test mock-relayer/src/clearing.test.mjs"
 	},
 	"dependencies": {
-		"@fontsource/figtree": "^5.3.0",
-		"@fontsource/instrument-sans": "^5.3.0",
+		"@fontsource/jetbrains-mono": "^5.3.0",
+		"@zpredict/ascii": "workspace:*",
+		"@zpredict/brand": "workspace:*",
 		"@zpredict/sdk": "workspace:*",
 		"next": "^16.4.2",
 		"react": "^19.3.1",

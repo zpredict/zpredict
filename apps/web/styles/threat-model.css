@@ -1,104 +1,134 @@
+/* Threat model: the template's "Common questions" layout. A lime section with the title on the
+   left and a square table on the right, then a paper section with the two checklists. */
+
 .tm {
 	display: grid;
+	grid-template-columns: 480fr 800fr;
+	gap: 48px clamp(40px, 7vw, 120px);
+	padding: 120px var(--zp-gutter);
+}
+
+.tm--lime {
+	padding-top: calc(var(--header-space) + 48px);
+}
+
+.tm--paper {
+	grid-template-columns: 1fr 1fr;
+}
+
+.tm__side {
+	display: grid;
 	align-content: start;
-	gap: 22px;
-	padding: clamp(22px, 4vw, 48px);
+	gap: 20px;
 }
 
 .tm__eyebrow {
-	font-size: 14px;
-	opacity: 0.45;
+	color: var(--zp-ink-2);
 }
 
 .tm__title {
-	font-family: var(--font-display);
-	font-weight: 500;
-	font-size: clamp(48px, 7vw, 96px);
-	line-height: 0.9;
-	letter-spacing: -0.05em;
-	text-transform: uppercase;
-	animation: line-enter 420ms 200ms var(--ease) both;
+	font-size: clamp(32px, 3.4vw, 48px);
+	line-height: 1.15;
+	letter-spacing: -0.04em;
 }
 
 .tm__statement {
-	max-width: 640px;
-	font-family: var(--font-display);
-	font-size: clamp(18px, 1.8vw, 24px);
-	line-height: 1.25;
+	max-width: 34ch;
+	color: var(--zp-ink-2);
+	font-size: 15px;
+	line-height: 1.6;
 }
 
 .ttable {
 	overflow-x: auto;
-	border: 1px solid var(--hairline);
-	border-radius: var(--r-card);
-	background: var(--surface-card);
 }
 
 .ttable table {
 	width: 100%;
-	min-width: 640px;
+	min-width: 560px;
 	border-collapse: collapse;
 }
 
 .ttable th,
 .ttable td {
-	padding: 16px 18px;
-	border-bottom: 1px solid var(--hairline);
+	padding: 22px 16px 22px 0;
+	border-bottom: 1px solid var(--ink-line);
 	text-align: left;
 	vertical-align: top;
-	font-size: 15px;
-	line-height: 1.45;
-}
-
-.ttable tr:last-child > * {
-	border-bottom: 0;
+	font-size: 13px;
+	line-height: 1.55;
 }
 
 .ttable thead th {
-	color: var(--dim);
-	font-size: 12px;
-	font-weight: 400;
+	padding-block: 0 12px;
+	color: var(--zp-ink-2);
+	font-size: 10px;
+	letter-spacing: 0.06em;
 	text-transform: uppercase;
-	letter-spacing: 0.04em;
 }
 
 .ttable tbody th {
-	font-family: var(--font-display);
-	font-weight: 500;
-	font-size: 17px;
+	font-size: 16px;
+	letter-spacing: -0.03em;
 	white-space: nowrap;
 }
 
-.ttable td {
-	color: rgba(255, 255, 255, 0.75);
+.ttable tbody th::before {
+	content: "+ ";
 }
 
-.tm__cards {
+.ttable td {
+	color: var(--zp-ink-2);
+}
+
+.bullets {
 	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: var(--gap);
+	align-content: start;
+	gap: 24px;
 }
 
 .bullets__title {
-	margin-bottom: 12px;
-	font-family: var(--font-display);
-	font-weight: 500;
-	font-size: 20px;
-	letter-spacing: -0.03em;
+	font-size: clamp(22px, 2vw, 28px);
+	line-height: 1.25;
+	letter-spacing: -0.04em;
 }
 
-.bullets ul {
+.bullets ol {
 	display: grid;
-	gap: 8px;
+	gap: 14px;
 	margin: 0;
-	padding-left: 18px;
-	color: rgba(255, 255, 255, 0.78);
-	font-size: 14px;
-	line-height: 1.5;
+	padding: 0;
+	list-style: none;
+	color: #61655a;
+	font-size: 13px;
+	line-height: 1.6;
 }
 
-@media (max-width: 899.98px) {
-	.tm__cards {
+.bullets li {
+	display: grid;
+	grid-template-columns: 12px 1fr;
+	gap: 14px;
+	padding-bottom: 14px;
+	border-bottom: 1px solid var(--ink-line);
+}
+
+/* The template's square lime step marker. */
+.bullets li::before {
+	content: "";
+	width: 12px;
+	height: 12px;
+	margin-top: 5px;
+	background: var(--zp-lime);
+	outline: 1px solid var(--zp-ink);
+}
+
+@media (max-width: 900px) {
+	.tm,
+	.tm--paper {
 		grid-template-columns: minmax(0, 1fr);
+		padding: 72px 20px;
+	}
+	.tm--lime {
+		padding-top: calc(var(--header-space) + 24px);
 	}
 }
