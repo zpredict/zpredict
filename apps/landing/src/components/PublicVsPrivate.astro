@@ -196,5 +196,10 @@ import Tag from "./ui/Tag.astro";
 			padding: 10px 6px;
 			font-size: 13px;
 		}
+		/* Phones: drop the Time column so the row fits without scrolling. */
+		th:last-child,
+		td:last-child {
+			display: none;
+		}
 	}
 </style>
