@@ -2074,7 +2074,6 @@ dependencies = [
 [[package]]
 name = "polytune"
 version = "0.2.0-alpha.4"
-source = "git+https://github.com/sine-fdn/polytune?rev=47dc37840a241ba0e27c1b2234059746a1ba05b7#47dc37840a241ba0e27c1b2234059746a1ba05b7"
 dependencies = [
  "aes",
  "bincode",

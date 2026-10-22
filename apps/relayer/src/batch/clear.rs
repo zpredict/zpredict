@@ -23,14 +23,16 @@ impl<M: Matcher> Batcher<M> {
     /// Runs the matcher once per group of `DEFAULT_MARKETS` open markets, padded with 0,
     /// so every window runs the same circuit whichever markets have orders (and at least
     /// once, for credits and withdrawals). `first`'s credits and withdrawals go in the
-    /// first run only; its `markets` are ignored.
+    /// first run only, which uses `pre` if given; its `markets` are ignored.
     pub(super) async fn clear(
         &self,
         links: &Links,
         markets: &[u32],
         first: Public,
         shares: Shares<'_>,
+        pre: Option<M::Pre>,
     ) -> Result<Cleared> {
+        let mut pre = pre;
         let mut passes: Vec<Vec<u32>> = markets
             .chunks(DEFAULT_MARKETS)
             .map(<[u32]>::to_vec)
@@ -62,7 +64,10 @@ impl<M: Matcher> Batcher<M> {
                 keys: shares.keys,
                 withdrawals: if k == 0 { shares.withdrawals } else { &no_keys },
             };
-            let out = self.matcher.clear(links, &public, &mine).await?;
+            let out = self
+                .matcher
+                .clear(links, &public, &mine, pre.take())
+                .await?;
             if out.fills.len() < shares.orders.len() || out.balances.len() < table.len() {
                 return Err(Error::Mpc("matcher returned too few shares".into()));
             }

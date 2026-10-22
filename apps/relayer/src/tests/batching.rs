@@ -85,6 +85,29 @@ fn snapshot(s: &Shared, account: u64) -> Value {
         "positions": s.positions().len()})
 }
 
+fn held<M: Matcher>(r: &[Relayer<M>]) -> Vec<Option<u64>> {
+    let id = |x: &Relayer<M>| x.batcher.pre.lock().unwrap().as_ref().map(|p| p.0);
+    r.iter().map(id).collect()
+}
+
+/// A preprocessed run is used only if all three hold the same one; otherwise each drops
+/// its own, the batch preprocesses inline, and they all hold the same next one.
+#[tokio::test(flavor = "multi_thread")]
+async fn preprocessed_runs_are_used_only_when_all_three_agree() {
+    let r = relayers("pre", 2, || InsecureLocalMatcher, false);
+    batch_all(&r).await; // idle: nothing held yet, so all three preprocess
+    let first = held(&r);
+    assert!(first[0].is_some() && first.iter().all(|h| *h == first[0]));
+    batch_all(&r).await;
+    assert_eq!(held(&r), first, "an idle window keeps the held run");
+    *r[2].batcher.pre.lock().unwrap() = Some((999, ()));
+    submit(&r, &id(1), order(1, Side::Yes, 50, 1, [7; 16]), &[0, 1, 2]).await;
+    assert_eq!(batch_all(&r).await[0], [id(1)], "mismatch: cleared inline");
+    let next = held(&r);
+    assert!(next[0].is_some() && next[0] != first[0]);
+    assert!(next.iter().all(|h| *h == next[0]));
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn batches_cap_at_slots_and_pad() {
     let r = relayers("cap", 2, || InsecureLocalMatcher, false);

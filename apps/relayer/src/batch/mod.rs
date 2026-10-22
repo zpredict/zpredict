@@ -12,7 +12,17 @@
 //!    withdrawals still runs;
 //! 5. store fill shares, new balance shares, prices and withdrawal results in one event,
 //!    and expire orders that never reached all three relayers (`unfilled`);
-//! 6. with settlement on, pay debited withdrawals out of the escrow ([`crate::escrow`]).
+//! 6. with settlement on, pay debited withdrawals out of the escrow ([`crate::escrow`]);
+//! 7. if no preprocessed clearing run is held, preprocess the next one now (#94).
+//!
+//! **Preprocessing ahead.** About 92% of a clearing run is polytune's preprocessing,
+//! which needs no inputs. So the relayers keep one preprocessed run ready, and a window
+//! with work only runs the online part (inputs, evaluation, output): an order fills
+//! about one online phase after the next window starts, instead of a whole run later.
+//! The batch's contents are still fixed by the same hello, and the MPC computes and
+//! reveals exactly what it did before. The held run is used only if the hello shows all
+//! three hold the same one (its id is the batch number it was made in); otherwise each
+//! drops its own and the batch preprocesses inline, as before. Idle windows cost a hello.
 //!
 //! A failed or aborted batch changes no shares: its orders stay pending and the next
 //! window re-runs it.
@@ -21,7 +31,7 @@ mod clear;
 mod hello;
 mod resolution;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use tokio::time::{Instant, sleep, timeout};
@@ -38,7 +48,7 @@ use crate::state::Shared;
 use crate::store::Event;
 use hello::{Agreed, Hello};
 
-pub struct Batcher<M> {
+pub struct Batcher<M: Matcher> {
     pub state: Shared,
     pub peering: Arc<Peering>,
     pub matcher: M,
@@ -55,6 +65,8 @@ pub struct Batcher<M> {
     pub judge: bool,
     /// Escrow keys and tools; `None` leaves deposits to judge mode and pays nothing out.
     pub escrow: Option<Arc<Escrow>>,
+    /// The preprocessed clearing run this relayer holds, with its id (see the module docs).
+    pub pre: Mutex<Option<(u64, M::Pre)>>,
 }
 
 /// Runs forever. The matcher's futures need not be `Send`, so call this through
@@ -102,6 +114,12 @@ impl<M: Matcher> Batcher<M> {
                 deposits: s.ledger.offered_deposits(),
                 withdrawals: s.ledger.offered_withdrawals(),
                 resolved: s.unpaid_resolutions(),
+                pre: self
+                    .pre
+                    .lock()
+                    .expect("pre lock")
+                    .as_ref()
+                    .map(|(id, _)| *id),
             }
         };
         let a = hello::exchange(&links, mine).await?;
@@ -125,6 +143,12 @@ impl<M: Matcher> Batcher<M> {
             .take(DEFAULT_WITHDRAWALS)
             .collect();
         let run = !ids.is_empty() || credits.iter().any(|&c| c > 0) || !slots.is_empty();
+        // Only a run all three hold is usable; anything else is dropped here.
+        let held = self.pre.lock().expect("pre lock").take();
+        let mut pre = held.filter(|(id, _)| a.pre == Some(*id));
+        if !run {
+            *self.pre.lock().expect("pre lock") = pre.take();
+        }
         let (expired, orders, accounts, keys, withdrawal_shares) = {
             let mut s = self.state.lock().expect("state lock");
             if links.party == 0 && run {
@@ -168,7 +192,9 @@ impl<M: Matcher> Batcher<M> {
             withdrawals: &withdrawal_shares,
         };
         let done = if run {
-            self.clear(&links, &a.lead.markets, first, shares).await?
+            let pre = pre.map(|(_, p)| p);
+            self.clear(&links, &a.lead.markets, first, shares, pre)
+                .await?
         } else {
             Default::default()
         };
@@ -193,6 +219,13 @@ impl<M: Matcher> Batcher<M> {
         }
         if let Some(escrow) = &self.escrow {
             crate::escrow::payout::round(escrow, &self.state, &links).await?;
+        }
+        if self.pre.lock().expect("pre lock").is_none() {
+            let pre = self
+                .matcher
+                .preprocess(&links, self.slots, self.rows)
+                .await?;
+            *self.pre.lock().expect("pre lock") = Some((a.batch, pre));
         }
         Ok(ids)
     }

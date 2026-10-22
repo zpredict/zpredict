@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 
+use polytune::Preprocessed;
 use polytune::channel::Channel;
 use polytune::garble_lang::GarbleProgram;
 
@@ -48,6 +49,30 @@ pub async fn run_party_on(
     public: &Public,
     shares: &Shares<'_>,
 ) -> Result<Outcome, Error> {
+    run_party_with(channel, party, public, shares, None).await
+}
+
+/// The input-independent ~92% of a run of `prg` (a [`crate::program`]), which all three
+/// relayers can do before they know the batch: then [`run_party_with`] only feeds the
+/// inputs, evaluates and reveals. Use it for exactly one run.
+pub async fn preprocess(
+    channel: &impl Channel,
+    party: usize,
+    prg: &GarbleProgram,
+) -> Result<Preprocessed, Error> {
+    let circuit = circuit(prg);
+    Ok(polytune::mpc_preprocess(channel, circuit, EVALUATOR, party, &ALL).await?)
+}
+
+/// [`run_party_on`], optionally on material from [`preprocess`] for the same program
+/// (`program(slots, rows, markets.len(), withdrawals.len())`); else it preprocesses too.
+pub async fn run_party_with(
+    channel: &impl Channel,
+    party: usize,
+    public: &Public,
+    shares: &Shares<'_>,
+    pre: Option<Preprocessed>,
+) -> Result<Outcome, Error> {
     let (slots, rows) = (shares.orders.len(), shares.accounts.len());
     if !(2..=crate::MAX_SLOTS).contains(&slots)
         || public.credits.len() != rows
@@ -61,7 +86,14 @@ pub async fn run_party_on(
     let prg = shape(public, shares);
     let mask = Outcome::random(slots, rows);
     let input = io::input_bits(prg, party, public, shares, &mask)?;
-    let out = io::decode_output(prg, &mpc(channel, prg, &input, party).await?)?;
+    let out = match pre {
+        Some(pre) => {
+            let c = circuit(prg);
+            polytune::mpc_online(channel, c, pre, &input, EVALUATOR, party, &ALL).await?
+        }
+        None => mpc(channel, prg, &input, party).await?,
+    };
+    let out = io::decode_output(prg, &out)?;
     if party == EVALUATOR {
         return Ok(out.xor(&mask));
     }

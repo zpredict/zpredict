@@ -31,6 +31,9 @@ pub struct Hello {
     /// outcome (0 = YES, 1 = NO).
     #[serde(default)]
     pub resolved: Vec<(u32, u8)>,
+    /// Id of the clearing run this relayer has preprocessed and holds (`mod.rs`).
+    #[serde(default)]
+    pub pre: Option<u64>,
 }
 
 /// What all three relayers offered, and relayer 0's hello.
@@ -42,6 +45,8 @@ pub struct Agreed {
     pub deposits: Vec<String>,
     pub withdrawals: Vec<String>,
     pub resolved: Vec<(u32, u8)>,
+    /// The preprocessed run all three hold, if they hold the same one.
+    pub pre: Option<u64>,
     pub lead: Hello,
 }
 
@@ -58,6 +63,7 @@ pub async fn exchange(links: &Links, mine: Hello) -> Result<Agreed> {
         deposits: mine.deposits.clone(),
         withdrawals: mine.withdrawals.clone(),
         resolved: mine.resolved.clone(),
+        pre: mine.pre,
         lead: Hello::default(),
     };
     let mut lead = None;
@@ -70,6 +76,7 @@ pub async fn exchange(links: &Links, mine: Hello) -> Result<Agreed> {
         a.withdrawals
             .retain(|x| h.withdrawals.binary_search(x).is_ok());
         a.resolved.retain(|x| h.resolved.contains(x));
+        a.pre = a.pre.filter(|&id| h.pre == Some(id));
         if p == 0 {
             lead = Some(h);
         }

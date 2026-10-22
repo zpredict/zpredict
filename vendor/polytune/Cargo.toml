@@ -1,0 +1,91 @@
+# Vendored from https://github.com/sine-fdn/polytune at rev
+# 47dc37840a241ba0e27c1b2234059746a1ba05b7 (MIT, LICENSE.md). The only change is in
+# src/mpc/protocol.rs and src/lib.rs: `mpc_preprocess` / `mpc_online` split one `mpc` run
+# into its input-independent preprocessing and the rest, so zPredict can preprocess a
+# batch before its orders are known (#94). Everything else is upstream as is.
+# Its own workspace: upstream code, not held to zPredict's lint settings.
+[workspace]
+
+[package]
+name = "polytune"
+version = "0.2.0-alpha.4"
+edition = "2024"
+rust-version = "1.89.0"
+description = "Maliciously-Secure Multi-Party Computation (MPC) Engine using Authenticated Garbling"
+repository = "https://github.com/sine-fdn/polytune/"
+homepage = "https://polytune.org/"
+license = "MIT"
+categories = ["cryptography", "security"]
+keywords = [
+    "secure-computation",
+    "garbled-circuits",
+    "circuit-description",
+    "smpc",
+    "mpc",
+]
+# we use one bench binary with `benches/main.rs` as the starting point which
+# executes benches in various modules under `benches/`. Those modules should
+# not be automatically detected as separate benchmarks.
+autobenches = false
+
+[package.metadata.docs.rs]
+rustdoc-args = ["--generate-link-to-definition"]
+
+[lib]
+bench = false
+
+[features]
+# For internal use only!
+# To work around a limitation in criterion, we define a "private" feature
+# which we use to conditionally expose some otherwise private functions
+# as public for benchmarking. The __ prefix results in docs.rs not listing
+# this feature. 
+__bench = []
+
+[dependencies]
+aes = "=0.9.1"
+bincode = { version = "2.0.1", default-features = false, features = ["std", "serde"] }
+blake3 = "1.8.5"
+bytemuck = { version = "1.25.0", features = ["latest_stable_rust"] }
+chacha20poly1305 = { version = "0.11.0", features = ["zeroize"] }
+curve25519-dalek = { version = "5.0.0", features = ["rand_core"] }
+futures-util = { version = "0.3.32", default-features = false, features = [
+    "alloc",
+    "async-await-macro",
+] }
+garble_lang = "0.7.0-alpha.1"
+hybrid-array = { version = "0.4.11", features = ["bytemuck"] }
+rand = "0.10.2"
+rand_chacha = "0.10.0"
+seq-macro = "0.3.6"
+serde = { version = "1.0.228", features = ["derive"] }
+subtle = "2.6.1"
+tempfile = "3.27.0"
+thiserror = "2.0.18"
+tokio = { version = "1.49.0", features = ["macros", "sync", "time"] }
+tracing = "0.1.44"
+web-time = "1.1"
+wide = { version = "1.4.0", features = ["serde"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# For wasm compatibility, we need to enable the getrandom js features
+# currently all of these versions are present in the dependency tree
+# Furthermore RUSTFLAGS needs to be set to
+# RUSTFLAGS='--cfg getrandom_backend="wasm_js"'
+# when compiling for wasm32-unknown-unknown
+getrandom_0_2 = { package = "getrandom", version = "0.2.16", features = ["js"] }
+getrandom_0_3 = { package = "getrandom", version = "0.3", features = [
+    "wasm_js",
+] }
+getrandom_0_4 = { package = "getrandom", version = "0.4", features = [
+    "wasm_js",
+] }
+
+[target.'cfg(any(target_arch = "aarch64", target_arch = "loongarch64", target_arch = "x86", target_arch = "x86_64"))'.dependencies]
+cpufeatures = "0.3.0"
+
+
+[package.metadata.cargo-machete]
+# we need the hybrid-array dependency to enable the bytemuck feature
+ignored = ["hybrid-array"]
+

@@ -9,21 +9,38 @@ mod insecure;
 
 #[cfg(any(test, feature = "dev-insecure"))]
 pub use insecure::InsecureLocalMatcher;
-use zpredict_circuit::{Outcome, Position, Public, Shares, Table};
+use zpredict_circuit::{
+    DEFAULT_MARKETS, DEFAULT_WITHDRAWALS, Outcome, Position, Public, Shares, Table,
+};
 use zpredict_core::{BALANCE_LEN, Side};
 
 use crate::error::{Error, Result};
 use crate::peers::Links;
 
 pub trait Matcher {
+    /// A clearing run's input-independent part, made before the batch is known.
+    type Pre: Send;
+
+    /// Preprocesses one clearing run with `slots` order slots and `rows` table rows (all
+    /// three relayers together), for exactly one [`Matcher::clear`].
+    #[allow(async_fn_in_trait)]
+    async fn preprocess(&self, links: &Links, slots: usize, rows: usize) -> Result<Self::Pre>;
+
     /// Clears one batch: `public` holds exactly [`zpredict_circuit::DEFAULT_MARKETS`]
     /// market slots (`0` = unused), a credit per table row and
     /// [`zpredict_circuit::DEFAULT_WITHDRAWALS`] withdrawal amounts; `shares` this
     /// relayer's shares of the orders, the table (rows and keys) and the withdrawals'
     /// keys. Padding is all-zero shares: price 0 orders (dummies), rows with balance 0,
     /// key 0.
+    /// `pre`: material from [`Matcher::preprocess`] for this run, else it preprocesses too.
     #[allow(async_fn_in_trait)] // runs on the batch thread via block_on; no Send needed
-    async fn clear(&self, links: &Links, public: &Public, shares: &Shares<'_>) -> Result<Outcome>;
+    async fn clear(
+        &self,
+        links: &Links,
+        public: &Public,
+        shares: &Shares<'_>,
+        pre: Option<Self::Pre>,
+    ) -> Result<Outcome>;
 
     /// Pays `market`'s winners (`outcome`, public) among `positions` into the table;
     /// returns this relayer's share of every row's new balance.
@@ -44,8 +61,23 @@ pub trait Matcher {
 pub struct Polytune;
 
 impl Matcher for Polytune {
-    async fn clear(&self, links: &Links, public: &Public, shares: &Shares<'_>) -> Result<Outcome> {
-        zpredict_circuit::run_party_on(links, links.party, public, shares)
+    type Pre = zpredict_circuit::Preprocessed;
+
+    async fn preprocess(&self, links: &Links, slots: usize, rows: usize) -> Result<Self::Pre> {
+        let prg = zpredict_circuit::program(slots, rows, DEFAULT_MARKETS, DEFAULT_WITHDRAWALS);
+        zpredict_circuit::preprocess(links, links.party, prg)
+            .await
+            .map_err(|e| Error::Mpc(e.to_string()))
+    }
+
+    async fn clear(
+        &self,
+        links: &Links,
+        public: &Public,
+        shares: &Shares<'_>,
+        pre: Option<Self::Pre>,
+    ) -> Result<Outcome> {
+        zpredict_circuit::run_party_with(links, links.party, public, shares, pre)
             .await
             .map_err(|e| Error::Mpc(e.to_string()))
     }

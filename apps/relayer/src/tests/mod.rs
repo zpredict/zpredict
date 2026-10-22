@@ -18,7 +18,7 @@ use crate::batch::Batcher;
 use crate::mpc::Matcher;
 use crate::peers::Peering;
 
-pub(super) struct Relayer<M> {
+pub(super) struct Relayer<M: Matcher> {
     pub http: Router,
     pub batcher: Batcher<M>,
 }
@@ -72,6 +72,7 @@ pub(super) fn relayers<M: Matcher>(
                 frost: None,
                 judge: true,
                 escrow: None,
+                pre: Default::default(),
             };
             Relayer { http, batcher }
         })
@@ -88,7 +89,7 @@ pub(super) async fn batch_all<M: Matcher>(r: &[Relayer<M>]) -> Vec<Vec<String>> 
 }
 
 /// Splits `o` and posts share i to relayer i, for the relayers in `to`.
-pub(super) async fn submit<M>(r: &[Relayer<M>], id: &str, o: Order, to: &[usize]) {
+pub(super) async fn submit<M: Matcher>(r: &[Relayer<M>], id: &str, o: Order, to: &[usize]) {
     let mut r0 = [0u8; ORDER_LEN];
     let mut r1 = [0u8; ORDER_LEN];
     getrandom::fill(&mut r0).unwrap();
@@ -112,7 +113,7 @@ pub(super) fn token(i: usize) -> String {
 }
 
 /// The owner's view: XOR of the three relayers' fill shares.
-pub(super) async fn fill<M>(r: &[Relayer<M>], id: &str) -> Option<[u8; FILL_LEN]> {
+pub(super) async fn fill<M: Matcher>(r: &[Relayer<M>], id: &str) -> Option<[u8; FILL_LEN]> {
     let mut out = [0u8; FILL_LEN];
     for (i, x) in r.iter().enumerate() {
         let path = format!("/orders/{id}?token={}", token(i));
@@ -152,7 +153,7 @@ pub(super) fn id(n: u8) -> String {
 
 /// A judge-mode account (5000 half-ticks from relayer 0): its key, made here as a browser
 /// would, with one key share claimed at each relayer.
-pub(super) async fn funded<M>(r: &[Relayer<M>]) -> Key {
+pub(super) async fn funded<M: Matcher>(r: &[Relayer<M>]) -> Key {
     let mut key = [0u8; KEY_LEN];
     getrandom::fill(&mut key).unwrap();
     for (x, share) in r.iter().zip(key_shares(&key)) {
@@ -164,7 +165,7 @@ pub(super) async fn funded<M>(r: &[Relayer<M>]) -> Key {
 }
 
 /// The owner's view of a balance: XOR of the three relayers' shares.
-pub(super) async fn balance<M>(r: &[Relayer<M>], key: &Key) -> u64 {
+pub(super) async fn balance<M: Matcher>(r: &[Relayer<M>], key: &Key) -> u64 {
     let mut b = [0u8; 8];
     for (x, share) in r.iter().zip(key_shares(key)) {
         let path = format!("/accounts/{}?key={}", hex_id(key), hex::encode(share));

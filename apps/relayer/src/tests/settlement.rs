@@ -9,13 +9,13 @@ use crate::mpc::InsecureLocalMatcher;
 use crate::state::State;
 use crate::store::Event;
 
-fn record<M>(r: &[Relayer<M>], to: &[usize], e: impl Fn(usize) -> Event) {
+fn record<M: Matcher>(r: &[Relayer<M>], to: &[usize], e: impl Fn(usize) -> Event) {
     for &i in to {
         r[i].batcher.state.lock().unwrap().record(e(i)).unwrap();
     }
 }
 
-fn state<M>(r: &Relayer<M>) -> std::sync::MutexGuard<'_, State> {
+fn state<M: Matcher>(r: &Relayer<M>) -> std::sync::MutexGuard<'_, State> {
     r.batcher.state.lock().unwrap()
 }
 
