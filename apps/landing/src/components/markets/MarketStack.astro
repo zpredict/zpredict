@@ -1,0 +1,83 @@
+---
+/** Hero object: a slightly rotated stack of market cards, front card last. */
+import { heroMarkets } from "../../data/markets";
+import MarketCard from "./MarketCard.astro";
+
+interface Props {
+	class?: string;
+}
+
+const { class: className } = Astro.props;
+---
+
+<div class:list={["stack", className]}>
+	{
+		heroMarkets.map((market, i) => (
+			<div class={`slot slot--${i}`} inert={i < heroMarkets.length - 1}>
+				<MarketCard class="card" market={market} />
+			</div>
+		))
+	}
+</div>
+
+<style>
+	.stack {
+		position: relative;
+		display: grid;
+		width: min(380px, 100%);
+	}
+	/* All slots share one grid cell, so the stack is as tall as its tallest card. */
+	.slot {
+		grid-area: 1 / 1;
+	}
+	.slot--0 {
+		transform: translate(-46px, -34px) rotate(-7deg) scale(0.92);
+	}
+	.slot--1 {
+		transform: translate(44px, -14px) rotate(5deg) scale(0.95);
+	}
+	.slot--2 {
+		transform: rotate(-1.5deg);
+	}
+	/* Back cards are decoration (`inert`); only the front card is interactive. */
+	.slot--0,
+	.slot--1 {
+		filter: brightness(0.6);
+	}
+
+	@media (max-width: 599.98px) {
+		.slot--0 {
+			transform: translate(-18px, -26px) rotate(-5deg) scale(0.92);
+		}
+		.slot--1 {
+			transform: translate(18px, -12px) rotate(4deg) scale(0.95);
+		}
+	}
+
+	@keyframes stack-enter {
+		from {
+			opacity: 0;
+			filter: blur(10px);
+			transform: translateY(24px);
+		}
+		to {
+			opacity: 1;
+			filter: blur(0);
+			transform: none;
+		}
+	}
+	@media (min-width: 1200px) and (prefers-reduced-motion: no-preference) {
+		.slot .card {
+			animation: stack-enter 520ms var(--ease) both;
+		}
+		.slot--0 .card {
+			animation-delay: 420ms;
+		}
+		.slot--1 .card {
+			animation-delay: 560ms;
+		}
+		.slot--2 .card {
+			animation-delay: 700ms;
+		}
+	}
+</style>

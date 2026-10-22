@@ -73,5 +73,5 @@ export const markets: Market[] = [
 	},
 ];
 
-/** The three cards stacked in the hero. */
-export const heroMarkets = markets.slice(0, 3);
+/** The three cards stacked in the hero, back to front (the NU7 market on top). */
+export const heroMarkets = markets.slice(0, 3).reverse();
