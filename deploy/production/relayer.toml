@@ -1,0 +1,46 @@
+# Hosted testnet relayers. One file for all three; compose.yaml sets ZPREDICT_INDEX per
+# container. Noise keys come from env via entrypoint.sh, never from this file.
+index = 0
+network = "testnet"
+listen = "0.0.0.0:8080"
+# Static IPs on the internal `peers` network in compose.yaml (peers must be socket addresses).
+peers = ["10.0.250.10:9000", "10.0.250.11:9000", "10.0.250.12:9000"]
+key_file = "/run/zpredict/self.key"
+peer_keys = ["/run/zpredict/r0.pub", "/run/zpredict/r1.pub", "/run/zpredict/r2.pub"]
+web_origin = "https://app.zpredict.site"
+lightwalletd = "https://testnet.zec.rocks:443"
+batch_size = 16
+window_secs = 15
+expire_batches = 3
+judge = true
+judge_credit = 5000 # 25 units in half-ticks
+data_dir = "/data"
+insecure_matcher = false
+
+# Same markets as apps/relayer/config/r0.toml.
+[[markets]]
+id = 1
+question = "Will NU7 activate on mainnet at block 3,543,405?"
+plugin = "nu7-activation"
+params = { activationHeight = 3543405 }
+closeHeight = 3543000
+resolveHeight = 3543405
+status = "open"
+
+[[markets]]
+id = 2
+question = "Will the Ironwood pool hold ≥ 900,000 notes at block 3,560,000?"
+plugin = "ironwood-pool"
+params = { minNotes = 900000 }
+closeHeight = 3559000
+resolveHeight = 3560000
+status = "open"
+
+[[markets]]
+id = 3
+question = "Will block 3,550,000 contain at least 5 shielded actions?"
+plugin = "shielded-actions"
+params = { minActions = 5 }
+closeHeight = 3549000
+resolveHeight = 3550000
+status = "open"

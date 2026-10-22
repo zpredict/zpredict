@@ -20,7 +20,7 @@ const INERT = [
 const bad = [];
 function scan(file) {
 	const text = readFileSync(file, "utf8");
-	for (const [url] of text.matchAll(/https?:\/\/[^\s"'`)<>\\]+/g)) {
+	for (const [url] of text.matchAll(/https?:\/\/[^\s"'`)<>\\,]+/g)) {
 		let host;
 		try {
 			host = new URL(url).hostname;
