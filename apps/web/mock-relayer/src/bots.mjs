@@ -2,6 +2,7 @@
 // They submit through the same share path as the browser.
 import { randomBytes } from "node:crypto";
 import { encodeOrder } from "@zpredict/sdk";
+import { MARKET_DEFS } from "./markets.mjs";
 import { hex, split } from "./shares.mjs";
 import { accept, account, markets } from "./state.mjs";
 
@@ -11,12 +12,11 @@ const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 const bots = Array.from({ length: 6 }, () => randomBytes(8).readBigUInt64LE());
 for (const b of bots) account(b).bal = 10n ** 12n;
 /** Drifting fair YES price per market, in cents. */
-const START_FAIR = { 1: 72, 2: 38, 3: 55 };
-const fair = new Map(markets.map((m) => [m.id, START_FAIR[m.id] ?? 50]));
+const fair = new Map(MARKET_DEFS.map((m) => [m.id, m.fair]));
 
 function order(m, side) {
 	const f = fair.get(m.id);
-	const price = clamp((side === 0 ? f : 100 - f) + rnd(-3, 5), 1, 99);
+	const price = clamp((side === 0 ? f : 100 - f) + rnd(-2, 3), 1, 99);
 	const bytes = encodeOrder({
 		market: m.id,
 		side,
@@ -33,7 +33,7 @@ function order(m, side) {
 /** A YES and a NO quote per market per tick, so every batch has counterparties on both sides. */
 export function botOrders() {
 	for (const m of markets) {
-		fair.set(m.id, clamp(fair.get(m.id) + rnd(-1, 1), 8, 92));
+		fair.set(m.id, clamp(fair.get(m.id) + rnd(-1, 1), 4, 96));
 		order(m, 0);
 		order(m, 1);
 	}
