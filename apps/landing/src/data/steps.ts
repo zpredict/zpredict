@@ -14,7 +14,7 @@ export const steps: Step[] = [
 	{
 		n: "01",
 		art: "escrow",
-		tag: "1 · 5 · 25 ZEC notes",
+		tag: "Fixed-size notes",
 		title: ["Deposit", "shielded ZEC"],
 		desc: "Send a fixed-size note from any Zcash wallet. No account, no email, no KYC.",
 	},
