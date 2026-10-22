@@ -12,7 +12,7 @@
 	margin-top: auto;
 	font-family: var(--font-display);
 	font-weight: 500;
-	font-size: clamp(56px, 7.2vw, 120px);
+	font-size: clamp(56px, 6.4vw, 104px);
 	line-height: 0.9;
 	letter-spacing: -0.05em;
 	text-transform: uppercase;
@@ -91,66 +91,17 @@
 	opacity: 0.55;
 }
 
-.markets {
+.showcase__card {
 	position: relative;
 	display: flex;
 	flex-direction: column;
 	justify-content: flex-end;
-	gap: 12px;
 	flex: 1;
 	padding: 24px 34px 34px;
 }
 
-.mcard {
-	display: grid;
-	gap: 12px;
-	padding: 20px 22px;
-	border: 1px solid var(--glass-line);
-	border-radius: var(--r-card);
-	background: rgba(8, 8, 8, 0.55);
-	-webkit-backdrop-filter: blur(18px);
-	backdrop-filter: blur(18px);
-	animation: detail-enter 380ms 820ms var(--ease) both;
-	transition:
-		border-color 0.2s ease,
-		transform 0.25s var(--ease);
-}
-
-.mcard:nth-child(2) {
-	animation-delay: 930ms;
-}
-.mcard:nth-child(3) {
-	animation-delay: 1040ms;
-}
-
-.mcard:hover {
-	border-color: rgba(255, 255, 255, 0.32);
-	transform: translateY(-2px);
-}
-
-.mcard__meta {
-	display: flex;
-	gap: 8px;
-}
-
-.mcard__q {
-	font-family: var(--font-display);
-	font-weight: 500;
-	font-size: 22px;
-	line-height: 1.15;
-	letter-spacing: -0.03em;
-}
-
-.mcard__foot {
-	display: flex;
-	justify-content: space-between;
-	gap: 12px;
-	color: var(--dim);
-	font-size: 13px;
-}
-
-.mcard__go {
-	color: var(--white);
+.split--home {
+	min-height: clamp(560px, 68dvh, 680px);
 }
 
 @media (max-width: 1099.98px) {
@@ -172,17 +123,10 @@
 		font-size: 18px;
 		line-height: 24px;
 	}
-	.markets {
-		padding: 20px 16px 16px;
+	.showcase__card {
+		padding: 20px 14px 14px;
 	}
 	.showcase__eyebrow {
 		padding: 24px 18px 0;
-	}
-	.mcard__q {
-		font-size: 19px;
-	}
-	.mcard__foot {
-		flex-direction: column;
-		gap: 4px;
 	}
 }

@@ -6,6 +6,7 @@ import "@/styles/base.css";
 import "@/styles/ui.css";
 import "@/styles/layout.css";
 import "@/styles/home.css";
+import "@/styles/markets.css";
 import "@/styles/trade.css";
 import "@/styles/relayer-view.css";
 import "@/styles/threat-model.css";

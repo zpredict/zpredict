@@ -14,7 +14,9 @@ import ShareXor from "./ShareXor";
 
 /** The split screen: the trader on the left, the three relayers on the right. */
 export default function TradeScreen() {
-	const wanted = Number(useSearchParams().get("m"));
+	const params = useSearchParams();
+	const wanted = Number(params.get("m"));
+	const side = params.get("side") === "no" ? 1 : 0;
 	const { markets, down } = useMarkets();
 	const { orders } = useOrders();
 	const { views, seen, online } = useRelayerView();
@@ -31,7 +33,7 @@ export default function TradeScreen() {
 				{market && (
 					<>
 						<MarketHeader market={market} />
-						<OrderTicket market={market.id} />
+						<OrderTicket initialSide={side} key={`${market.id}-${side}`} market={market} />
 						{latest && <ShareXor order={latest} seen={seen[latest.orderId]} />}
 						<OrderList orders={mine} />
 						<DepositInfo />

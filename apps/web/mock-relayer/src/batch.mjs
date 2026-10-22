@@ -2,7 +2,7 @@
 // MOCK: here the shares are combined in the clear.
 import { decodeOrder } from "@zpredict/sdk";
 import { clear, fillRecords } from "./clearing.mjs";
-import { PORTS, SHARE_TIMEOUT_BATCHES } from "./config.mjs";
+import { HISTORY_KEEP, PORTS, SHARE_TIMEOUT_BATCHES } from "./config.mjs";
 import { split, xor } from "./shares.mjs";
 import { account, chain, markets, orders, see } from "./state.mjs";
 
@@ -37,13 +37,23 @@ function fund(ready) {
 	});
 }
 
+/** Public price: YES cents at the batch's latest cross (half-ticks / 2). Nothing else leaves. */
+function publishPrice(m, fills) {
+	const last = fills.at(-1);
+	if (!last) return;
+	m.lastPrice = last.yesCost / 2;
+	m.history = [...(m.history ?? []), m.lastPrice].slice(-HISTORY_KEEP);
+}
+
 /** One 10-byte fill record per order (all zero if unfilled), cleared market by market. */
 function records(live) {
 	const out = live.map(() => new Uint8Array(10));
 	for (const m of markets) {
 		const idx = live.flatMap((d, k) => (d?.market === m.id ? [k] : []));
 		const sub = idx.map((k) => live[k]);
-		fillRecords(sub, clear(sub)).forEach((r, j) => {
+		const fills = clear(sub);
+		publishPrice(m, fills);
+		fillRecords(sub, fills).forEach((r, j) => {
 			out[idx[j]] = r;
 		});
 	}

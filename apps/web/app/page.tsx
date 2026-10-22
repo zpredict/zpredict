@@ -1,11 +1,5 @@
-import HeroPane from "@/components/home/HeroPane";
-import ShowcasePane from "@/components/home/ShowcasePane";
+import HomeScreen from "@/components/home/HomeScreen";
 
 export default function Home() {
-	return (
-		<main className="panel split">
-			<HeroPane />
-			<ShowcasePane />
-		</main>
-	);
+	return <HomeScreen />;
 }

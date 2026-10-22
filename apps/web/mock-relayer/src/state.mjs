@@ -3,11 +3,13 @@
 // MOCK: one process holds every relayer's shares. A real relayer holds only its own and
 // never sees the others'; `views[i]` is exactly what relayer i would see.
 import { randomBytes } from "node:crypto";
-import { MARKETS, PORTS, START_HEIGHT, VIEW_KEEP } from "./config.mjs";
+import { PORTS, START_HEIGHT, VIEW_KEEP } from "./config.mjs";
+import { MARKET_DEFS } from "./markets.mjs";
 import { hex } from "./shares.mjs";
 
 export const chain = { batch: 1, height: START_HEIGHT };
-export const markets = MARKETS;
+/** Public market objects (`GET /markets`); the bots' fair value stays private. */
+export const markets = MARKET_DEFS.map(({ fair: _fair, ...m }) => m);
 
 /** orderId -> { shares: [Buffer|null x3], status, fillShares, born } */
 export const orders = new Map();

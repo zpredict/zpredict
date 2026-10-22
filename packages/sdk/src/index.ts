@@ -152,6 +152,13 @@ export interface Market {
 	status: "open" | "closed" | "resolved";
 	outcome?: "yes" | "no";
 	outcomeSig?: string;
+	/**
+	 * Public price: cents per YES contract at the latest cross (the midpoint, so it can end
+	 * in .5). Absent until the market's first fill. Sizes and counts are never published.
+	 */
+	lastPrice?: number;
+	/** The last N clearing prices (same unit as `lastPrice`), oldest first, one per batch that crossed. */
+	history?: number[];
 }
 
 /** `POST /orders`: orderId hex32, share hex36. */
