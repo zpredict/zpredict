@@ -1,10 +1,21 @@
 //! zPredict's batch clearing as a 3-party MPC: a Garble circuit run with polytune.
 //!
-//! Each relayer holds one XOR share of every order in a batch of [`N`] = 16 slots. All
-//! three call [`run_party`]; the circuit rebuilds the orders, crosses them exactly like
-//! [`zpredict_core::clear`], and each relayer gets back only its XOR share of every
-//! slot's fill record ([`zpredict_core::fill_records`], 10 bytes). Unfilled and dummy
-//! slots are all-zero records, so a relayer cannot tell them from filled ones.
+//! Each relayer holds one XOR share of every order in a batch of [`N`] = 16 slots and of
+//! every row of the balance table ([`ACCOUNTS`] = 16 rows of `id | balance`). All three
+//! call [`run_party`]; the circuit rebuilds both, crosses the orders exactly like
+//! [`zpredict_core::clear_with_balances`], and each relayer gets back only its XOR share
+//! of every slot's fill record ([`zpredict_core::fill_records`], 10 bytes) and of every
+//! row's new balance (8 bytes). Unfilled and dummy slots are all-zero records, so a
+//! relayer cannot tell them from filled ones.
+//!
+//! # Balances
+//!
+//! The whole table goes in every batch, and each order finds its row inside the circuit
+//! (first row whose id equals the order's `account`). Relayers never learn which
+//! accounts traded: they only hold shares of orders, so they could not pick per-batch
+//! rows without that link leaking. In batch order, each order reserves its worst case
+//! (`size × 2 × price` half-ticks) from its row; one that doesn't fit what's left, or
+//! has no row, becomes a dummy. Rows are then debited what their orders actually paid.
 //!
 //! # How the circuit matches `clear` without sorting
 //!
@@ -24,20 +35,20 @@
 //! Slots that fail `Order::decode` (bad side, price outside 1..=99, size > `MAX_SIZE`)
 //! are dummies. `MAX_SIZE` keeps all sums inside `u32`.
 //!
-//! # Cost (N = 16)
+//! # Cost (N = 16, 16 accounts)
 //!
-//! 311,528 AND gates. Three separate processes over localhost TCP on an M4 Pro:
-//! 8.0–8.9 s per batch for the MPC (median 8.3 s, `cargo run --release --example bench`),
-//! plus ~10 s to compile the Garble program once per process. Each party sends about
-//! 0.5–0.6 GB per batch, so between hosts expect bandwidth to dominate (not yet measured).
-//! For comparison, N = 8 is 72,852 AND gates and ~1.9 s.
+//! 454,474 AND gates (311,528 of them for crossing; ~9k per table row). Three separate
+//! processes over localhost TCP on an M4 Pro: 10.9–12.5 s per batch for the MPC (median
+//! 11.3 s, `cargo run --release --example bench`), plus ~16 s to compile the Garble
+//! program once per process. Traffic scales with AND gates: crossing alone sent 0.5–0.6
+//! GB per party, so expect ~0.8 GB now; between hosts bandwidth will likely dominate.
 //!
 //! # Trust
 //!
 //! polytune runs WRK17 authenticated garbling with distributed preprocessing (no trusted
 //! dealer). An honest relayer's shares stay private even if the other two collude and
-//! cheat; a cheater can only make the run abort. Not yet covered: balance checks
-//! (zpredict/zpredict#41) and authentication of the TCP links (see [`net`]).
+//! cheat; a cheater can only make the run abort. Not yet covered: authentication of the
+//! TCP links (see [`net`]).
 
 mod error;
 pub mod harness;
@@ -47,6 +58,6 @@ mod party;
 mod program;
 
 pub use error::Error;
-pub use io::{FillShares, OrderShares};
+pub use io::{AccountShares, BalanceShares, FillShares, OrderShares, Outcome};
 pub use party::{run_party, run_party_on};
-pub use program::{N, and_gates, eval_in_clear, program};
+pub use program::{ACCOUNTS, N, and_gates, eval_in_clear, program};
