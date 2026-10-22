@@ -2,8 +2,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { decodeOrder, fromHex } from "@zpredict/sdk";
-import { clear, TICKS } from "./clear.mjs";
+import { decodeOrder, fromHex, toHex } from "@zpredict/sdk";
+import { clear, fillRecords, TICKS } from "./clear.mjs";
 
 const o = (side, price, size) => ({
 	market: 7,
@@ -38,15 +38,6 @@ test("matches core test vectors", () => {
 			"utf8",
 		),
 	);
-	const fills = clear(v.batch.map((x) => decodeOrder(fromHex(x.hex))));
-	assert.deepEqual(
-		fills,
-		v.fills.map(({ yes, no, size, yesCost, noCost }) => ({
-			yes,
-			no,
-			size,
-			yesCost,
-			noCost,
-		})),
-	);
+	const batch = v.batch.map((x) => decodeOrder(fromHex(x.hex)));
+	assert.deepEqual(fillRecords(batch, clear(batch)).map(toHex), v.records);
 });

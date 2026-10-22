@@ -36,3 +36,29 @@ export function clear(batch) {
 	}
 	return fills;
 }
+
+/**
+ * Port of `zpredict_core::fill_records`: one 10-byte record per batch slot,
+ * `size u32 | total_cost u32 | side u8 | flags u8`, summed over every match; unfilled = zeros.
+ */
+export function fillRecords(batch, fills) {
+	const size = batch.map(() => 0);
+	const cost = batch.map(() => 0);
+	for (const f of fills) {
+		size[f.yes] += f.size;
+		cost[f.yes] += f.size * f.yesCost;
+		size[f.no] += f.size;
+		cost[f.no] += f.size * f.noCost;
+	}
+	return batch.map((o, i) => {
+		const r = new Uint8Array(10);
+		if (size[i] > 0) {
+			const v = new DataView(r.buffer);
+			v.setUint32(0, size[i], true);
+			v.setUint32(4, cost[i], true);
+			r[8] = o.side;
+			r[9] = 1;
+		}
+		return r;
+	});
+}

@@ -7,7 +7,7 @@
 import { randomBytes } from "node:crypto";
 import { createServer } from "node:http";
 import { decodeOrder, encodeOrder, ORDER_LEN } from "@zpredict/sdk";
-import { clear } from "./clear.mjs";
+import { clear, fillRecords } from "./clear.mjs";
 
 const PORTS = (process.env.MOCK_PORTS ?? "4101,4102,4103")
 	.split(",")
@@ -120,29 +120,20 @@ function runBatch() {
 		reserved.set(d.account, r);
 		return d;
 	});
-	const got = live.map(() => ({ size: 0, cost: 0 }));
+	// One 10-byte fill record per order (all zero if unfilled), cleared market by market.
+	const records = live.map(() => new Uint8Array(10));
 	for (const m of markets) {
 		const idx = live.flatMap((d, k) => (d && d.market === m.id ? [k] : []));
-		for (const f of clear(idx.map((k) => live[k]))) {
-			const y = got[idx[f.yes]];
-			const n = got[idx[f.no]];
-			y.size += f.size;
-			y.cost += f.size * f.yesCost;
-			n.size += f.size;
-			n.cost += f.size * f.noCost;
-		}
+		const sub = idx.map((k) => live[k]);
+		fillRecords(sub, clear(sub)).forEach((r, j) => {
+			records[idx[j]] = r;
+		});
 	}
 	ready.forEach(([id, o], k) => {
-		const g = got[k];
-		const d = decoded[k];
-		if (g.size > 0) account(d.account).bal -= BigInt(g.cost);
-		// fill = size u32 | total_cost u32 (half-ticks, summed over matches) | side u8 | flags u8
-		const fill = Buffer.alloc(10);
-		fill.writeUInt32LE(g.size, 0);
-		fill.writeUInt32LE(g.cost, 4);
-		fill[8] = d?.side ?? 0;
-		fill[9] = g.size > 0 ? 1 : 0;
-		o.status = g.size > 0 ? "filled" : "unfilled";
+		const fill = Buffer.from(records[k]);
+		const filled = fill[9] === 1;
+		if (filled) account(decoded[k].account).bal -= BigInt(fill.readUInt32LE(4));
+		o.status = filled ? "filled" : "unfilled";
 		o.fillShares = split(fill);
 		// Every order in the batch gets a fill share, filled or not: same shape either way.
 		PORTS.forEach((_, i) => {
