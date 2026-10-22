@@ -19,15 +19,15 @@ fn case(r: &Resolution, sig: &[u8; 64], valid: bool) -> Value {
 fn generate() -> Value {
     let s = dkg_local().unwrap();
     let yes = Resolution {
-        market: 1_073_820,
+        market: 1_073_460,
         outcome: Outcome::Yes,
-        height: 3_543_456,
+        height: 3_526_128,
         block_hash: "0000000000a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b".into(),
     };
     let no = Resolution {
-        market: 3,
+        market: 1_073_461,
         outcome: Outcome::No,
-        height: 3_550_000,
+        height: 3_526_176,
         block_hash: "00000000017d6f9e5c4b3a29180716f5e4d3c2b1a09f8e7d6c5b4a3928170605".into(),
     };
     let sig_yes = outcome::sign_local(&[(0, &s[0]), (1, &s[1])], &yes.message()).unwrap();
