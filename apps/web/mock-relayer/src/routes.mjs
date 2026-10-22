@@ -1,6 +1,6 @@
 // The relayer HTTP API (DESIGN.md "Relayer API"), served once per relayer index.
 // Nothing is logged: no IPs, no bodies.
-import { randomBytes } from "node:crypto";
+import { generateKeyPairSync, randomBytes } from "node:crypto";
 import { ORDER_LEN } from "@zpredict/sdk";
 import { JUDGE_CREDIT, PORTS } from "./config.mjs";
 import { hex, u64le, xor } from "./shares.mjs";
@@ -71,6 +71,12 @@ function getView(i, url, res) {
 	send(res, 200, { items });
 }
 
+// One X25519 memo key per relayer, fresh per process. The mock never scans deposits, so
+// the secret halves are dropped; the keys only let the deposit flow build a memo.
+const memoKeys = PORTS.map(() =>
+	Buffer.from(generateKeyPairSync("x25519").publicKey.export({ format: "jwk" }).x, "base64url"),
+);
+
 function judgeClaim(res) {
 	const tag = randomBytes(16);
 	account(tag.readBigUInt64LE(0)).bal += JUDGE_CREDIT;
@@ -80,6 +86,11 @@ function judgeClaim(res) {
 /** [method, path pattern, handler(i, ctx)]; ctx = { req, res, url, m: regex match }. */
 const ROUTES = [
 	["GET", /^\/health$/, (i, { res }) => send(res, 200, health(i))],
+	[
+		"GET",
+		/^\/memo-key$/,
+		(i, { res }) => send(res, 200, { relayer: i, memoKey: hex(memoKeys[i]) }),
+	],
 	["GET", /^\/markets$/, (_, { res }) => send(res, 200, markets)],
 	["GET", /^\/view$/, (i, { url, res }) => getView(i, url, res)],
 	["POST", /^\/orders$/, (i, { req, res }) => postOrder(i, req, res)],

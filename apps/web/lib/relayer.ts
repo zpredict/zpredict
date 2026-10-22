@@ -3,6 +3,7 @@
 import {
 	getBalance,
 	getFill,
+	getMemoKeys,
 	getView,
 	type Health,
 	type JudgeClaim,
@@ -38,6 +39,9 @@ export const fetchBalance = (tag: string) => getBalance(relayers, tag);
 export const fetchFill = (orderId: string) => getFill(relayers, orderId);
 
 export const fetchView = (i: number, after: number) => getView(relayers[i], after);
+
+/** Each relayer's deposit-memo public key, fetched from that relayer only. */
+export const fetchMemoKeys = () => getMemoKeys(relayers);
 
 export interface OrderInput {
 	market: number;

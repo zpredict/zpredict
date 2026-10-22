@@ -54,7 +54,17 @@ impl MemoKey {
 
 /// The memo for a deposit to account `tag`, readable by each of `relayers` (public keys).
 pub fn encode(tag: &Tag, relayers: &[[u8; 32]; RELAYERS]) -> [u8; 512] {
-    let esk = StaticSecret::random_from_rng(OsRng);
+    encode_with_esk(
+        tag,
+        relayers,
+        StaticSecret::random_from_rng(OsRng).to_bytes(),
+    )
+}
+
+/// [`encode`] with a chosen ephemeral key: for the cross-language test vectors only.
+/// Reusing `esk` across memos reuses each slot key with the same zero nonce.
+pub fn encode_with_esk(tag: &Tag, relayers: &[[u8; 32]; RELAYERS], esk: [u8; 32]) -> [u8; 512] {
+    let esk = StaticSecret::from(esk);
     let epk = PublicKey::from(&esk).to_bytes();
     let mut memo = [0u8; 512];
     memo[0] = 0xFF;

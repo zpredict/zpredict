@@ -53,6 +53,10 @@ pub struct Config {
     /// Judge credit in half-ticks.
     #[serde(default)]
     pub judge_credit: u64,
+    /// This relayer's deposit-memo public key (hex), as printed by `settle memo-key`,
+    /// served at `GET /memo-key`. The sealed secret half stays with the escrow scanner.
+    #[serde(default)]
+    pub memo_key_file: Option<PathBuf>,
     /// Event log directory (see `store.rs`).
     pub data_dir: PathBuf,
     /// Use the plaintext dev matcher (needs the `dev-insecure` feature too).
@@ -60,6 +64,10 @@ pub struct Config {
     pub insecure_matcher: bool,
     pub markets: Vec<Market>,
 }
+
+/// `ZPREDICT_*` variables that are not config keys: `ZPREDICT_STORE_KEY` unseals the
+/// settle secrets (`zpredict_settle::store`) and must never become a config value.
+const NOT_CONFIG: [&str; 1] = ["store_key"];
 
 fn default_oracle_lightwalletd() -> String {
     "https://zec.rocks:443".into()
@@ -83,6 +91,7 @@ impl Config {
         for p in [&mut c.key_file, &mut c.data_dir]
             .into_iter()
             .chain(c.peer_keys.iter_mut())
+            .chain(c.memo_key_file.as_mut())
         {
             *p = base.join(&*p);
         }
@@ -92,7 +101,7 @@ impl Config {
     pub fn parse(text: &str, env: impl Iterator<Item = (String, String)>) -> Result<Self> {
         let mut table: toml::Table =
             toml::from_str(text).map_err(|e| Error::Config(e.to_string()))?;
-        for (key, raw) in env {
+        for (key, raw) in env.filter(|(k, _)| !NOT_CONFIG.contains(&k.as_str())) {
             // Typed like the TOML literal it replaces: numbers and booleans parse, else string.
             let value = toml::from_str::<toml::Table>(&format!("v = {raw}"))
                 .ok()
@@ -159,6 +168,18 @@ pub(crate) mod tests {
         assert_eq!((c.index, c.listen.port()), (2, 3174));
         assert_eq!(c.oracle_lightwalletd, "", "empty turns oracle polling off");
         assert_eq!(c.escrow_lightwalletd, "https://testnet.zec.rocks:443");
+    }
+
+    #[test]
+    fn store_key_is_not_config_and_memo_key_is_optional() {
+        let c = Config::parse(EXAMPLE, std::iter::empty()).unwrap();
+        assert_eq!(c.memo_key_file, None);
+        let env = [
+            ("store_key".into(), "00".repeat(32)),
+            ("memo_key_file".into(), "keys/r0-memo.pub".into()),
+        ];
+        let c = Config::parse(EXAMPLE, env.into_iter()).unwrap();
+        assert_eq!(c.memo_key_file, Some("keys/r0-memo.pub".into()));
     }
 
     #[test]

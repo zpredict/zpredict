@@ -28,6 +28,8 @@ pub struct Api {
     pub origin: Arc<str>,
     /// `Some(credit)` when judge mode is on (relayer 0 only serves it).
     pub judge_credit: Option<u64>,
+    /// This relayer's deposit-memo public key (X25519), served at `GET /memo-key`.
+    pub memo_key: Option<[u8; 32]>,
 }
 
 pub fn router(api: Api) -> Router {
@@ -35,6 +37,7 @@ pub fn router(api: Api) -> Router {
         .route("/health", get(info::health))
         .route("/markets", get(info::markets))
         .route("/view", get(info::view))
+        .route("/memo-key", get(info::memo_key))
         .route("/orders", post(orders::post))
         .route("/orders/{id}", get(orders::get))
         .route("/accounts/{tag}", get(accounts::get))

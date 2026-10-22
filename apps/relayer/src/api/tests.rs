@@ -13,6 +13,7 @@ use crate::state::State;
 use crate::store::{Event, tests::temp_dir};
 
 const VECTORS: &str = include_str!("../../../../packages/core/testdata/vectors.json");
+const MEMO_VECTORS: &str = include_str!("../../../../packages/settle/testdata/memo-vectors.json");
 const ORIGIN: &str = "http://localhost:3000";
 
 pub fn app(index: usize, name: &str, judge: bool) -> (Router, crate::state::Shared) {
@@ -25,6 +26,7 @@ pub fn app(index: usize, name: &str, judge: bool) -> (Router, crate::state::Shar
         state: state.clone(),
         origin: ORIGIN.into(),
         judge_credit,
+        memo_key: Some(memo_vector(index)),
     };
     (router(api), state)
 }
@@ -52,6 +54,22 @@ pub async fn call(
     assert!(h.get(header::SET_COOKIE).is_none());
     let bytes = to_bytes(res.into_body(), 1 << 20).await.unwrap();
     (code, serde_json::from_slice(&bytes).unwrap_or(Value::Null))
+}
+
+/// Relayer `i`'s memo public key from the settle/sdk memo vectors.
+fn memo_vector(i: usize) -> [u8; 32] {
+    let v: Value = serde_json::from_str(MEMO_VECTORS).unwrap();
+    let mut k = [0u8; 32];
+    hex::decode_to_slice(v["relayers"][i]["public"].as_str().unwrap(), &mut k).unwrap();
+    k
+}
+
+#[tokio::test]
+async fn memo_key_contract() {
+    let (app, _) = app(2, "api-memo-key", false);
+    let (code, body) = call(&app, "GET", "/memo-key", None).await;
+    let want = json!({"relayer": 2, "memoKey": hex::encode(memo_vector(2))});
+    assert_eq!((code, body), (StatusCode::OK, want));
 }
 
 fn vector_share(k: usize) -> String {

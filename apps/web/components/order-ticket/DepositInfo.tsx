@@ -1,37 +1,71 @@
 "use client";
+import { type Denomination, unitsToZec } from "@zpredict/sdk";
+import { useState } from "react";
+import DenominationPicker from "@/components/order-ticket/DenominationPicker";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
+import CopyButton from "@/components/ui/CopyButton";
 import { useAccount } from "@/hooks/useAccount";
-import { DENOMINATIONS, ESCROW_UA_PLACEHOLDER } from "@/lib/config";
+import { useDeposit } from "@/hooks/useDeposit";
 
-/** How deposits will work; collapsed by default. */
+/** A real testnet deposit: one fixed-size note to the escrow, tagged in an encrypted memo. */
 export default function DepositInfo() {
-	const { tag, forget } = useAccount();
+	const { tag, create, forget } = useAccount();
+	const [units, setUnits] = useState<Denomination>(5);
+	const { request, error, escrowReady } = useDeposit(tag, units);
+	const zec = unitsToZec(units);
+
 	return (
 		<details className="deposit">
-			<summary>Deposit &amp; account</summary>
+			<summary>Deposit</summary>
 			<ol className="deposit__steps">
 				<li>
-					Send one note of a fixed size —{" "}
-					{DENOMINATIONS.map((d) => (
-						<Badge key={d} size="sm">
-							{d} unit{d > 1 ? "s" : ""}
-						</Badge>
-					))}{" "}
-					— so a deposit never reveals a bet size.
+					Pick one fixed size. Every deposit is one of these three, so the amount never reveals a
+					bet size.
+					<DenominationPicker onChange={setUnits} units={units} />
 				</li>
 				<li>
-					To the escrow&apos;s shielded unified address (Ironwood receiver only, FROST 2-of-3):
-					<code className="deposit__ua">{ESCROW_UA_PLACEHOLDER}</code>
-					<Badge size="sm" tone="mock">
-						Placeholder
-					</Badge>
+					{tag ? (
+						"Your account tag stays in this browser. It is the only key to your balance."
+					) : (
+						<>
+							Create an account tag. It is made in this browser and never leaves it in clear.{" "}
+							<Button onClick={create} variant="ghost">
+								Create account tag
+							</Button>
+						</>
+					)}
 				</li>
 				<li>
-					The memo carries only your account tag, encrypted to each relayer. Never order data.
+					From a shielded wallet, send exactly <strong>{zec} ZEC</strong> with this payment request.
+					It pays the escrow&apos;s unified address (Ironwood receiver only, FROST 2-of-3) and
+					carries a memo holding only your tag, encrypted separately to each relayer. Don&apos;t
+					edit the amount or the memo.
+					{request && (
+						<>
+							<code className="deposit__ua">{request.uri}</code>
+							<span className="deposit__actions">
+								<CopyButton label="Copy payment request" text={request.uri} />
+								<a className="btn btn--ghost" href={request.uri}>
+									Open in wallet
+								</a>
+								<CopyButton label="Copy escrow address" text={request.escrow} />
+							</span>
+						</>
+					)}
 				</li>
+				<li>After 10 confirmations each relayer credits your balance.</li>
 			</ol>
-			<p className="dim">Until the escrow is live on testnet, use judge mode for a demo balance.</p>
+			{!escrowReady && (
+				<p className="dim">
+					<Badge size="sm" tone="mock">
+						Not live
+					</Badge>{" "}
+					The escrow address is published after the relayers&apos; key ceremony. Until then, use
+					judge mode for a demo balance.
+				</p>
+			)}
+			{error && <p className="dim">{error}</p>}
 			{tag && (
 				<Button onClick={forget} variant="ghost">
 					Forget this account

@@ -86,6 +86,7 @@ Each relayer is its own origin: `https://r0.zpredict.site`, `https://r1.zpredict
 | `POST /orders` body `{orderId: hex32, share: hex36}` | `202 {batch}`: the batch the share joins |
 | `GET /orders/:orderId` | `{status: "pending"\|"filled"\|"unfilled", fillShare?: hex20}` |
 | `GET /accounts/:tag` | `{balanceShare: hex16}` |
+| `GET /memo-key` | `{relayer: 0\|1\|2, memoKey: hex64}`: this relayer's X25519 public key for its slot in the deposit memo |
 | `GET /view?after=<seq>` | `{items: [{seq, kind: "order"\|"fill", orderId, share}]}`: exactly what this relayer sees; powers the Relayer View |
 | `POST /judge/claim` | `{tag}`: **mock**, testnet only (see below) |
 
@@ -97,6 +98,7 @@ Encodings (all little-endian, identical in `zpredict-core` and `@zpredict/sdk`; 
 - **Fill record** (10 bytes): `size u32 | total_cost u32 | side u8 | flags u8 (bit0 = filled)`. Size and cost (half-ticks) are summed over every match, since one order can cross several counterparties at different midpoints; unfilled orders are all zero. Only the owner learns it, by combining all three shares. Orders above `MAX_SIZE` (1,000,000 contracts) are rejected, so `total_cost` always fits.
 - **Balance share** (8 bytes): `u64` half-ticks.
 - **Account tag**: 16 random bytes chosen by the browser; the order's `account` field is the tag's first 8 bytes read as `u64`. The tag is the only credential, so it stays in the browser.
+- **Deposit memo** (512 bytes, ZIP 302 `0xFF`): `0xFF | 0x01 | epk (32) | slot₀ | slot₁ | slot₂`, then zeros. `slotᵢ` = ChaCha20-Poly1305 with a zero nonce, applied to the tag under `BLAKE2b-256(personal "zPredictMemoKey1", X25519(esk, memoKeyᵢ) ‖ epk ‖ memoKeyᵢ)`, with a fresh `esk` per memo. The browser fetches `memoKeyᵢ` from relayer `i` only (`getMemoKeys`) and hands the wallet a ZIP 321 request (`depositUri`: escrow UA, fixed amount, base64url memo). `packages/settle/testdata/memo-vectors.json` pins this format for both `zpredict_settle::memo` and `@zpredict/sdk`. The memo key is generated sealed (`settle memo-key`) and is distinct from the FROST share and the viewing key.
 - **orderId**: 16 random bytes from the browser; it links the three shares of one order and nothing else.
 
 `POST /judge/claim` is a testnet-only demo shortcut: it credits a fresh tag with prefunded test balance so judges can trade without a faucet. It is labelled "Mock" in the UI and in `SUBMISSION.md`, and does not exist on mainnet builds.
