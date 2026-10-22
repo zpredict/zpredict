@@ -10,20 +10,48 @@
 }
 
 .ascii-hero {
+	--s: min(calc(100svh - var(--header-space) - 48px), 60vw);
 	position: absolute;
 	inset: var(--header-space) 0 0;
 	display: grid;
 	place-items: center;
-	pointer-events: none;
+}
+
+/* Snapshot <pre> and live canvas share one square; the snapshot covers exactly the framing
+   square, so a cell is --s / cols wide (JetBrains Mono advance = 0.6em). Grids: AsciiHero GRID. */
+.ascii-hero > * {
+	grid-area: 1 / 1;
+	width: var(--s);
+	height: var(--s);
 }
 
 .ascii-hero__art {
 	margin: 0;
+	overflow: hidden;
 	color: var(--zp-glyph);
-	font-size: min(1.6vw, 2.1svh);
-	line-height: 1.2;
 	letter-spacing: 0;
 	user-select: none;
+	pointer-events: none;
+}
+
+.ascii-hero__art--desktop {
+	font-size: calc(var(--s) / 48);
+	line-height: calc(var(--s) / 53);
+}
+
+.ascii-hero__art--phone {
+	display: none;
+	font-size: calc(var(--s) / 28.8);
+	line-height: calc(var(--s) / 32);
+}
+
+.ascii-hero__live {
+	opacity: 0;
+	transition: opacity 800ms ease;
+}
+
+.ascii-hero__live.is-live {
+	opacity: 1;
 }
 
 .hero__copy {
@@ -82,13 +110,17 @@
 		padding: var(--header-space) 20px 56px;
 	}
 	.ascii-hero {
+		--s: calc(100vw - 40px);
 		position: relative;
 		inset: auto;
 		order: 2;
 		margin-top: 32px;
 	}
-	.ascii-hero__art {
-		font-size: 2.5vw;
+	.ascii-hero__art--desktop {
+		display: none;
+	}
+	.ascii-hero__art--phone {
+		display: block;
 	}
 	.hero__copy {
 		justify-items: start;

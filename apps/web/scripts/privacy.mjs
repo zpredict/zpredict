@@ -9,8 +9,10 @@ const OUT = new URL("../out/", import.meta.url).pathname;
 // Hosts the app may reference: our relayers and dev mocks.
 const OURS = /^(([a-z0-9-]+\.)*zpredict\.site|localhost)$/;
 // Inert strings that are never fetched: XML namespaces, the core-js license banner in
-// Next's polyfills, and doc links inside React/Next error messages.
+// Next's polyfills, doc links inside React/Next error messages, and a paper citation in a
+// GLSL comment of Three.js (lazy hero chunk from @zpredict/ascii).
 const INERT = [
+	/^https:\/\/jcgt\.org\/published\//,
 	/^http:\/\/www\.w3\.org\//,
 	/^https:\/\/github\.com\/zloirock\/core-js/,
 	/^https:\/\/nextjs\.org\/docs\//,

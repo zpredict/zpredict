@@ -1,15 +1,9 @@
 "use client";
 import MarketGrid from "@/components/markets/MarketGrid";
 import { useMarkets } from "@/hooks/useMarkets";
-import Hero from "./Hero";
 
-/** Markets page: the ASCII hero, then every market as a card. */
+/** Every market as a card, live from relayer 0. */
 export default function HomeScreen() {
 	const { markets, down } = useMarkets();
-	return (
-		<main>
-			<Hero />
-			<MarketGrid down={down} markets={markets} />
-		</main>
-	);
+	return <MarketGrid down={down} markets={markets} />;
 }

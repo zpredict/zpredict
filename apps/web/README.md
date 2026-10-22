@@ -2,7 +2,7 @@
 
 The zPredict trading app: markets, order ticket, **Relayer View** (the split screen), judge mode and the threat model. Next.js App Router, `output: "export"`: a static site that talks to the three relayers directly from the browser. No Next server, no analytics, no third-party requests.
 
-UI follows the MotionSites **ASCII Studio** template (`ascii-studio`, issue #62): tokens from `@zpredict/brand/tokens.css`, JetBrains Mono 500 only (self-hosted via `next/font/local`, preloaded), lime on `#050505`, square corners, no shadows, lime CTA blocks, a top-sheet menu, lime/paper sections and text scramble (`lib/scramble.ts`). The hero visual lives in `components/hero/AsciiHero.tsx`: a static ASCII render of the mark until the live `@zpredict/ascii` engine is wired in.
+UI follows the MotionSites **ASCII Studio** template (`ascii-studio`, issue #62): tokens from `@zpredict/brand/tokens.css`, JetBrains Mono 500 only (self-hosted via `next/font/local`, preloaded), lime on `#050505`, square corners, no shadows, lime CTA blocks, a top-sheet menu, lime/paper sections and text scramble (`lib/scramble.ts`). The hero is `@zpredict/ascii`: `components/hero/AsciiHero.tsx` (server) renders the build-time snapshot, the LCP and the no-WebGL / reduced-motion view; `AsciiLive.tsx` loads Three.js in its own chunk after `load` + idle and fades the live canvas in.
 
 ## Run it
 
