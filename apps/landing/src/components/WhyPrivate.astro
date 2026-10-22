@@ -1,0 +1,186 @@
+---
+/** Public vs private: what an explorer shows for a public prediction market, and for zPredict. */
+import { publicTrades, shieldedTx } from "../data/compare";
+import Section from "./ui/Section.astro";
+import Title from "./ui/Title.astro";
+---
+
+<Section id="why" tone="lime">
+	<div class="layout">
+		<div class="intro">
+			<Title lines={["Public", "vs private."]} />
+			<p class="muted lede">
+				On a public prediction market every bet is a row in an explorer. One lookup ties the wallet to
+				an exchange account, and the exchange account to you.
+			</p>
+		</div>
+
+		<div class="panels">
+			<section class="panel" aria-labelledby="why-public">
+				<header class="head">
+					<h3 id="why-public">Public market explorer</h3>
+					<span class="tag">Everyone sees this</span>
+				</header>
+				<div class="table-wrap">
+					<table>
+						<thead>
+							<tr>
+								<th scope="col">Wallet</th>
+								<th scope="col">Side</th>
+								<th scope="col">Size</th>
+								<th scope="col">Price</th>
+								<th scope="col">Time</th>
+							</tr>
+						</thead>
+						<tbody>
+							{
+								publicTrades.map((t) => (
+									<tr>
+										<td>{t.wallet}</td>
+										<td class:list={["side", { "side--no": t.side === "NO" }]}>{t.side}</td>
+										<td>{t.size}</td>
+										<td>{t.price}</td>
+										<td class="dim">{t.time}</td>
+									</tr>
+								))
+							}
+						</tbody>
+					</table>
+				</div>
+			</section>
+			<p class="caption muted">Same wallet, two bets, $20,400 on YES. Anyone can follow it.</p>
+
+			<section class="panel" aria-labelledby="why-private">
+				<header class="head">
+					<h3 id="why-private">zPredict on the Zcash chain</h3>
+					<span class="tag">Everyone sees this too</span>
+				</header>
+				<dl class="tx">
+					{
+						shieldedTx.map((f) => (
+							<div class="row">
+								<dt>{f.label}</dt>
+								<dd>{f.value}</dd>
+							</div>
+						))
+					}
+				</dl>
+			</section>
+			<p class="caption muted">One batched transaction pays every winner. No wallet, side, size or time per bettor.</p>
+		</div>
+	</div>
+</Section>
+
+<style>
+	.layout {
+		display: grid;
+		grid-template-columns: 480fr 800fr;
+		gap: calc(120px * var(--content-scale));
+		align-items: start;
+	}
+	.lede {
+		max-width: calc(400px * var(--content-scale));
+		margin-top: 24px;
+	}
+	.panel {
+		padding: 22px;
+		background: var(--zp-bg);
+		color: var(--zp-text);
+		font-size: 13px;
+	}
+	.head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		margin-bottom: 16px;
+	}
+	.head h3 {
+		font-size: 17px;
+	}
+	.tag {
+		padding: 4px 8px;
+		background: var(--zp-lime);
+		color: var(--zp-ink);
+		font-size: 11px;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+	.table-wrap {
+		overflow-x: auto;
+	}
+	table {
+		width: 100%;
+		border-collapse: collapse;
+	}
+	th,
+	td {
+		padding: 10px 8px;
+		border-bottom: 1px solid rgb(255 255 255 / 0.12);
+		text-align: left;
+		white-space: nowrap;
+	}
+	th {
+		color: var(--zp-muted);
+		font-weight: inherit;
+		font-size: 11px;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+	tr:last-child td {
+		border-bottom: 0;
+	}
+	.side {
+		color: var(--zp-lime);
+	}
+	.side--no,
+	.dim {
+		color: var(--zp-muted);
+	}
+	.row {
+		display: flex;
+		justify-content: space-between;
+		gap: 16px;
+		padding: 10px 0;
+		border-bottom: 1px solid rgb(255 255 255 / 0.12);
+	}
+	.row:last-child {
+		border-bottom: 0;
+	}
+	dt {
+		color: var(--zp-muted);
+	}
+	dd {
+		color: var(--zp-lime);
+	}
+	.caption {
+		margin: 12px 0 28px;
+	}
+	.caption:last-child {
+		margin-bottom: 0;
+	}
+	@media (max-width: 1100px) {
+		.layout {
+			grid-template-columns: 1fr;
+		}
+		.lede {
+			max-width: 40em;
+		}
+	}
+	@media (max-width: 600px) {
+		.panel {
+			padding: 16px;
+		}
+		th,
+		td {
+			padding: 8px 5px;
+			font-size: 12px;
+		}
+		/* Phones: drop the Time column so the row fits without scrolling. */
+		th:last-child,
+		td:last-child {
+			display: none;
+		}
+	}
+</style>

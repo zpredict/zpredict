@@ -1,0 +1,88 @@
+---
+/**
+ * Content section on one of the three surfaces. Sizes follow --content-scale (the 1600 × 1000
+ * artboard), like the template; phones get fixed sizes. `data-surface` drives the header colours.
+ */
+interface Props {
+	id?: string;
+	tone: "dark" | "lime" | "paper";
+	class?: string;
+}
+
+const { id, tone, class: className } = Astro.props;
+---
+
+<section id={id} class:list={["section", `section--${tone}`, className]} data-surface={tone === "dark" ? "dark" : "light"}>
+	<div class="wrap">
+		<slot />
+	</div>
+</section>
+
+<style>
+	@layer ui {
+		.section {
+			--s: var(--content-scale);
+			--muted: var(--zp-muted);
+			--rule: rgb(255 255 255 / 0.12);
+			position: relative;
+			padding: calc(170px * var(--s)) 0;
+			font-size: max(12px, calc(14px * var(--s)));
+			line-height: 1.6;
+		}
+		.section--dark {
+			background: var(--zp-bg);
+			color: var(--zp-text);
+		}
+		.section--lime,
+		.section--paper {
+			--muted: var(--zp-ink-2);
+			--rule: var(--zp-rule-on-lime);
+			color: var(--zp-ink);
+		}
+		.section--lime {
+			background: var(--zp-lime);
+		}
+		.section--paper {
+			background: var(--zp-paper);
+		}
+		.wrap {
+			width: calc(1400px * var(--s));
+			max-width: calc(100% - 96px);
+			margin: 0 auto;
+		}
+		.section :global(h2) {
+			font-size: calc(32px * var(--s));
+		}
+		.section :global(h3) {
+			font-size: calc(22px * var(--s));
+			letter-spacing: -0.04em;
+			line-height: 1.2;
+		}
+		.section :global(.muted) {
+			color: var(--muted);
+		}
+
+		@media (max-width: 900px) {
+			.section {
+				padding: 72px 0;
+				font-size: 15px;
+			}
+			.wrap {
+				width: auto;
+				max-width: 640px;
+				margin: 0 20px;
+			}
+			.section :global(h2) {
+				font-size: 28px;
+			}
+			.section :global(h3) {
+				font-size: 22px;
+			}
+		}
+		@media (min-width: 681px) and (max-width: 900px) {
+			.wrap {
+				margin: 0 auto;
+			}
+		}
+	}
+</style>

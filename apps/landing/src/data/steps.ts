@@ -1,69 +1,70 @@
-export type StepArt = "escrow" | "shares" | "payout";
-
 export interface Step {
-	n: string;
-	art: StepArt;
-	tag: string;
-	/** Display lines of the uppercase title. */
-	title: [string, string];
-	desc: string;
+	title: string;
+	text: string;
+	/** Lines of the mono terminal panel shown while the step is active. `**x**` marks lime text. */
+	panel: string[];
 }
 
-/** The three steps a bettor actually does. */
+/** The pinned "How it works" process: what happens to one bet, start to payout. */
 export const steps: Step[] = [
 	{
-		n: "01",
-		art: "escrow",
-		tag: "Fixed-size notes",
-		title: ["Deposit", "shielded ZEC"],
-		desc: "Send a fixed-size note from any Zcash wallet. No account, no email, no KYC.",
+		title: "Deposit shielded ZEC.",
+		text: "Send fixed-size notes (1, 5 or 25 units) from any Zcash wallet to the escrow's Ironwood address. The memo holds only a random account tag. No account, no KYC.",
+		panel: [
+			"$ zcash send --to escrow.ironwood",
+			"",
+			"  note   **5 units**",
+			"  pool   Ironwood (shielded)",
+			"  memo   0xFF · tag 7f3a… (encrypted)",
+			"",
+			"relayer A  +5 to a shared balance",
+			"relayer B  +5 to a shared balance",
+			"relayer C  +5 to a shared balance",
+			"",
+			"who sent it      **hidden**",
+		],
 	},
 	{
-		n: "02",
-		art: "shares",
-		tag: "Split in 3",
-		title: ["Place", "your bet"],
-		desc: "Pick YES or NO. Your browser splits the order into three shares; no server sees it whole.",
+		title: "Split your order.",
+		text: "Your browser cuts {market, side, price, size} into three XOR shares and sends each one straight to its own relayer. No server ever holds two.",
+		panel: [
+			"order  { nu7-mainnet, YES, 0.71, 5 }",
+			"",
+			"share A  9f3a c1e0 27bd 04af e86c",
+			"share B  b55d 1a90 7e42 cc03 5f18",
+			"share C  06e2 f4b7 913c 2ad9 b07e",
+			"",
+			"A ⊕ B ⊕ C  = order",
+			"A, B or C  = **noise**",
+		],
 	},
 	{
-		n: "03",
-		art: "payout",
-		tag: "Fresh address",
-		title: ["Get", "paid"],
-		desc: "When the block lands, winners are paid to a fresh shielded address in one batched transaction.",
-	},
-];
-
-export interface PipelineStage {
-	name: string;
-	detail: string;
-}
-
-/** What happens underneath, for the "Technical details" disclosure. */
-export const pipeline: PipelineStage[] = [
-	{
-		name: "FROST 2-of-3 escrow",
-		detail:
-			"Deposits go to an Ironwood address whose key is split between three relayers by DKG. Any two can sign; none can spend alone.",
+		title: "Crossed inside MPC.",
+		text: "Every batch, the three relayers cross YES p with NO q when p + q ≥ 1, at the midpoint, inside a polytune circuit. Only the clearing price is public.",
+		panel: [
+			"batch 0412   market nu7-mainnet",
+			"",
+			"  YES 0.71 × NO 0.32   sum 1.03 ≥ 1",
+			"  fill at midpoint   **0.695**",
+			"",
+			"public     clearing price 0.69",
+			"private    who, side, size",
+			"unfilled   **never opened**",
+		],
 	},
 	{
-		name: "Secret-shared orders",
-		detail:
-			"{market, side, price, size} is XOR-split into three shares in the browser; each goes straight to its own relayer over TLS.",
-	},
-	{
-		name: "Crossing in 3-party MPC",
-		detail:
-			"Every batch, the relayers cross YES p with NO q when p + q ≥ 1, at the midpoint, inside a polytune circuit. Unfilled orders are never opened.",
-	},
-	{
-		name: "Resolution from chain data",
-		detail:
-			"At the resolve height each relayer reads its own node (NU7 branch ID, Ironwood note count, shielded action count) and signs the outcome with FROST.",
-	},
-	{
-		name: "Batched Ironwood payouts",
-		detail:
-			"One threshold-signed transaction per epoch pays every winner and withdrawal to fresh diversified addresses, with padded actions and the default fee.",
+		title: "Resolved and paid.",
+		text: "At the resolve height each relayer reads its own node and signs the outcome with FROST. One batched Ironwood transaction pays every winner to a fresh address.",
+		panel: [
+			"block 3,543,405  NU7 active → **YES**",
+			"",
+			"FROST 2-of-3   signed  ✓",
+			"payout tx      1 batch, padded",
+			"  → fresh address   ••••••",
+			"  → fresh address   ••••••",
+			"  → fresh address   ••••••",
+			"",
+			"links deposit → payout   **none**",
+		],
 	},
 ];

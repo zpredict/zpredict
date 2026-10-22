@@ -1,39 +1,67 @@
 ---
 import { markets } from "../data/markets";
 import MarketCard from "./markets/MarketCard.astro";
-import Panel from "./ui/Panel.astro";
-import SectionHeading from "./ui/SectionHeading.astro";
+import Section from "./ui/Section.astro";
+import Title from "./ui/Title.astro";
 ---
 
-<Panel id="markets">
-	<SectionHeading lines={["Trending", "markets"]} />
-	<p class="lede lede--center">
-		Questions the Zcash community already argues about. Each one resolves from a block anyone can
-		check.
-	</p>
-	<div class="grid">
-		{markets.map((market) => <MarketCard market={market} />)}
+<Section id="markets" tone="dark">
+	<div class="layout">
+		<div class="intro">
+			<Title lines={["Trending", "markets."]} />
+			<p class="muted lede">
+				Questions the Zcash community already argues about. Each one resolves from a block anyone can
+				check.
+			</p>
+			<p class="muted note">
+				Illustration: prices and history are samples until the app is live. Each market uses one of the
+				three resolvers in the repo.
+			</p>
+		</div>
+		<div class="grid">
+			{markets.map((market) => <MarketCard market={market} />)}
+		</div>
 	</div>
-	<p class="note note--center">
-		Illustration: prices and history are samples until the app is live. Each market uses one of
-		the three resolvers in the repo.
-	</p>
-</Panel>
+</Section>
 
 <style>
+	.layout {
+		display: grid;
+		grid-template-columns: 400fr 880fr;
+		gap: calc(120px * var(--content-scale));
+		align-items: start;
+	}
+	.intro {
+		position: sticky;
+		top: max(140px, calc(170px * var(--content-scale)));
+	}
+	.lede {
+		max-width: calc(400px * var(--content-scale));
+		margin-top: 24px;
+	}
+	.note {
+		max-width: calc(400px * var(--content-scale));
+		margin-top: 16px;
+		font-size: 12px;
+	}
 	.grid {
 		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: var(--gap);
-		max-width: 1320px;
-		margin: 0 auto;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 12px;
 	}
-	@media (max-width: 1199.98px) {
-		.grid {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
+	@media (max-width: 1100px) {
+		.layout {
+			grid-template-columns: 1fr;
+		}
+		.intro {
+			position: static;
+		}
+		.lede,
+		.note {
+			max-width: 40em;
 		}
 	}
-	@media (max-width: 799.98px) {
+	@media (max-width: 680px) {
 		.grid {
 			grid-template-columns: 1fr;
 		}

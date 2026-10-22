@@ -17,3 +17,5 @@ paint();
 setInterval(() => {
 	if (!reduce.matches && !document.hidden) paint();
 }, 1600);
+
+export {};

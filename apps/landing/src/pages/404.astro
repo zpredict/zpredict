@@ -1,22 +1,38 @@
 ---
-import Button from "../components/ui/Button.astro";
-import Panel from "../components/ui/Panel.astro";
-import SectionHeading from "../components/ui/SectionHeading.astro";
+import { asciiSnapshot } from "@zpredict/ascii";
+import CtaButton from "../components/ui/CtaButton.astro";
 import Base from "../layouts/Base.astro";
 ---
 
 <Base title="Not found · zPredict">
 	<meta slot="head" name="robots" content="noindex" />
-	<main>
-		<Panel class="lost">
-			<SectionHeading lines={["Nothing", "here"]} />
-			<Button variant="cta" href="/">Back to zPredict</Button>
-		</Panel>
+	<main class="lost">
+		<pre class="art" aria-hidden="true">{asciiSnapshot({ cols: 60, rows: 40, yaw: 0.45 })}</pre>
+		<h1 class="heading"><span>Nothing here.</span></h1>
+		<CtaButton href="/" label="Back to zPredict" />
 	</main>
 </Base>
 
 <style>
 	.lost {
+		display: grid;
+		place-items: center;
+		align-content: center;
+		gap: 28px;
+		min-height: 100svh;
+		padding: 40px 20px;
 		text-align: center;
+	}
+	.art {
+		color: var(--zp-glyph);
+		font-size: 12px;
+		line-height: 14px;
+		zoom: 0.6;
+	}
+	.heading span {
+		padding: 0 7px;
+		background: var(--zp-lime);
+		color: var(--zp-bg);
+		font-size: 26px;
 	}
 </style>

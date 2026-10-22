@@ -1,0 +1,95 @@
+---
+/** "Common questions": native exclusive `<details name>` rows, so only one is open at a time. */
+import { faq } from "../data/faq";
+import Section from "./ui/Section.astro";
+import Title from "./ui/Title.astro";
+---
+
+<Section id="faq" tone="lime">
+	<div class="layout">
+		<Title lines={["Common", "questions."]} />
+		<div class="list">
+			{
+				faq.map((item) => (
+					<details name="faq">
+						<summary>
+							<h3 class="q">{item.q}</h3>
+							<span class="plus" aria-hidden="true">
+								+
+							</span>
+						</summary>
+						<p class="muted answer">{item.a}</p>
+					</details>
+				))
+			}
+		</div>
+	</div>
+</Section>
+
+<style>
+	.layout {
+		display: grid;
+		grid-template-columns: 480fr 800fr;
+		gap: calc(120px * var(--content-scale));
+		align-items: start;
+	}
+	details {
+		border-bottom: 1px solid #080a0426;
+	}
+	summary {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 24px;
+		padding: calc(28px * var(--content-scale)) 0;
+		cursor: pointer;
+		list-style: none;
+	}
+	summary::-webkit-details-marker {
+		display: none;
+	}
+	.q {
+		font-size: calc(22px * var(--content-scale));
+	}
+	.plus {
+		flex: none;
+		font-size: calc(24px * var(--content-scale));
+		line-height: 1;
+		transition: transform 300ms ease;
+	}
+	details[open] .plus {
+		transform: rotate(45deg);
+	}
+	.answer {
+		max-width: 60ch;
+		padding: 0 32px calc(30px * var(--content-scale)) 0;
+	}
+	details[open] .answer {
+		animation: answer-in 350ms ease;
+	}
+	@keyframes answer-in {
+		from {
+			opacity: 0;
+			transform: translateY(-8px);
+		}
+	}
+	@media (max-width: 1100px) {
+		.layout {
+			grid-template-columns: 1fr;
+		}
+	}
+	@media (max-width: 900px) {
+		summary {
+			padding: 22px 0;
+		}
+		.q {
+			font-size: 18px;
+		}
+		.plus {
+			font-size: 24px;
+		}
+		.answer {
+			padding-bottom: 22px;
+		}
+	}
+</style>
