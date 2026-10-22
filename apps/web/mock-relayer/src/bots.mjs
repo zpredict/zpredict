@@ -11,11 +11,12 @@ const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 const bots = Array.from({ length: 6 }, () => randomBytes(8).readBigUInt64LE());
 for (const b of bots) account(b).bal = 10n ** 12n;
 /** Drifting fair YES price per market, in cents. */
-const fair = new Map(markets.map((m) => [m.id, rnd(40, 64)]));
+const START_FAIR = { 1: 72, 2: 38, 3: 55 };
+const fair = new Map(markets.map((m) => [m.id, START_FAIR[m.id] ?? 50]));
 
 function order(m, side) {
 	const f = fair.get(m.id);
-	const price = clamp((side === 0 ? f : 100 - f) + rnd(-6, 8), 1, 99);
+	const price = clamp((side === 0 ? f : 100 - f) + rnd(-3, 5), 1, 99);
 	const bytes = encodeOrder({
 		market: m.id,
 		side,
@@ -32,7 +33,7 @@ function order(m, side) {
 /** A YES and a NO quote per market per tick, so every batch has counterparties on both sides. */
 export function botOrders() {
 	for (const m of markets) {
-		fair.set(m.id, clamp(fair.get(m.id) + rnd(-1, 1), 30, 70));
+		fair.set(m.id, clamp(fair.get(m.id) + rnd(-1, 1), 8, 92));
 		order(m, 0);
 		order(m, 1);
 	}
