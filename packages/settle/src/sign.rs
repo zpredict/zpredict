@@ -37,6 +37,7 @@ impl Pool {
 }
 
 /// One spend awaiting a FROST signature: its bundle, action index and randomizer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Randomizer {
     pub pool: Pool,
     pub index: usize,
@@ -44,6 +45,7 @@ pub struct Randomizer {
 }
 
 /// A 64-byte RedPallas spend-auth signature for one action.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SpendSig {
     pub pool: Pool,
     pub index: usize,
@@ -111,7 +113,7 @@ pub fn apply(pczt: Pczt, sigs: &[SpendSig]) -> Result<Pczt> {
 }
 
 /// Runs `f` over one pool's bundle.
-fn with_bundle<F>(signer: Signer, pool: Pool, f: F) -> Result<Signer>
+pub(crate) fn with_bundle<F>(signer: Signer, pool: Pool, f: F) -> Result<Signer>
 where
     F: FnOnce(&mut orchard::pczt::Bundle) -> Result<()>,
 {

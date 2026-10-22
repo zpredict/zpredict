@@ -1,6 +1,7 @@
 # zpredict-settle
 
-Escrow scanning (#10) and FROST 2-of-3 signing glue for the zPredict escrow, plus the
+Escrow scanning (#10), batched payouts with verify-then-sign FROST 2-of-3 (#11), and
+the signing glue for the zPredict escrow, plus the
 findings of the settlement spike (issue #5): **a 2-of-3 FROST escrow received Ironwood funds and spent them in a
 mined v6 transaction**, on a Zebra regtest with NU6.3 (Ironwood) and NU7 active.
 
@@ -83,7 +84,7 @@ the byte-reversed txid (ZIP 244), which the logs show.
 | lightwalletd | `electriccoinco/lightwalletd:v0.6.0` (amd64 only, emulated on arm64) |
 | zcash-devtool | `0b3436bb` (librustzcash `eb38d7a`, pczt 0.10.0-pre.2, orchard 0.16.0), feature `regtest_support` |
 | frostd, frost-client | frost-zcash-demo `53df99c2` (frost-core 2.2.0, frost-rerandomized 2.1.0, reddsa git `ed49e9c`) |
-| frost-pczt (this crate) | pczt 0.10.0, orchard 0.16.0, zcash_primitives 0.31.0, zcash_protocol 0.11.0, zcash_keys 0.17.0 |
+| this crate | pczt 0.10.0, orchard 0.16.0, zcash_primitives 0.31.0, zcash_protocol 0.11.0, zcash_keys 0.17.0, zcash_client_backend 0.25.0, zcash_client_sqlite 0.23.0; reddsa `ed49e9c` (frost-core 2.2.0) |
 
 ## Why this crate exists (the glue)
 
@@ -104,30 +105,55 @@ main/test, not regtest. No upstream PR fixes this yet.
   randomizers from **both** Orchard and Ironwood bundles (the wrong bundle returns no
   spends rather than an error); applies signatures, each verified against `rk`.
 
-## Gaps for #10 (settlement batcher) and #11 (relayer signer)
+## Batched payouts (#11)
 
-1. **Embed instead of shelling out.** frost-client's coordinator/participant are now
-   library-shaped (`frost-client` 53df99c); call them from the relayer instead of CLI +
-   stdin `y`. frostd stays the transport (or replace it with relayer-to-relayer TLS).
-2. **Participants must check what they sign.** Today a participant sees a raw sighash and
-   answers `y`. Each relayer must receive the PCZT, recompute `sighash` itself, check the
-   outputs against the MPC payout vector, and only then sign. Nothing does this yet.
-3. **One FROST session per spend.** A batch with k escrow notes needs k signatures over
-   the same sighash with k randomizers; frost-client accepts several `-m/-r` pairs in one
-   session — use that.
-4. **Batched multi-output PCZT.** `pczt create` pays one address. The batcher needs many
-   outputs (one per winner, fresh diversified addresses) + change to escrow + padding:
-   build with `zcash_client_backend` proposals / pczt `Creator` directly (devtool's
-   `create_manual`/`pay` are references). ZIP 317 fee and ZIP 315 expiry come for free.
-5. **Viewing key distribution.** Every relayer needs the same UFVK (`nk`/`rivk` are random
-   at generation). Generate once in the DKG ceremony and hand it out with the key shares;
-   store both encrypted (frost-client keeps shares in clear TOML).
-6. **Prover placement.** Any one relayer can create + prove; the others only verify +
-   sign. Proving (Halo 2) is the slow step; keep it off the signing path.
-7. **Not quantum-recoverable.** The escrow FVK uses the non-ZIP-2005 derivation (as
-   `zcash-sign` does). Fine for the hackathon; note it in the threat model.
-8. **frostd needs TLS**; locally we mint a throwaway CA and pass it via `SSL_CERT_FILE`.
-   Production relayers (`r0/r1/r2.zpredict.site`) need real certificates.
+```sh
+scripts/settle-e2e.sh    # regtest -> DKG -> shares sealed -> two deposits -> one batched payout -> mined
+```
+
+| Step | What happens |
+|---|---|
+| `settle-payout import-share` | Each relayer's FROST key package leaves frost-client's clear TOML for a sealed file; the TOML is deleted. frostd is stopped: signing no longer needs it |
+| `settle-payout create` | `payout::create`: payout vector (`<UA> <zats>` per winner; only the UA's Orchard-shaped receiver is paid, anything else is refused) → `zcash_client_backend` proposal over the escrow wallet → **one PCZT**: an Ironwood output per payout, change to the escrow's internal scope, ZIP 317 fee, ZIP 315 expiry, wallet-default padding |
+| `devtool pczt prove` | The prover relayer proves in the background while the others sign |
+| `settle-payout sign` | `frost::sign_all`: **one FROST session for every spend** (round 1: a commitment per spend; round 2: a signing package + randomizer per spend). Each signer runs `verify_then_sign`, so the coordinator's word is never taken for anything |
+| `devtool pczt combine` + `send` | Asserts v6, mined, Ironwood only (zero Orchard, zero transparent), both winners paid |
+
+`verify` (run by every signer on its own copy of the PCZT) refuses unless:
+nothing is transparent, Sapling or Orchard; every output (padding included) matches its
+`cmx`; every payout is present exactly once and its ciphertext decrypts (recovered with
+the escrow OVK); every other non-zero output goes to the escrow's internal scope and
+decrypts there; and the fee is exactly ZIP 317 for the action count. It then checks
+that each signing request carries its own recomputed sighash and the right spend's
+randomizer. The script also signs against a tampered vector (+1 zat) and requires a refusal:
+
+```
+settle-payout: refused to sign: action 0: 4000000 zats to an address not in the payout vector
+2 signer(s) verified 2 payout(s) and signed 2 spend(s), sighash 00cfd4c7…
+txid 8f5c8135addb23796c87f557ccb01dd1a859363b64a6680d48f01644c7d4cf00  version 6  height 123  ironwood actions 3  orchard actions 0  transparent in+out 0
+winner-0:     Balance:   0.03000000 REG
+winner-1:     Balance:   0.04000000 REG
+```
+
+## Spike gaps: status
+
+1. **Embed instead of shelling out**: done. `frost-core` (reddsa RedPallas, the rev
+   frost-zcash-demo uses) is called as a library; no CLI, no `y`. frost-client + frostd
+   remain only for the DKG. Between hosts, the round-1/round-2 messages still need a
+   transport: today `sign_all` runs all signers in one process. The relayer must carry
+   `SigningCommitments`/`SignRequest`/`SignatureShare` over its TLS channel.
+2. **Participants check what they sign**: done (`verify_then_sign`, tested with a
+   tampered output and a wrong message).
+3. **One FROST session for all spends**: done.
+4. **Batched multi-output PCZT**: done (`payout::create`).
+5. **Viewing key distribution**: the UFVK is generated once at the DKG and sealed
+   (`store`). Still open: the zcash-devtool wallet DB the prover syncs (`data.sqlite`)
+   holds the UFVK and note data in clear, so it needs disk encryption on the host.
+   frost-client's DKG writes the share to its TOML in clear for the length of the
+   ceremony.
+6. **Prover placement**: done. One relayer proves in parallel with signing.
+7. **Not quantum-recoverable**: documented in DESIGN.md's threat model.
+8. **frostd needs TLS**: still true for the DKG.
 
 ## Gotchas
 

@@ -68,8 +68,8 @@ Judges see four things — the description (read first), the repo, a demo they c
 
 ### 5. Settlement
 - MPC computes the payout vector from the shared positions.
-- The relayers build one PCZT (v6, Ironwood bundle) paying every winner and every withdrawal to a **fresh diversified address**, with change back to escrow; ZIP 317 default fee; padded arity.
-- Signing: FROST 2-of-3 via the frost-zcash-demo chain (`zcash-devtool` PCZT → `zcash-sign` → `frost-client`/`frostd`), pinned to its `Cargo.lock`.
+- The relayers build one PCZT (v6, Ironwood bundle) paying every winner and every withdrawal to a **fresh diversified address**, with change back to escrow; ZIP 317 default fee; wallet-default padding, so a payout has the same shape as any wallet's send.
+- Signing: FROST 2-of-3 with `frost-core` called as a library (`zpredict-settle`), one session for every spend. Before signing, each relayer recomputes the sighash from the PCZT and checks every output against the agreed payout vector (`verify_then_sign`). One relayer proves, off the signing path. Key shares and the viewing key are sealed at rest. Details and the regtest run are in `packages/settle/README.md`.
 
 ## Relayer API
 
@@ -113,6 +113,8 @@ Encodings (all little-endian, identical in `zpredict-core` and `@zpredict/sdk`; 
 | Network observer | That someone talks to an zPredict relayer | Contents (TLS); your IP if you use Tor |
 
 **Stated up front:** funds are 2-of-3, order privacy is 3-of-3. A judge should read this in our README before they work it out.
+
+**Not quantum-recoverable (ZIP 2005).** The escrow's spend authority `ak` is the FROST group key, so its viewing key cannot be derived from a seed. Its `nk` and `rivk` are random, generated once at the DKG (the same construction as `zcash-sign generate`). Escrow notes therefore don't use the ZIP 2005 derivation, which would let a key holder recover them after a quantum break of discrete log. For a hackathon escrow that holds collateral for days, this is acceptable. A production escrow would need a FROST-compatible ZIP 2005 derivation, or would have to sweep to a recoverable key before such a break.
 
 ### Leak checklist (from the research)
 - [ ] No transparent address in any product path (deposits, payouts, refunds, change).
@@ -180,8 +182,8 @@ zpredict/
 ## Stack
 
 - Rust crates as above
-- librustzcash pinned to the frost-zcash-demo `Cargo.lock` (`orchard` crate carries the Ironwood pool, `pczt`, `zcash_client_backend`)
-- ZF `frost-core` / `frost-rerandomized` 3.0, `reddsa` 0.6 (RedPallas), `frostd`
+- librustzcash release of 2026-10-21 (`pczt` 0.10, `orchard` 0.16 with the Ironwood pool, `zcash_primitives` 0.31, `zcash_client_backend` 0.25); `zcash-devtool` `0b3436bb` for wallets, proving and broadcast
+- ZF `frost-core` 2.2 / `frost-rerandomized` 2.1 via frost-zcash-demo `53df99c` (RedPallas from `reddsa` at `ed49e9c`): `frost-client` + `frostd` run the DKG, `frost-core` signs as a library, plus our `frost-pczt` signer glue (`packages/settle`)
 - `polytune` (3-party MPC, Garble language)
 - Network: Zcash testnet via `testnet.zec.rocks:443`; Zebra regtest as the fallback
 - Landing: Astro (static), MotionSites template, self-hosted fonts and media
