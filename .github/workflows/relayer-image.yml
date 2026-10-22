@@ -1,0 +1,64 @@
+name: Relayer image
+
+# Builds deploy/production/relayer.Dockerfile and pushes it to GHCR, so the VPS only pulls
+# (no Rust build there, no minutes of 502s). Tags: :<commit> always, :main from main.
+on:
+  pull_request:
+    paths:
+      - "apps/relayer/**"
+      - "packages/core/**"
+      - "packages/circuit/**"
+      - "packages/oracle/**"
+      - "packages/plugins/**"
+      - "packages/settle/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "deploy/production/relayer.*"
+      - ".github/workflows/relayer-image.yml"
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: relayer-image-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  image:
+    name: Relayer image (build, push)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    env:
+      IMAGE: ghcr.io/zpredict/zpredict-relayer
+      # On a PR, tag the head commit (what a reviewer can deploy), not the merge commit.
+      SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      # Fork PRs get a read-only token: build only.
+      PUSH: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - if: env.PUSH == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tags
+        id: tags
+        run: |
+          tags="$IMAGE:$SHA"
+          if [ "$GITHUB_REF" = refs/heads/main ]; then tags="$tags,$IMAGE:main"; fi
+          echo "tags=$tags" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/production/relayer.Dockerfile
+          build-args: RELAYER_VERSION=${{ env.SHA }}
+          tags: ${{ steps.tags.outputs.tags }}
+          push: ${{ env.PUSH == 'true' }}
+          cache-from: type=gha,scope=relayer
+          cache-to: type=gha,mode=max,scope=relayer
