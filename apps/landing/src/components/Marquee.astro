@@ -1,0 +1,84 @@
+---
+/**
+ * Fixed bottom marquee listing the stack. The group is duplicated here (aria-hidden) and the
+ * track slides −50% at a constant 24 px/s. In a monospace font the group width is known at
+ * build time, so no script measures it. Fades out as the hero shrinks (scripts/journey.ts).
+ */
+import { stack } from "../data/stack";
+
+// 15 px JetBrains Mono advances 9 px; each item = 10 px marker + 12 px gap + text, 80 px apart, 40 px padding.
+const groupWidth = stack.reduce((w, name) => w + 22 + name.length * 9, 0) + 80 * stack.length;
+const duration = `${Math.round(groupWidth / 24)}s`;
+---
+
+<aside class="marquee js-marquee" aria-label="Built with">
+	<div class="track" style={`--duration:${duration}`}>
+		{
+			[0, 1].map((copy) => (
+				<ul class="group" aria-hidden={copy === 1 ? "true" : undefined}>
+					{stack.map((name) => (
+						<li class="item">{name}</li>
+					))}
+				</ul>
+			))
+		}
+	</div>
+</aside>
+
+<style>
+	.marquee {
+		position: fixed;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		z-index: 7;
+		height: var(--marquee-h);
+		overflow: hidden;
+		background: var(--zp-marquee-bg);
+		color: var(--zp-marquee-text);
+	}
+	.track {
+		display: flex;
+		width: max-content;
+		height: 80px;
+		animation: marquee var(--duration) linear infinite;
+	}
+	.marquee:hover .track {
+		animation-play-state: paused;
+	}
+	.group {
+		display: flex;
+		align-items: center;
+		gap: 80px;
+		min-width: 100vw;
+		padding: 0 40px;
+	}
+	.item {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		font-size: 15px;
+		line-height: 1.2;
+		white-space: nowrap;
+	}
+	.item::before {
+		content: "";
+		width: 10px;
+		height: 10px;
+		background: currentColor;
+		opacity: 0.65;
+	}
+	@keyframes marquee {
+		to {
+			transform: translateX(-50%);
+		}
+	}
+	@media (max-width: 900px) {
+		.track {
+			height: 56px;
+		}
+		.item {
+			font-size: 12px;
+		}
+	}
+</style>

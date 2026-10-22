@@ -54,6 +54,12 @@ export interface AsciiSceneOptions {
 	framing?: Framing;
 	/** Glyph cell width in design px (height is 1.5×). Default 6.8. */
 	cell?: number;
+	/**
+	 * Floor for the glyph width in CSS px at ≤ 900 px wide. The template's rule (6.8 design px on a
+	 * 900 px logical width) leaves ~3 px glyphs on a phone, which read as grey texture rather than
+	 * characters. Default 0: the template's behaviour.
+	 */
+	mobileCellPx?: number;
 	/** Default: the `prefers-reduced-motion` media query. */
 	reducedMotion?: boolean;
 	/** Hex colours. Defaults: glyph `#8f8f8f`, trail `#d2fc52`, background `#050505`. */
@@ -63,6 +69,8 @@ export interface AsciiSceneOptions {
 export interface AsciiScene {
 	/** Resolves after the first frame is on the canvas; rejects if shaders fail to compile. */
 	ready: Promise<void>;
+	/** Moves the mark (e.g. when a media query changes the layout). */
+	setFraming(framing: Framing): void;
 	dispose(): void;
 }
 
@@ -114,8 +122,9 @@ export function createAsciiScene(
 	canvas: HTMLCanvasElement,
 	options: AsciiSceneOptions = {},
 ): AsciiScene {
-	const framing = options.framing ?? DEFAULT_FRAMING;
+	let framing = options.framing ?? DEFAULT_FRAMING;
 	const cell = options.cell ?? CELL;
+	const mobileCellPx = options.mobileCellPx ?? 0;
 	const reduce = options.reducedMotion ?? matchMedia("(prefers-reduced-motion: reduce)").matches;
 	const colors = { glyph: "#8f8f8f", trail: "#d2fc52", background: "#050505", ...options.colors };
 
@@ -212,7 +221,7 @@ export function createAsciiScene(
 		u.uResolution.value.set(w / scale, h / scale);
 		Object.assign(camera, frustum(w / scale, h / scale, framing));
 		camera.updateProjectionMatrix();
-		const cw = cell * (w <= 900 ? Math.min(1, 450 / w) : 1);
+		const cw = w <= 900 ? Math.max(cell * Math.min(1, 450 / w), mobileCellPx / scale) : cell;
 		u.uCell.value.set(cw, cw * 1.5);
 		trail.length = 0;
 		request();
@@ -319,6 +328,10 @@ export function createAsciiScene(
 
 	return {
 		ready,
+		setFraming(next) {
+			framing = next;
+			resize();
+		},
 		dispose() {
 			started = false;
 			cancelAnimationFrame(raf);

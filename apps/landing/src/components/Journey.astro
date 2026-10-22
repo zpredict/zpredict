@@ -1,0 +1,134 @@
+---
+/**
+ * Hero journey: a sticky full-screen hero with the ASCII mark and the lime heading strips.
+ * Scrolling fades the heading, then shrinks the canvas into the square card on the lime
+ * showcase (scripts/journey.ts). The page then scrolls on to the sections.
+ */
+import { showcase } from "../data/showcase";
+import { heroLines } from "../data/site";
+import ModelFrame from "./hero/ModelFrame.astro";
+import Showcase from "./hero/Showcase.astro";
+---
+
+<div class="journey js-journey">
+	<section id="top" class="hero js-hero" aria-label="zPredict">
+		<Showcase />
+		<ModelFrame />
+		<h1 class="heading js-hero-heading" aria-label={heroLines.join(" ")} data-scramble="continuous">
+			{
+				heroLines.map((line, i) => (
+					<span class:list={["row", { "row--wide": i === heroLines.length - 1 }]}>
+						<span class="strip" aria-hidden="true" data-scramble-line>
+							{line}
+						</span>
+					</span>
+				))
+			}
+		</h1>
+	</section>
+</div>
+
+<!-- Phones: the showcase description and facts follow the card in their own lime block. -->
+<div class="details" data-surface="light">
+	<p>{showcase.description}</p>
+	<ul>
+		{
+			showcase.facts.map((f) => (
+				<li>
+					<h2>{f.title}</h2>
+					<p>{f.text}</p>
+				</li>
+			))
+		}
+	</ul>
+</div>
+
+<script>
+	import "../scripts/journey";
+	import "../scripts/ascii-live";
+</script>
+
+<style>
+	.journey {
+		position: relative;
+		height: 300svh;
+	}
+	.hero {
+		position: sticky;
+		top: 0;
+		height: 100svh;
+		overflow: hidden;
+	}
+	.heading {
+		position: absolute;
+		left: 50%;
+		top: 52%;
+		z-index: 2;
+		width: calc(1400px * var(--composition-scale));
+		color: var(--zp-bg);
+		font-size: calc(25.6px * var(--composition-scale));
+		line-height: 1.45;
+		text-align: center;
+		transform: translate(-50%, -50%);
+		pointer-events: none;
+	}
+	.row {
+		display: block;
+	}
+	.strip {
+		display: inline-block;
+		padding: 0 7px;
+		background: var(--zp-lime);
+		pointer-events: auto;
+	}
+	.details {
+		display: none;
+	}
+
+	@media (max-width: 900px) {
+		.heading {
+			left: 20px;
+			top: clamp(88px, 18svh, 152px);
+			width: calc(100% - 40px);
+			font-size: clamp(21px, 5.8vw, 30px);
+			line-height: 1.5;
+			text-align: left;
+			transform: none;
+		}
+		.strip {
+			padding: 3px 6px;
+		}
+		.row--wide {
+			display: none;
+		}
+		.details {
+			position: relative;
+			z-index: 1;
+			display: block;
+			margin-top: -32svh;
+			padding: 24px 20px 64px;
+			background: var(--zp-lime);
+			color: var(--zp-ink);
+			font-size: 15px;
+			line-height: 1.6;
+		}
+		.details ul {
+			margin-top: 24px;
+		}
+		.details li {
+			padding: 18px 0 20px;
+			border-top: 1px solid var(--zp-rule-on-lime);
+		}
+		.details h2 {
+			font-size: 22px;
+			letter-spacing: -0.04em;
+		}
+	}
+	@media (max-width: 900px) and (max-height: 500px) {
+		.heading {
+			top: 96px;
+			width: 40%;
+			font-size: 19px;
+		}
+	}
+</style>

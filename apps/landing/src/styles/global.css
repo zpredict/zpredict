@@ -1,11 +1,9 @@
 /*
- * Cascade order: reset < base typography < shared UI components (@layer ui)
- * < section components (unlayered scoped styles). Sections can therefore
- * restyle or position any shared piece without specificity fights.
- * The order itself (`@layer reset, base, ui;`) is declared inline at the top of
- * <head> in layouts/Base.astro, because bundled component CSS comes first.
+ * Cascade order: reset < shared UI components (@layer ui) < section components
+ * (unlayered scoped styles), so sections can restyle or position any shared piece.
+ * The order itself (`@layer reset, ui;`) is declared inline at the top of <head>
+ * in layouts/Base.astro, because bundled component CSS comes first.
  */
 
 @import "./tokens.css";
 @import "./reset.css" layer(reset);
-@import "./typography.css" layer(base);

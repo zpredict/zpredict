@@ -17,5 +17,6 @@ scene.dispose();
 - `createAsciiScene` throws when WebGL is unavailable; keep the snapshot in that case.
 - The canvas is sized by CSS. Glyph cells are 6.8 × 10.2 design px on a 1600 × 1000 artboard (900 px wide below 900 px).
 - Runs at 30 fps unless the pointer moves over it, pauses off-screen and in hidden tabs, hides itself on WebGL context loss and resumes on restore. Reduced motion draws one still frame.
+- `mobileCellPx` sets a minimum glyph width (CSS px) on screens ≤ 900 px wide; the template's own rule gives ~3 px glyphs on phones. `setFraming()` moves the mark, e.g. when a breakpoint changes.
 - `framing` places the square that holds the mark: `size` is a share of `min(width, height)`, `x`/`y` its centre. The snapshot covers exactly that square, so size a `<pre>` to it.
 - Build: `pnpm --filter @zpredict/ascii build` (the package exports `dist/`).

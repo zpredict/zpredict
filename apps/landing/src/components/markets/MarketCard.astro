@@ -1,39 +1,35 @@
 ---
 /**
- * The core object of a prediction market: question, chance, YES/NO prices,
+ * The core object of a prediction market, square and mono: question, chance, YES/NO prices,
  * probability bar and sparkline, plus what stays hidden on zPredict.
  */
 import { categoryOf, type Market } from "../../data/markets";
 import { site } from "../../data/site";
-import Tag from "../ui/Tag.astro";
 import Sparkline from "./Sparkline.astro";
 
 interface Props {
 	market: Market;
-	/** Heading level for the question: 2 where the card sits right under the page's h1. */
-	level?: 2 | 3;
 	class?: string;
 }
 
-const { market, level = 3, class: className } = Astro.props;
-const Question = `h${level}` as const;
+const { market, class: className } = Astro.props;
 const no = 100 - market.yes;
 const height = market.resolveHeight.toLocaleString("en-US");
 ---
 
 <article class:list={["market", className]}>
 	<header class="top">
-		<Tag>{categoryOf[market.plugin]}</Tag>
+		<span class="category">{categoryOf[market.plugin]}</span>
 		<span class="height">Block {height}</span>
 	</header>
 
-	<Question class="question">{market.question}</Question>
+	<h3 class="question">{market.question}</h3>
 
 	<div class="odds">
 		<p class="chance"><span class="pct">{market.yes}%</span> chance</p>
 		<Sparkline class="spark" points={market.history} />
 	</div>
-	<div class="bar" style={`--yes:${market.yes}%`} aria-hidden="true"><span></span></div>
+	<div class="bar" aria-hidden="true"><span style={`width:${market.yes}%`}></span></div>
 
 	<div class="prices">
 		<a class="price price--yes" href={site.appUrl} aria-label={`Buy Yes ${market.yes}¢`}>
@@ -45,9 +41,9 @@ const height = market.resolveHeight.toLocaleString("en-US");
 	</div>
 
 	<footer class="meta">
-		<span class="chip">Bettors: hidden</span>
-		<span class="chip">Sizes: hidden</span>
-		<span class="badge">Resolved from chain data</span>
+		<span>Bettors: hidden</span>
+		<span>Sizes: hidden</span>
+		<span>Resolved from chain data</span>
 	</footer>
 </article>
 
@@ -57,36 +53,43 @@ const height = market.resolveHeight.toLocaleString("en-US");
 		flex-direction: column;
 		gap: 16px;
 		padding: 22px;
-		border: 1px solid var(--hairline);
-		border-radius: var(--r-pane);
-		background:
-			radial-gradient(
-				320px 220px at 100% 0%,
-				rgba(102, 102, 102, 0.28) 0%,
-				rgba(102, 102, 102, 0) 100%
-			),
-			var(--surface-card);
-		box-shadow: 0 32px 43px -13px rgba(0, 0, 0, 0.48);
-		text-align: left;
+		border: 1px solid rgb(255 255 255 / 0.12);
+		background: var(--zp-bg);
+		font-size: 13px;
+		transition: border-color 250ms ease;
+	}
+	.market:hover {
+		border-color: var(--zp-lime);
 	}
 	.top {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 12px;
+		font-size: 11px;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+	.category {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		color: var(--zp-text);
+	}
+	.category::before {
+		content: "";
+		width: 8px;
+		height: 8px;
+		background: var(--zp-lime);
 	}
 	.height {
-		font-family: var(--font-mono);
-		font-size: 12px;
-		opacity: 0.45;
+		color: var(--zp-muted);
 		white-space: nowrap;
 	}
 	.question {
-		font-family: var(--font-display);
-		font-weight: 500;
-		font-size: 21px;
-		line-height: 1.15;
-		letter-spacing: -0.03em;
+		font-size: 17px;
+		line-height: 1.35;
+		letter-spacing: -0.02em;
 		text-wrap: balance;
 	}
 	.odds {
@@ -97,17 +100,15 @@ const height = market.resolveHeight.toLocaleString("en-US");
 		margin-top: auto;
 	}
 	.chance {
-		font-size: 14px;
-		opacity: 0.9;
+		color: var(--zp-muted);
 		white-space: nowrap;
 	}
 	.pct {
 		margin-right: 4px;
-		font-family: var(--font-display);
-		font-weight: 500;
-		font-size: 44px;
+		color: var(--zp-lime);
+		font-size: 40px;
 		line-height: 1;
-		letter-spacing: -0.05em;
+		letter-spacing: -0.06em;
 	}
 	.spark {
 		width: 46%;
@@ -115,80 +116,54 @@ const height = market.resolveHeight.toLocaleString("en-US");
 	}
 	.bar {
 		height: 4px;
-		border-radius: 2px;
-		background: rgba(255, 255, 255, 0.1);
-		overflow: hidden;
+		background: rgb(255 255 255 / 0.08);
 	}
 	.bar span {
 		display: block;
-		width: var(--yes);
 		height: 100%;
-		background: #fff;
+		background: var(--zp-lime);
 	}
 	.prices {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: 10px;
+		gap: 6px;
 	}
 	.price {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		height: 46px;
-		padding: 0 16px;
-		border-radius: var(--r-pill);
-		font-family: var(--font-display);
-		font-weight: 500;
-		font-size: 16px;
+		height: 44px;
+		padding: 0 14px;
+		font-size: 14px;
+		text-transform: uppercase;
 		transition:
-			background-color 0.18s ease,
-			border-color 0.18s ease;
+			background-color 250ms ease,
+			color 250ms ease,
+			border-color 250ms ease;
 	}
 	.price strong {
-		font-weight: 500;
+		font-weight: inherit;
 	}
 	.price--yes {
-		background: #fff;
-		color: #000;
+		background: var(--zp-lime);
+		color: var(--zp-ink);
 	}
 	.price--yes:hover {
-		background: #e6e6e6;
+		background: var(--zp-paper);
 	}
 	.price--no {
-		border: 1px solid var(--glass-line);
-		background: rgba(255, 255, 255, 0.04);
+		border: 1px solid rgb(255 255 255 / 0.24);
 	}
 	.price--no:hover {
-		border-color: rgba(255, 255, 255, 0.35);
+		border-color: var(--zp-text);
 	}
 	.meta {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 6px;
-		font-size: 12px;
-	}
-	.chip,
-	.badge {
-		padding: 5px 10px;
-		border-radius: var(--r-tag);
-		white-space: nowrap;
-	}
-	.chip {
-		border: 1px solid var(--hairline);
-		color: rgba(255, 255, 255, 0.7);
-	}
-	.badge {
-		margin-left: auto;
-		color: rgba(255, 255, 255, 0.55);
-	}
-	.badge::before {
-		content: "";
-		display: inline-block;
-		width: 6px;
-		height: 6px;
-		margin-right: 6px;
-		border-radius: 50%;
-		background: #fff;
-		vertical-align: 1px;
+		gap: 6px 14px;
+		color: var(--zp-muted);
+		font-size: 11px;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
 	}
 </style>

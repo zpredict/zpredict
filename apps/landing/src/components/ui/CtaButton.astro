@@ -1,0 +1,94 @@
+---
+/**
+ * The template's CTA: three lime blocks. At rest the label sits flush left with a plus square
+ * on its right; on hover/focus a plus square grows in on the left, the label slides over and
+ * the right square folds away (700 ms signature ease), and the label runs the one-shot scramble.
+ */
+interface Props {
+	href: string;
+	label: string;
+	class?: string;
+}
+
+const { href, label, class: className } = Astro.props;
+---
+
+<a class:list={["cta", className]} href={href} aria-label={label} data-scramble="once">
+	<span class="sq sq--in" aria-hidden="true">
+		<svg viewBox="0 0 12 12"><path d="M6 1v10M1 6h10"></path></svg>
+	</span>
+	<span class="label" aria-hidden="true"><span data-scramble-line>{label}</span></span>
+	<span class="sq sq--out" aria-hidden="true">
+		<svg viewBox="0 0 12 12"><path d="M6 1v10M1 6h10"></path></svg>
+	</span>
+</a>
+
+<style>
+	@layer ui {
+		.cta {
+			--h: var(--zp-control-h);
+			--fg: var(--zp-bg);
+			--block: var(--zp-lime);
+			position: relative;
+			display: inline-flex;
+			gap: 6px;
+			height: var(--h);
+			color: var(--fg);
+			font-size: 14px;
+			line-height: 1.4;
+			text-transform: uppercase;
+			white-space: nowrap;
+		}
+		.sq,
+		.label {
+			display: grid;
+			place-items: center;
+			height: var(--h);
+			background: var(--block);
+			transition:
+				transform 700ms var(--zp-ease),
+				background-color 250ms ease,
+				color 250ms ease;
+		}
+		.sq {
+			width: var(--h);
+		}
+		.sq svg {
+			width: 0.75em;
+			height: 0.75em;
+			fill: none;
+			stroke: currentColor;
+			stroke-width: 1.5;
+			stroke-linecap: square;
+		}
+		.label {
+			padding: 0 16px;
+			transform: translateX(calc(-1 * (var(--h) + 6px)));
+		}
+		.sq--in {
+			transform: rotate(-45deg) scale(0);
+			transform-origin: left center;
+		}
+		.sq--out {
+			position: absolute;
+			right: 0;
+			top: 0;
+			transform-origin: right center;
+		}
+		.cta:hover .sq--in,
+		.cta:focus-visible .sq--in {
+			transform: none;
+		}
+		.cta:hover .label,
+		.cta:focus-visible .label {
+			transform: none;
+		}
+		.cta:hover .sq--out,
+		.cta:focus-visible .sq--out {
+			transform: rotate(-45deg) scale(0);
+		}
+		.cta:focus-visible {
+			outline-offset: 5px;
+		}
+	}
+</style>

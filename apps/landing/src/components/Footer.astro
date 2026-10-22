@@ -1,30 +1,39 @@
 ---
 import { site } from "../data/site";
-import Button from "./ui/Button.astro";
 import Logo from "./ui/Logo.astro";
 ---
 
-<footer class="footer">
+<footer class="footer" data-surface="dark">
 	<Logo />
 	<p>Built for Zecathon 2026 · MIT</p>
-	<Button variant="pill" href={site.repoUrl}>GitHub</Button>
+	<a class="repo" href={site.repoUrl}>GitHub</a>
 </footer>
 
 <style>
 	.footer {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
-		gap: 16px;
-		padding: 28px var(--pad) 18px;
-		font-size: 15px;
+		gap: 16px 24px;
+		padding: 28px var(--zp-gutter);
+		border-top: 1px solid rgb(255 255 255 / 0.12);
+		color: var(--zp-muted);
+		font-size: 13px;
 	}
 	p {
 		margin-right: auto;
-		opacity: 0.5;
 	}
-	@media (max-width: 799.98px) {
-		.footer {
-			flex-wrap: wrap;
-		}
+	.repo {
+		display: inline-flex;
+		align-items: center;
+		height: 44px;
+		padding: 0 16px;
+		border: 1px solid rgb(255 255 255 / 0.24);
+		color: var(--zp-text);
+		text-transform: uppercase;
+		transition: border-color 250ms ease;
+	}
+	.repo:hover {
+		border-color: var(--zp-lime);
 	}
 </style>

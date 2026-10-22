@@ -1,26 +1,38 @@
 ---
 import Cta from "../components/Cta.astro";
+import Faq from "../components/Faq.astro";
 import Footer from "../components/Footer.astro";
-import Hero from "../components/Hero.astro";
+import Header from "../components/Header.astro";
 import HowItWorks from "../components/HowItWorks.astro";
-import PublicVsPrivate from "../components/PublicVsPrivate.astro";
+import Journey from "../components/Journey.astro";
+import Marquee from "../components/Marquee.astro";
+import MenuDialog from "../components/MenuDialog.astro";
+import Preloader from "../components/Preloader.astro";
 import RelayerView from "../components/RelayerView.astro";
 import ThreatModel from "../components/ThreatModel.astro";
 import TrendingMarkets from "../components/TrendingMarkets.astro";
+import WhyPrivate from "../components/WhyPrivate.astro";
 import Base from "../layouts/Base.astro";
 ---
 
-<Base>
-	<!-- Hero poster: the LCP image on every screen size. -->
-	<link slot="head" rel="preload" href="/media/hero-poster.webp" as="image" fetchpriority="high" />
+<Base preloader>
+	<Preloader />
+	<Header />
 	<main>
-		<Hero />
+		<Journey />
 		<TrendingMarkets />
-		<PublicVsPrivate />
+		<WhyPrivate />
 		<HowItWorks />
 		<RelayerView />
 		<ThreatModel />
+		<Faq />
 		<Cta />
 	</main>
 	<Footer />
+	<Marquee />
+	<MenuDialog />
 </Base>
+
+<script>
+	import "../scripts/scramble";
+</script>

@@ -1,0 +1,230 @@
+---
+/**
+ * Top-sheet menu (`<dialog>` opened with showModal(); scripts/menu.ts): navigation, a short
+ * note and two ASCII cards. A 24svh strip on desktop, a scrolling sheet on phones.
+ */
+import { menuInfo, navLinks } from "../data/site";
+import MenuCards from "./menu/MenuCards.astro";
+---
+
+<dialog id="menu" class="menu js-menu" aria-label="Menu">
+	<div class="shell">
+		<button class="close js-menu-close" type="button">
+			<span>Close</span>
+			<span class="x" aria-hidden="true"></span>
+		</button>
+		<div class="body">
+			<nav class="nav" aria-label="Primary">
+				<ul>
+					{
+						navLinks.map((link) => (
+							<li class="row">
+								<a class="link js-menu-link" href={link.href}>
+									{link.label}
+								</a>
+							</li>
+						))
+					}
+				</ul>
+			</nav>
+			<div class="info">
+				<p class="label">{menuInfo.label}</p>
+				<p>{menuInfo.text}</p>
+			</div>
+			<MenuCards class="cards" />
+		</div>
+	</div>
+</dialog>
+
+<script>
+	import "../scripts/menu";
+</script>
+
+<style>
+	.menu {
+		position: fixed;
+		inset: 0;
+		width: 100%;
+		max-width: none;
+		height: 100%;
+		max-height: none;
+		margin: 0;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		color: var(--zp-panel-text);
+	}
+	.menu::backdrop {
+		background: #05050520;
+	}
+	.shell {
+		position: absolute;
+		inset: 0 0 auto;
+		height: 24svh;
+		min-height: 200px;
+		background: var(--zp-panel);
+		opacity: 0;
+		transform: translateY(-110%);
+		transition:
+			transform 750ms var(--zp-ease),
+			opacity 450ms ease;
+	}
+	.menu:global(.is-open) .shell {
+		opacity: 1;
+		transform: none;
+	}
+	.close {
+		position: absolute;
+		top: 20px;
+		right: var(--zp-gutter);
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		width: 112px;
+		height: 36px;
+		padding: 0 8px;
+		border: 0;
+		background: rgb(255 255 255 / 0.08);
+		font-size: 12px;
+		cursor: pointer;
+	}
+	.x {
+		position: relative;
+		width: 20px;
+		height: 20px;
+	}
+	.x::before,
+	.x::after {
+		content: "";
+		position: absolute;
+		left: 0;
+		top: 9px;
+		width: 100%;
+		height: 2px;
+		background: currentColor;
+		transform: rotate(45deg);
+	}
+	.x::after {
+		transform: rotate(-45deg);
+	}
+	.body {
+		position: absolute;
+		inset: 20px 184px 20px var(--zp-gutter);
+		display: grid;
+		grid-template-columns: 1.35fr 0.9fr 1.1fr;
+		gap: 32px;
+	}
+	.nav {
+		align-self: center;
+	}
+	.nav ul {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 4px 16px;
+		font-size: clamp(13px, 1.1vw, 20px);
+		line-height: 1.25;
+	}
+	.row {
+		overflow: hidden;
+	}
+	.link {
+		position: relative;
+		display: block;
+		transform: translateY(110%);
+		transition:
+			transform 650ms var(--zp-ease),
+			padding-left 300ms var(--zp-ease),
+			color 200ms ease;
+	}
+	.row:nth-child(2) .link {
+		transition-delay: 60ms;
+	}
+	.row:nth-child(3) .link {
+		transition-delay: 100ms;
+	}
+	.row:nth-child(4) .link {
+		transition-delay: 140ms;
+	}
+	.row:nth-child(n + 5) .link {
+		transition-delay: 180ms;
+	}
+	.menu:global(.is-open) .link {
+		transform: none;
+	}
+	.link::before {
+		content: "";
+		position: absolute;
+		left: 0;
+		top: 50%;
+		width: 0.38em;
+		height: 0.38em;
+		background: var(--zp-lime);
+		transform: translateY(-50%) scale(0);
+		transition: transform 300ms var(--zp-ease);
+	}
+	.link:hover,
+	.link:focus-visible {
+		padding-left: 0.75em;
+		color: var(--zp-lime);
+		transition-delay: 0ms;
+	}
+	.link:hover::before,
+	.link:focus-visible::before {
+		transform: translateY(-50%) scale(1);
+	}
+	.info {
+		align-self: center;
+		font-size: 13px;
+		line-height: 1.5;
+	}
+	.label {
+		margin-bottom: 8px;
+		color: var(--zp-label);
+		font-size: 10px;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+	}
+
+	@media (max-width: 900px) {
+		.menu::backdrop {
+			background: #05050580;
+		}
+		.shell {
+			height: min(560px, 88svh);
+			overflow-y: auto;
+		}
+		.body {
+			position: static;
+			display: flex;
+			flex-direction: column;
+			gap: 28px;
+			padding: 72px 20px 28px;
+		}
+		.nav {
+			align-self: stretch;
+		}
+		.nav ul {
+			font-size: 18px;
+		}
+		.link {
+			display: flex;
+			align-items: center;
+			min-height: 44px;
+		}
+		.cards {
+			height: 160px;
+		}
+	}
+	@media (max-width: 900px) and (hover: hover) and (pointer: fine) {
+		.shell {
+			height: 24svh;
+		}
+		.nav ul {
+			font-size: 13px;
+		}
+		.info,
+		.cards {
+			display: none;
+		}
+	}
+</style>

@@ -1,153 +1,200 @@
 ---
-import { pipeline, type StepArt, steps } from "../data/steps";
-import EscrowArt from "./steps/EscrowArt.astro";
-import PayoutArt from "./steps/PayoutArt.astro";
-import SharesArt from "./steps/SharesArt.astro";
-import StepCard from "./steps/StepCard.astro";
-import Panel from "./ui/Panel.astro";
-import SectionHeading from "./ui/SectionHeading.astro";
+/**
+ * "How it works": four steps pinned for 400svh like the template's process section. The active
+ * step follows scroll (scripts/how-steps.ts) and switches the mono terminal panel on the right.
+ * Phones and reduced motion: not pinned; tapping a step selects it.
+ */
+import { steps } from "../data/steps";
+import Section from "./ui/Section.astro";
+import Title from "./ui/Title.astro";
 
-const arts: Record<StepArt, typeof EscrowArt> = {
-	escrow: EscrowArt,
-	shares: SharesArt,
-	payout: PayoutArt,
-};
+/** `**x**` → lime. */
+const segments = (line: string) => line.split("**").map((text, i) => ({ text, hot: i % 2 === 1 }));
 ---
 
-<Panel id="how">
-	<SectionHeading lines={["How it", "works"]} />
-	<div class="grid">
-		{
-			steps.map((step) => {
-				const Art = arts[step.art];
-				return (
-					<StepCard step={step}>
-						<Art />
-					</StepCard>
-				);
-			})
-		}
+<Section id="how" tone="paper" class="how js-how">
+	<div class="pin">
+		<div class="grid">
+			<Title class="heading" lines={["How it", "works."]} />
+			<ol class="steps">
+				{
+					steps.map((step, i) => (
+						<li>
+							<button
+								class="step js-step"
+								type="button"
+								aria-current={i === 0 ? "step" : "false"}
+								aria-controls="how-screen"
+							>
+								<span class="marker" aria-hidden="true" />
+								<span>
+									<span class="step-title">{step.title}</span>
+									<span class="copy">{step.text}</span>
+								</span>
+							</button>
+						</li>
+					))
+				}
+			</ol>
+			<div id="how-screen" class="visual">
+				{
+					steps.map((step, i) => (
+						<div class:list={["screen js-screen", { "is-active": i === 0 }]}>
+							{step.panel.map((line) => (
+								// One line, so no template whitespace lands inside the pre-formatted span.
+								<span class="ln">{segments(line).map((s) => (s.hot ? <b>{s.text}</b> : s.text))}</span>
+							))}
+						</div>
+					))
+				}
+			</div>
+		</div>
 	</div>
+</Section>
 
-	<!-- Native disclosure: keyboard and screen-reader support come with <details>. -->
-	<details class="details">
-		<summary>Technical details: the five-stage pipeline</summary>
-		<ol class="pipeline">
-			{
-				pipeline.map((stage) => (
-					<li>
-						<h3>{stage.name}</h3>
-						<p>{stage.detail}</p>
-					</li>
-				))
-			}
-		</ol>
-	</details>
-</Panel>
+<script>
+	import "../scripts/how-steps";
+</script>
 
 <style>
+	.how {
+		height: 400svh;
+		padding: 0;
+	}
+	.how > :global(.wrap) {
+		height: 100%;
+	}
+	.pin {
+		position: sticky;
+		top: 0;
+		display: grid;
+		align-content: center;
+		height: 100svh;
+	}
 	.grid {
 		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: var(--gap);
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: calc(56px * var(--content-scale)) calc(120px * var(--content-scale));
 	}
-
-	.details {
-		max-width: 1100px;
-		margin: var(--gap) auto 0;
-		border: 1px solid var(--hairline);
-		border-radius: var(--r-pane);
-		background: var(--surface-card);
+	.heading {
+		grid-column: 1 / -1;
 	}
-	summary {
+	.steps {
+		display: grid;
+		gap: calc(26px * var(--content-scale));
+		align-content: center;
+	}
+	.step {
 		display: flex;
-		align-items: center;
-		justify-content: space-between;
 		gap: 16px;
-		padding: 20px 24px;
-		border-radius: var(--r-pane);
-		font-family: var(--font-display);
-		font-weight: 500;
-		font-size: 18px;
-		letter-spacing: -0.02em;
+		width: 100%;
+		padding: 0;
+		border: 0;
+		background: none;
+		color: #61655a;
+		text-align: left;
 		cursor: pointer;
-		list-style: none;
+		transition:
+			color 450ms ease,
+			transform 450ms ease;
 	}
-	summary::-webkit-details-marker {
-		display: none;
+	.step[aria-current="step"] {
+		color: var(--zp-ink);
+		transform: translateX(calc(14px * var(--content-scale)));
 	}
-	/* Plus that turns into a minus when open. */
-	summary::after {
-		content: "+";
+	.marker {
 		flex: none;
-		display: grid;
-		place-items: center;
-		width: 34px;
-		height: 34px;
-		border: 1px solid var(--glass-line);
-		border-radius: 50%;
-		font-size: 20px;
-		line-height: 1;
-		transition: transform 0.22s ease;
+		width: max(8px, calc(12px * var(--content-scale)));
+		height: max(8px, calc(12px * var(--content-scale)));
+		margin-top: 0.45em;
+		background: var(--zp-lime);
+		outline: 1px solid var(--zp-ink);
+		transition: transform 450ms ease;
 	}
-	.details[open] summary::after {
-		content: "−";
+	.step[aria-current="step"] .marker {
+		transform: rotate(12deg);
 	}
-	summary:hover::after {
-		transform: rotate(90deg);
+	.step-title {
+		display: block;
+		margin-bottom: 6px;
+		font-size: calc(22px * var(--content-scale));
+		letter-spacing: -0.04em;
+		line-height: 1.2;
 	}
-	.pipeline {
-		display: grid;
-		gap: 0;
-		margin: 0;
-		padding: 0 24px 12px;
-		list-style: none;
-		counter-reset: stage;
+	.copy {
+		display: block;
 	}
-	.pipeline li {
-		display: grid;
-		grid-template-columns: 220px minmax(0, 1fr);
-		gap: 8px 24px;
-		padding: 16px 0;
-		border-top: 1px solid var(--hairline);
-		counter-increment: stage;
+	.visual {
+		position: relative;
+		align-self: center;
+		aspect-ratio: 4 / 3;
+		background: var(--zp-bg);
+		color: var(--zp-text);
 	}
-	.pipeline h3 {
-		font-family: var(--font-display);
-		font-weight: 500;
-		font-size: 16px;
-		letter-spacing: -0.02em;
-	}
-	.pipeline h3::before {
-		content: counter(stage, decimal-leading-zero) "  ";
-		font-family: var(--font-mono);
-		font-size: 12px;
-		opacity: 0.4;
+	.screen {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		padding: 8%;
+		overflow: hidden;
+		font-size: max(12px, calc(15px * var(--content-scale)));
+		line-height: 1.7;
 		white-space: pre;
+		opacity: 0;
+		transform: scale(1.04);
+		transition:
+			opacity 650ms ease,
+			transform 1.2s var(--zp-ease);
 	}
-	.pipeline p {
-		font-size: 15px;
-		line-height: 1.4;
-		opacity: 0.75;
+	.screen.is-active {
+		opacity: 1;
+		transform: none;
+	}
+	.ln {
+		min-height: 1.7em;
+	}
+	.screen b {
+		color: var(--zp-lime);
+		font-weight: inherit;
 	}
 
-	@media (max-width: 1199.98px) {
+	@media (max-width: 900px), (prefers-reduced-motion: reduce) {
+		.how {
+			height: auto;
+			padding: 72px 0;
+		}
+		.pin {
+			position: static;
+			height: auto;
+		}
+	}
+	@media (max-width: 900px) {
 		.grid {
 			grid-template-columns: 1fr;
-			max-width: 560px;
-			margin: 0 auto;
+			gap: 28px;
 		}
-	}
-	@media (max-width: 799.98px) {
-		.pipeline li {
-			grid-template-columns: 1fr;
+		.visual {
+			order: 1;
 		}
-		summary {
-			padding: 18px;
-			font-size: 16px;
+		.steps {
+			order: 2;
+			gap: 22px;
 		}
-		.pipeline {
-			padding: 0 18px 8px;
+		.step {
+			color: var(--zp-ink);
+			transform: none;
+		}
+		.step[aria-current="step"] {
+			transform: none;
+		}
+		.step-title {
+			font-size: 22px;
+		}
+		.screen {
+			padding: 5%;
+			font-size: 12px;
 		}
 	}
 </style>

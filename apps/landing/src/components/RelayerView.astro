@@ -1,110 +1,128 @@
 ---
-import Panel from "./ui/Panel.astro";
-import SectionHeading from "./ui/SectionHeading.astro";
-import Tag from "./ui/Tag.astro";
+import Section from "./ui/Section.astro";
+import Title from "./ui/Title.astro";
 
 const relayers = ["A", "B", "C"];
 ---
 
-<Panel id="relayer-view" class="split">
-	<div>
-		<Tag class="eyebrow">Relayer View</Tag>
-		<SectionHeading lines={["What a", "relayer sees"]} align="left" />
-		<p class="lede">
-			Your bet leaves the browser as three random shares, one per relayer. Each one sees noise;
-			only all three together, inside MPC, can match it.
-		</p>
-		<p class="note">Illustration. The app shows the live shares.</p>
-	</div>
+<Section id="relayer-view" tone="dark">
+	<div class="layout">
+		<div class="intro">
+			<p class="eyebrow">Relayer view</p>
+			<Title lines={["What a", "relayer sees."]} />
+			<p class="muted lede">
+				Your bet leaves the browser as three random shares, one per relayer. Each one sees noise; only
+				all three together, inside MPC, can match it.
+			</p>
+			<p class="muted note">Illustration. The app shows the live shares.</p>
+		</div>
 
-	<div class="relayers" aria-label="Three relayers, each holding a random share">
-		{
-			relayers.map((name) => (
-				<div class="relayer">
-					<div class="head">
-						<span>Relayer {name}</span>
-						<span class="live">share</span>
+		<div class="relayers" role="group" aria-label="Three relayers, each holding a random share">
+			{
+				relayers.map((name) => (
+					<div class="relayer">
+						<p class="head">
+							<span>Relayer {name}</span>
+							<span class="live">share</span>
+						</p>
+						<pre class="share js-share" aria-hidden="true" />
 					</div>
-					<pre class="share js-share" aria-hidden="true" />
-				</div>
-			))
-		}
-		<div class="relayer relayer--you">
-			<div class="head"><span>You, after a fill</span></div>
-			<p class="plain">YES · 71¢ · 5 units · filled</p>
+				))
+			}
+			<div class="you">
+				<p class="head"><span>You, after a fill</span></p>
+				<p class="plain">YES · 71¢ · 5 units · filled</p>
+			</div>
 		</div>
 	</div>
-</Panel>
+</Section>
 
 <script>
 	import "../scripts/relayer-noise";
 </script>
 
 <style>
-	.split {
+	.layout {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-		gap: clamp(32px, 5vw, 80px);
+		grid-template-columns: 480fr 800fr;
+		gap: calc(120px * var(--content-scale));
 		align-items: center;
 	}
 	.eyebrow {
-		margin-bottom: 20px;
+		margin-bottom: 16px;
+		color: var(--zp-lime);
+		font-size: 11px;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+	.lede {
+		max-width: calc(400px * var(--content-scale));
+		margin-top: 24px;
+	}
+	.note {
+		margin-top: 16px;
+		font-size: 12px;
 	}
 	.relayers {
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 14px;
+		gap: 12px;
 	}
 	.relayer {
 		padding: 18px;
-		border: 1px solid var(--hairline);
-		border-radius: var(--r-pane);
-		background: var(--surface-card);
+		border: 1px solid rgb(255 255 255 / 0.12);
 	}
 	.head {
 		display: flex;
 		justify-content: space-between;
 		margin-bottom: 14px;
-		font-size: 14px;
-		opacity: 0.6;
+		color: var(--zp-muted);
+		font-size: 11px;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+	.live {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		color: var(--zp-lime);
 	}
 	.live::before {
 		content: "";
-		display: inline-block;
 		width: 6px;
 		height: 6px;
-		margin-right: 6px;
-		border-radius: 50%;
-		background: #fff;
-		vertical-align: middle;
+		background: currentColor;
 	}
 	.share {
-		margin: 0;
 		min-height: 5.6em;
+		color: var(--zp-glyph);
 		font-size: 12px;
 		line-height: 1.4;
 		white-space: pre-wrap;
 		word-break: break-all;
-		color: rgba(255, 255, 255, 0.55);
 	}
-	.relayer--you {
+	.you {
 		grid-column: 1 / -1;
-		background: #fff;
-		color: #000;
+		padding: 18px;
+		background: var(--zp-lime);
+		color: var(--zp-ink);
+	}
+	.you .head {
+		color: var(--zp-ink-2);
 	}
 	.plain {
-		font-family: var(--font-display);
-		font-weight: 500;
-		font-size: clamp(20px, 2vw, 28px);
+		font-size: clamp(18px, 1.8vw, 26px);
 		letter-spacing: -0.04em;
 	}
-
-	@media (max-width: 1199.98px) {
-		.split {
+	@media (max-width: 1100px) {
+		.layout {
 			grid-template-columns: 1fr;
 		}
+		.lede {
+			max-width: 40em;
+		}
 	}
-	@media (max-width: 799.98px) {
+	@media (max-width: 680px) {
 		.relayers {
 			grid-template-columns: 1fr;
 		}
