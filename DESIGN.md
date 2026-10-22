@@ -128,8 +128,8 @@ Each directory is created when its work starts. Cargo members are listed explici
 ```
 zpredict/
 ├── apps/
-│   ├── landing/               # public site                                                ← exists
-│   ├── web/                   # trade page, Relayer View, judge mode (TS)                  (Oct 24)
+│   ├── landing/               # Astro public site, MotionSites template                     (Oct 26)
+│   ├── web/                   # Next.js app: trade page, Relayer View, judge mode          (Oct 24)
 │   └── relayer/               # Rust binary: share intake, scanner, MPC party, FROST signer (Oct 24)
 ├── packages/
 │   ├── core/                  # zpredict-core: order encoding, XOR shares, clearing rule   ← exists
@@ -154,7 +154,8 @@ zpredict/
 - ZF `frost-core` / `frost-rerandomized` 3.0, `reddsa` 0.6 (RedPallas), `frostd`
 - `polytune` (3-party MPC, Garble language)
 - Network: Zcash testnet via `testnet.zec.rocks:443`; Zebra regtest as the fallback
-- Web: static TypeScript app (trade page, Relayer View, judge mode), self-hosted assets
+- Landing: Astro (static), MotionSites template, self-hosted fonts and media
+- Web app: Next.js (static export, no server-side logging), MotionSites template, self-hosted assets
 
 ## Open questions (answer on Oct 23)
 
