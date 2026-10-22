@@ -46,6 +46,6 @@ Coolify UI → resource → **Deployments** → pick an earlier build → **Rede
 - **Health:** `https://rN.zpredict.site/health` (`peers` all `true` once a batch has run); the Docker healthcheck runs `zpredict-relayer health 127.0.0.1:8080` (the image has no shell). `restart: unless-stopped`.
 - **Measured** on the VPS (8 slots, 32 table rows, three markets in one multi-market MPC run, two crossing judge orders): one batch ≈ 23 s at about one core per party; peak RSS r0 496 MiB, r1 303 MiB, r2 354 MiB; ~15–55 MiB idle. Order to fill in the browser: 35 s. So `window_secs = 25` (batch + 2) and caps r0 768 MiB, r1/r2 512 MiB. If the host gets tight, raise `window_secs` rather than lowering the caps.
 - **Markets:** keep the deployed list to the three demo markets (NU7 activation, Ironwood ≥ 900k notes, ≥ 5 shielded actions). One MPC run clears up to 4 markets; a fifth would need a second run per window and slow every judge's fill.
-- **Build** takes about 3.5 min on the VPS (`CARGO_BUILD_JOBS=4` keeps rustc's memory down; r1/r2 reuse r0's image).
+- **Build** takes about 3.5 min on the VPS (`CARGO_BUILD_JOBS=4` keeps rustc's memory down; r1/r2 reuse r0's image). Each build leaves several GB of BuildKit cache; the host's cron runs `docker builder prune -af` every 6 h, so after many redeploys in a row run it by hand and keep > 10 GB free.
 
 lightwalletd: the oracle reads mainnet (`zec.rocks:443`), the escrow testnet (`testnet.zec.rocks:443`). No local Zebra: not enough disk or RAM on this VM.
