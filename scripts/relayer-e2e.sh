@@ -109,6 +109,8 @@ log "mine past the resolve height; every node resolves YES; the MPC pays A"
 mine $((RESOLVE - TIP + 10))
 until_ok 120 "outcome" is yes outcome 1
 until_ok 120 "payout into A's row" is 5850 balance "$TAG_A"
+# The same key shares sign the outcome (FROST 2-of-3, #77) now that settlement is on.
+until_ok 60 "signed outcome" bash -c "curl -sf http://127.0.0.1:4301/markets | jq -e '.[0].outcomeSig'"
 is 4150 balance "$TAG_B" || die "B after resolution: $(client balance "$TAG_B")"
 echo "A 5850 (3850 + 10 contracts x 1 unit), B 4150"
 

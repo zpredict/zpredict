@@ -54,7 +54,7 @@ impl Escrow {
             params: Params::parse(&c.network)?,
             fvk: zpredict_settle::decode_fvk(ufvk.trim())?,
             memo,
-            share: KeyShare::from_bytes(&open(&c.key_share, KeyShare::LABEL)?)?,
+            share: crate::outcome::load_share(&c.key_share, index)?,
             start_height: c.start_height,
             confirmations: c.confirmations.max(1),
             devtool,

@@ -50,7 +50,10 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
     let (slots, rows) = (c.batch_size, c.table_rows);
     let markets = markets::load(&c.data_dir, c.markets.clone());
     let state = State::open(c.index, markets, &c.data_dir)?.shared();
-    let frost = (c.frost_share_file.as_deref())
+    // Outcomes are signed with the escrow's key share: `frost_share_file`, or else the
+    // `[settlement]` one, so turning settlement on also signs outcomes.
+    let settlement_share = c.settlement.as_ref().map(|s| s.key_share.as_path());
+    let frost = (c.frost_share_file.as_deref().or(settlement_share))
         .map(|p| crate::outcome::load_share(p, c.index))
         .transpose()?;
     let group_key = frost.as_ref().map(KeyShare::ak).transpose();
