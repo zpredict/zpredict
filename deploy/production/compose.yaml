@@ -1,0 +1,72 @@
+# PENDING (needs apps/relayer on main, PR #47): the three hosted testnet relayers as one
+# Coolify "Docker Compose" resource. Coolify's Traefik serves each on its own HTTPS
+# origin (r0/r1/r2.zpredict.site -> port 8080); nothing is published on the host.
+# MPC peer traffic (Noise KK, encrypted) stays on the internal `peers` network.
+#
+# Demo only: all three run on one VM, so one operator could read every share. The
+# security model needs three independent operators; see deploy/README.md.
+#
+# Secrets: set in Coolify (Environment Variables), never in git. R{0,1,2}_KEY are the
+# Noise private keys, R{0,1,2}_PUB the public keys (`zpredict-relayer keygen`).
+
+x-relayer: &relayer
+  build:
+    context: ../..
+    dockerfile: deploy/production/relayer.Dockerfile
+  restart: unless-stopped
+  # ponytail: 1 GiB cap per party is a guess for N = 16 polytune; measure with
+  # `docker stats` over a few batches and tighten.
+  mem_limit: 1g
+  cpus: 2
+  read_only: true
+  tmpfs:
+    - /run/zpredict:mode=0700,uid=10001,size=1m
+    - /tmp
+  environment: &env
+    RELAYER_PUB_0: ${R0_PUB:?}
+    RELAYER_PUB_1: ${R1_PUB:?}
+    RELAYER_PUB_2: ${R2_PUB:?}
+
+services:
+  r0:
+    <<: *relayer
+    environment:
+      <<: *env
+      ZPREDICT_INDEX: 0
+      RELAYER_KEY: ${R0_KEY:?}
+    volumes: [r0-data:/data]
+    networks:
+      default:
+      peers: { ipv4_address: 10.0.250.10 }
+  r1:
+    <<: *relayer
+    environment:
+      <<: *env
+      ZPREDICT_INDEX: 1
+      RELAYER_KEY: ${R1_KEY:?}
+    volumes: [r1-data:/data]
+    networks:
+      default:
+      peers: { ipv4_address: 10.0.250.11 }
+  r2:
+    <<: *relayer
+    environment:
+      <<: *env
+      ZPREDICT_INDEX: 2
+      RELAYER_KEY: ${R2_KEY:?}
+    volumes: [r2-data:/data]
+    networks:
+      default:
+      peers: { ipv4_address: 10.0.250.12 }
+
+networks:
+  peers:
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.0.250.0/24
+
+volumes:
+  r0-data:
+  r1-data:
+  r2-data:
