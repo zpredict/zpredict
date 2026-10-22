@@ -1,0 +1,434 @@
+---
+import "@fontsource/figtree/500.css";
+import "@fontsource/instrument-sans/400.css";
+import "../styles/global.css";
+
+const appUrl = import.meta.env.PUBLIC_APP_URL ?? "https://app.zpredict.site";
+const repo = "https://github.com/zpredict/zpredict";
+const title = "zPredict · Price public. Participants private.";
+const description =
+	"The first shielded prediction market on Zcash. Nobody learns that you bet, which side, or how much.";
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = new URL("/media/og.jpg", Astro.site);
+
+const steps = [
+	{
+		n: "01",
+		id: "escrow",
+		tag: "FROST 2-of-3",
+		title: "Shielded<br>escrow",
+		desc: "Deposit fixed 1 / 5 / 25 notes to an escrow no single relayer can move.",
+	},
+	{
+		n: "02",
+		id: "shares",
+		tag: "XOR shares",
+		title: "Shared<br>orders",
+		desc: "Your browser splits each order in three. Each share goes to a different relayer.",
+	},
+	{
+		n: "03",
+		id: "mpc",
+		tag: "3-party MPC",
+		title: "Crossed<br>in MPC",
+		desc: "YES meets NO at the midpoint inside the circuit. Unfilled orders are never opened.",
+	},
+	{
+		n: "04",
+		id: "oracle",
+		tag: "Block 3,543,405",
+		title: "Chain-data<br>resolution",
+		desc: "Markets resolve from Zcash blocks, so anyone can recompute the outcome.",
+	},
+	{
+		n: "05",
+		id: "payout",
+		tag: "Fresh address",
+		title: "Batched<br>payouts",
+		desc: "One threshold-signed Ironwood transaction per epoch pays every winner.",
+	},
+];
+
+const threats = [
+	[
+		"Chain observer",
+		"The escrow exists and makes batched shielded transactions",
+		"Who bet, which side, how much, who won",
+	],
+	[
+		"Any single relayer",
+		"“A 5-unit deposit arrived”",
+		"Orders, sides, prices, positions, deposit→payout links",
+	],
+	[
+		"2 colluding relayers",
+		"Same as one for orders, and <strong>can move escrow funds</strong> (2-of-3)",
+		"Orders: MPC needs all 3 to collude",
+	],
+	["All 3 colluding", "Everything", "—"],
+	[
+		"Counterparty",
+		"That a fill happened at the midpoint",
+		"Who you are, your size beyond the fill",
+	],
+	[
+		"Network observer",
+		"That someone talks to a zPredict relayer",
+		"Contents (TLS); your IP if you use Tor",
+	],
+];
+
+const markets = [
+	{
+		q: "Will NU7 activate on mainnet at height 3,543,405?",
+		rule: "Activation height of the block header",
+		yes: 71,
+	},
+	{
+		q: "Will the Ironwood pool hold more than 500,000 ZEC at height 3,600,000?",
+		rule: "Pool value from the chain",
+		yes: 38,
+	},
+	{
+		q: "Will block 3,560,000 contain more than 40 shielded actions?",
+		rule: "Action count in that block",
+		yes: 54,
+	},
+];
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{title}</title>
+		<meta name="description" content={description} />
+		<meta name="referrer" content="no-referrer" />
+		<meta name="theme-color" content="#020202" />
+		<link rel="canonical" href={canonical} />
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content="zPredict" />
+		<meta property="og:title" content={title} />
+		<meta property="og:description" content={description} />
+		<meta property="og:url" content={canonical} />
+		<meta property="og:image" content={ogImage} />
+		<meta name="twitter:card" content="summary_large_image" />
+		<link rel="icon" href="/favicon.ico" sizes="48x48" />
+		<link rel="icon" href="/favicon-32x32.png" media="(prefers-color-scheme: light)" />
+		<link rel="icon" href="/white/favicon-32x32.png" media="(prefers-color-scheme: dark)" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<link rel="manifest" href="/site.webmanifest" />
+	</head>
+	<body>
+		<svg class="svg-defs" aria-hidden="true" width="0" height="0">
+			<linearGradient id="ringDown" x1="0" y1="0" x2="0" y2="1">
+				<stop offset=".5436" stop-color="#999" stop-opacity="0" />
+				<stop offset="1" stop-color="#fff" stop-opacity=".14" />
+			</linearGradient>
+			<linearGradient id="ringUp" x1="0" y1="1" x2="0" y2="0">
+				<stop offset=".5436" stop-color="#999" stop-opacity="0" />
+				<stop offset="1" stop-color="#fff" stop-opacity=".14" />
+			</linearGradient>
+		</svg>
+
+		<!-- HERO -->
+		<section class="panel hero" id="top">
+			<header class="topbar">
+				<a class="logo" href="#top" aria-label="zPredict home">
+					<img src="/white/android-chrome-192x192.png" alt="" width="46" height="46" />
+				</a>
+				<nav class="navlinks" aria-label="Primary">
+					<a class="pill" href="#how">How it works</a>
+					<a class="pill" href="#relayer-view">Relayer View</a>
+					<a class="pill" href="#threat-model">Threat model</a>
+					<a class="pill" href="#markets">Markets</a>
+				</nav>
+				<a class="btn-white" href={appUrl}>Open the app</a>
+			</header>
+
+			<div class="hero__pane hero__pane--left">
+				<div class="hero__content">
+					<h1 class="hero__title">
+						<span class="hero__line">Price</span>
+						<span class="hero__line">public.</span>
+						<span class="hero__line">Participants</span>
+						<span class="hero__line">private.</span>
+					</h1>
+					<p class="hero__lede">
+						The first shielded prediction market on Zcash. Nobody learns that you bet, which
+						side, or how much.
+					</p>
+					<a class="cta" href={appUrl}>
+						<span class="cta__label">Place a bet</span>
+						<span class="cta__arrow"><img src="/media/arrow.svg" alt="" /></span>
+					</a>
+				</div>
+			</div>
+
+			<div class="hero__pane hero__pane--right showcase">
+				<video
+					class="showcase__video js-motion"
+					muted
+					loop
+					playsinline
+					preload="metadata"
+					poster="/media/hero-poster.jpg"
+					aria-hidden="true"
+				>
+					<source src="/media/hero.mp4" type="video/mp4" />
+				</video>
+				<p class="showcase__eyebrow">Shielded prediction market on Zcash</p>
+				<div class="showcase__card" aria-hidden="true">
+					<img class="ticket__mark" src="/white/android-chrome-192x192.png" alt="" />
+					<span class="ticket__label">NU7 activation</span>
+					<span class="ticket__price">YES 0.71</span>
+					<span class="ticket__side">Your side ● ● ● ●</span>
+				</div>
+				<div class="showcase__copy">
+					<h2 class="showcase__title">Nobody<br />sees you</h2>
+					<p class="showcase__sub">ZEC-only collateral.<br />No transparent hop anywhere.</p>
+				</div>
+			</div>
+		</section>
+
+		<!-- HOW IT WORKS -->
+		<section class="panel lifestyle" id="how">
+			<h2 class="section-title">How it<br />works</h2>
+			<div class="lifestyle__grid">
+				{
+					steps.map((s) => (
+						<article class={`lcard lcard--${s.id}`}>
+							<div class="lcard__art" aria-hidden="true">
+								{s.id === "escrow" && (
+									<>
+										<svg class="lring" viewBox="0 0 481 481">
+											<circle cx="240.5" cy="240.5" r="240" fill="none" stroke="url(#ringDown)" />
+										</svg>
+										<div class="keyplate" />
+										<div class="keyplate__well" />
+										<img class="keyplate__key" src="/media/key.svg" alt="" />
+										<img class="keyplate__key" src="/media/key.svg" alt="" />
+									</>
+								)}
+								{s.id === "shares" && (
+									<>
+										<svg class="lring" viewBox="0 0 481 481">
+											<circle cx="240.5" cy="240.5" r="240" fill="none" stroke="url(#ringDown)" />
+										</svg>
+										<div class="shares">
+											<code>9f3a·c1e0</code>
+											<code>27bd·04af</code>
+											<code>e86c·b55d</code>
+										</div>
+									</>
+								)}
+								{s.id === "mpc" && (
+									<>
+										<svg class="lring lring--outer" viewBox="0 0 505 505">
+											<circle cx="252.5" cy="252.5" r="252" fill="none" stroke="url(#ringDown)" />
+										</svg>
+										<svg class="lring lring--inner" viewBox="0 0 265 265">
+											<circle cx="132.5" cy="132.5" r="132" fill="none" stroke="url(#ringDown)" />
+										</svg>
+										<div class="orbit__badge">
+											<div class="orbit__badge-inner">
+												<img class="orbit__bolt" src="/media/bolt.svg" alt="" />
+											</div>
+										</div>
+									</>
+								)}
+								{s.id === "oracle" && (
+									<>
+										<svg class="lring" viewBox="0 0 481 481">
+											<circle cx="240.5" cy="240.5" r="240" fill="none" stroke="url(#ringDown)" />
+										</svg>
+										<div class="blocks">
+											<span />
+											<span />
+											<span class="is-hit" />
+											<span />
+										</div>
+									</>
+								)}
+								{s.id === "payout" && (
+									<>
+										<video
+											class="globe js-motion"
+											muted
+											loop
+											playsinline
+											preload="metadata"
+											poster="/media/globe-poster.jpg"
+										>
+											<source src="/media/globe.mp4" type="video/mp4" />
+										</video>
+										<div class="globe-fade" />
+										<svg class="lring lring--up" viewBox="0 0 481 481">
+											<circle cx="240.5" cy="240.5" r="240" fill="none" stroke="url(#ringUp)" />
+										</svg>
+									</>
+								)}
+								<span class="ltag">{s.tag}</span>
+							</div>
+							<span class="lcard__n">{s.n}</span>
+							<h3 class="lcard__title" set:html={s.title} />
+							<p class="lcard__desc">{s.desc}</p>
+						</article>
+					))
+				}
+			</div>
+		</section>
+
+		<!-- RELAYER VIEW -->
+		<section class="panel split" id="relayer-view">
+			<div class="split__copy">
+				<span class="ltag ltag--inline">Relayer View</span>
+				<h2 class="section-title section-title--left">What a<br />relayer sees</h2>
+				<p class="lede">
+					Your order is <code>{"{market, side, price, size}"}</code>. Before it leaves your
+					browser it becomes three random-looking shares, one per relayer. Each relayer sees
+					only noise. Only all three together, inside MPC, can cross it.
+				</p>
+				<p class="note">Illustration. The app's Relayer View shows the live shares.</p>
+			</div>
+			<div class="split__art relayers" aria-label="Three relayers, each holding a random share">
+				{
+					["A", "B", "C"].map((r) => (
+						<div class="relayer">
+							<div class="relayer__head">
+								<span>Relayer {r}</span>
+								<span class="relayer__live">share</span>
+							</div>
+							<pre class="relayer__share js-share" aria-hidden="true" />
+						</div>
+					))
+				}
+				<div class="relayer relayer--you">
+					<div class="relayer__head"><span>You, after a fill</span></div>
+					<p class="relayer__plain">YES · 0.71 · 5 units · filled</p>
+				</div>
+			</div>
+		</section>
+
+		<!-- THREAT MODEL -->
+		<section class="panel" id="threat-model">
+			<h2 class="section-title">Threat<br />model</h2>
+			<div class="stats">
+				<div class="stat">
+					<span class="stat__n">2-of-3</span>
+					<span class="stat__l">to move funds (FROST)</span>
+				</div>
+				<div class="stat">
+					<span class="stat__n">3-of-3</span>
+					<span class="stat__l">to read orders (MPC)</span>
+				</div>
+			</div>
+			<p class="lede lede--center">
+				Stated up front. Here is exactly what each party can and can't learn.
+			</p>
+			<div class="table-wrap">
+				<table class="threats">
+					<thead>
+						<tr><th scope="col">Observer</th><th scope="col">Learns</th><th scope="col">Doesn't learn</th></tr>
+					</thead>
+					<tbody>
+						{
+							threats.map(([who, learns, not]) => (
+								<tr>
+									<th scope="row">{who}</th>
+									<td set:html={learns} />
+									<td>{not}</td>
+								</tr>
+							))
+						}
+					</tbody>
+				</table>
+			</div>
+		</section>
+
+		<!-- MARKETS -->
+		<section class="panel" id="markets">
+			<h2 class="section-title">Live<br />markets</h2>
+			<p class="lede lede--center">
+				Questions the Zcash community already argues about, resolved from chain data.
+			</p>
+			<div class="markets">
+				{
+					markets.map((m) => (
+						<a class="market" href={appUrl}>
+							<span class="ltag ltag--inline">Testnet</span>
+							<h3 class="market__q">{m.q}</h3>
+							<p class="market__rule">Resolves on: {m.rule}</p>
+							<div class="market__bar" style={`--yes:${m.yes}%`}>
+								<span>YES {(m.yes / 100).toFixed(2)}</span>
+								<span>NO {(1 - m.yes / 100).toFixed(2)}</span>
+							</div>
+						</a>
+					))
+				}
+			</div>
+			<p class="note note--center">Prices shown are illustrative. Live prices are in the app.</p>
+		</section>
+
+		<!-- CTA -->
+		<section class="panel finale">
+			<video
+				class="finale__video js-motion"
+				muted
+				loop
+				playsinline
+				preload="none"
+				poster="/media/hero-poster.jpg"
+				aria-hidden="true"
+			>
+				<source src="/media/hero.mp4" type="video/mp4" />
+			</video>
+			<div class="finale__content">
+				<h2 class="section-title">Bet without<br />being seen</h2>
+				<p class="lede lede--center">Judge mode comes with a prefunded testnet wallet. No install.</p>
+				<a class="cta cta--center" href={appUrl}>
+					<span class="cta__label">Open the app</span>
+					<span class="cta__arrow"><img src="/media/arrow.svg" alt="" /></span>
+				</a>
+			</div>
+		</section>
+
+		<footer class="footer">
+			<a class="logo logo--static" href="#top" aria-label="zPredict home">
+				<img src="/white/android-chrome-192x192.png" alt="" width="46" height="46" />
+			</a>
+			<p>Built for Zecathon 2026 · MIT</p>
+			<a class="pill" href={repo}>GitHub</a>
+		</footer>
+
+		<script>
+			const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+
+			// Videos only play when motion is allowed; the poster shows otherwise.
+			const videos = document.querySelectorAll<HTMLVideoElement>("video.js-motion");
+			const io = new IntersectionObserver((entries) => {
+				for (const e of entries) {
+					const v = e.target as HTMLVideoElement;
+					if (e.isIntersecting && !reduce.matches) v.play().catch(() => {});
+					else v.pause();
+				}
+			});
+			for (const v of videos) io.observe(v);
+
+			// Relayer View: each relayer holds fresh random bytes, like a real XOR share.
+			const shares = document.querySelectorAll<HTMLElement>(".js-share");
+			const hex = (n: number) =>
+				Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) =>
+					b.toString(16).padStart(2, "0"),
+				).join("");
+			const paint = () => {
+				for (const s of shares) s.textContent = [hex(12), hex(12), hex(12), hex(12)].join("\n");
+			};
+			paint();
+			setInterval(() => {
+				if (!reduce.matches && !document.hidden) paint();
+			}, 1600);
+		</script>
+	</body>
+</html>
