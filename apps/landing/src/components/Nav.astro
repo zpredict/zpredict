@@ -6,11 +6,33 @@ import Logo from "./ui/Logo.astro";
 
 <header class="topbar">
 	<Logo />
-	<nav class="links" aria-label="Primary">
-		{navLinks.map((link) => <Button variant="pill" href={link.href}>{link.label}</Button>)}
-	</nav>
-	<Button class="open" href={site.appUrl}>Open the app</Button>
+	<!-- Below 1200px the links and the app button move into a disclosure menu (nav-menu.ts). -->
+	<button
+		class="burger js-menu-toggle"
+		type="button"
+		aria-label="Menu"
+		aria-expanded="false"
+		aria-controls="nav-menu"
+	>
+		<span class="burger__bars" aria-hidden="true"></span>
+	</button>
+	<div id="nav-menu" class="menu js-menu">
+		<nav class="links" aria-label="Primary">
+			{
+				navLinks.map((link) => (
+					<Button variant="pill" class="link" href={link.href}>
+						{link.label}
+					</Button>
+				))
+			}
+		</nav>
+		<Button class="open" href={site.appUrl}>Open the app</Button>
+	</div>
 </header>
+
+<script>
+	import "../scripts/nav-menu";
+</script>
 
 <style>
 	.topbar {
@@ -21,6 +43,10 @@ import Logo from "./ui/Logo.astro";
 		align-items: center;
 		gap: 11px;
 	}
+	/* Desktop: the menu wrapper is invisible to layout; links and button sit in the bar. */
+	.menu {
+		display: contents;
+	}
 	.links {
 		display: flex;
 		gap: 8px;
@@ -28,16 +54,125 @@ import Logo from "./ui/Logo.astro";
 	.open {
 		margin-left: auto;
 	}
+	.burger {
+		display: none;
+	}
 
-	/* ponytail: no burger menu; below 1200px the section links are dropped. */
 	@media (max-width: 1199.98px) {
+		.burger {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 46px;
+			height: 46px;
+			margin-left: auto;
+			padding: 0;
+			border: 0;
+			border-radius: var(--r-pill);
+			background: transparent;
+			color: #fff;
+			cursor: pointer;
+			transition: background-color 0.18s ease;
+		}
+		.burger:hover,
+		.burger[aria-expanded="true"] {
+			background: rgba(255, 255, 255, 0.1);
+		}
+		/* Three bars: the span is the middle one, ::before/::after the outer two. */
+		.burger__bars,
+		.burger__bars::before,
+		.burger__bars::after {
+			display: block;
+			width: 18px;
+			height: 1.5px;
+			border-radius: 1px;
+			background: currentColor;
+			transition:
+				transform 0.22s ease,
+				background-color 0.22s ease;
+		}
+		.burger__bars {
+			position: relative;
+		}
+		.burger__bars::before,
+		.burger__bars::after {
+			content: "";
+			position: absolute;
+			left: 0;
+		}
+		.burger__bars::before {
+			top: -5.5px;
+		}
+		.burger__bars::after {
+			top: 5.5px;
+		}
+		.burger[aria-expanded="true"] .burger__bars {
+			background: transparent;
+		}
+		.burger[aria-expanded="true"] .burger__bars::before {
+			transform: translateY(5.5px) rotate(45deg);
+		}
+		.burger[aria-expanded="true"] .burger__bars::after {
+			transform: translateY(-5.5px) rotate(-45deg);
+		}
+
+		/* Template dropdown card; `visibility` keeps closed links out of the tab order. */
+		.menu {
+			position: absolute;
+			right: 0;
+			top: calc(100% + 14px);
+			z-index: 30;
+			display: block;
+			width: min(300px, 100%);
+			padding: 14px;
+			border: 1px solid var(--hairline);
+			border-radius: var(--r-pane);
+			background: var(--surface-card);
+			box-shadow: 0 32px 43px -13px rgba(0, 0, 0, 0.48);
+			opacity: 0;
+			visibility: hidden;
+			pointer-events: none;
+			transform: translateY(-8px) scale(0.98);
+			transform-origin: 100% 0;
+			transition:
+				opacity 0.22s ease,
+				transform 0.22s ease,
+				visibility 0s linear 0.22s;
+		}
+		.menu.is-open {
+			opacity: 1;
+			visibility: visible;
+			pointer-events: auto;
+			transform: none;
+			-webkit-backdrop-filter: blur(27.3px);
+			backdrop-filter: blur(27.3px);
+			transition:
+				opacity 0.22s ease,
+				transform 0.22s ease,
+				visibility 0s;
+		}
 		.links {
-			display: none;
+			flex-direction: column;
+			align-items: stretch;
+			gap: 6px;
+		}
+		.link {
+			justify-content: flex-start;
+		}
+		.open {
+			display: flex;
+			width: 100%;
+			margin: 10px 0 0;
 		}
 	}
 	@media (max-width: 799.98px) {
 		.topbar {
 			inset: 22px 22px auto 22px;
+		}
+	}
+	@media (max-width: 599.98px) {
+		.menu {
+			width: 100%;
 		}
 	}
 </style>
