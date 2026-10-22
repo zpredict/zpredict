@@ -13,9 +13,10 @@ oracle_lightwalletd = "https://zec.rocks:443"
 escrow_lightwalletd = "https://testnet.zec.rocks:443"
 # 8 slots, 32 rows (default), all open markets in one run: ~6.3 s MPC on an M4 Pro. The
 # demo VPS measured ~23 s before account keys (#85, +7% AND gates: ~24.6 s estimated), so
-# the window is batch time + 2.
+# the window is batch time + 2. Re-measured after account keys and the hourly market
+# (2026-10-22, two crossing judge orders): one batch ~37 s on the VPS, so 39.
 batch_size = 8
-window_secs = 27
+window_secs = 39
 expire_batches = 3
 judge = true
 judge_credit = 5000 # 25 units in half-ticks
