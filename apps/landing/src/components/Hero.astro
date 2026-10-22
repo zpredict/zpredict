@@ -1,0 +1,234 @@
+---
+import { site } from "../data/site";
+import BetTicket from "./BetTicket.astro";
+import Nav from "./Nav.astro";
+import Button from "./ui/Button.astro";
+import MotionVideo from "./ui/MotionVideo.astro";
+import Panel from "./ui/Panel.astro";
+
+const titleLines = ["Price", "public.", "Participants", "private."];
+---
+
+<Panel id="top" class="hero">
+	<Nav />
+
+	<div class="pane pane--left">
+		<div class="content">
+			<h1 class="title">
+				{titleLines.map((line) => <span class="line">{line}</span>)}
+			</h1>
+			<p class="lede">
+				The first shielded prediction market on Zcash. Nobody learns that you bet, which side,
+				or how much.
+			</p>
+			<Button variant="cta" class="cta" href={site.appUrl}>Place a bet</Button>
+		</div>
+	</div>
+
+	<div class="pane pane--right">
+		<MotionVideo class="video" src="/media/hero.mp4" poster="/media/hero-poster.jpg" />
+		<p class="eyebrow">Shielded prediction market on Zcash</p>
+		<BetTicket class="ticket" market="NU7 activation" price="YES 0.71" />
+		<div class="copy">
+			<h2 class="copy__title">Nobody<br />sees you</h2>
+			<p class="copy__sub">ZEC-only collateral.<br />No transparent hop anywhere.</p>
+		</div>
+	</div>
+</Panel>
+
+<style>
+	.hero {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 11px;
+		padding: 10px;
+		min-height: clamp(640px, calc(100dvh - 20px), 1000px);
+	}
+	.pane {
+		position: relative;
+		border-radius: var(--r-pane);
+		min-height: 640px;
+	}
+	.pane--left {
+		display: flex;
+		align-items: flex-end;
+		background:
+			linear-gradient(0deg, var(--pane-bottom) 0%, var(--pane-top) 100%),
+			var(--pane-base);
+	}
+	.content {
+		width: 100%;
+		padding: 120px 29px 36px;
+	}
+	.title {
+		font-family: var(--font-display);
+		font-weight: 500;
+		font-size: clamp(44px, 6.1vw, 112px);
+		line-height: 0.9;
+		letter-spacing: -0.05em;
+		text-transform: uppercase;
+	}
+	.line {
+		display: block;
+	}
+	.lede {
+		margin: clamp(24px, 3vw, 37px) 0 clamp(32px, 7vh, 90px);
+		max-width: 24em;
+	}
+
+	.pane--right {
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		text-align: center;
+		perspective: 1400px;
+		padding: 90px 24px 60px;
+		background: #000;
+	}
+	.video {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+	.eyebrow {
+		position: absolute;
+		left: 34px;
+		top: 32px;
+		font-size: 14px;
+		line-height: 18px;
+		opacity: 0.4;
+		text-align: left;
+	}
+	.copy {
+		position: relative;
+		margin-top: clamp(28px, 5vh, 53px);
+	}
+	.copy__title {
+		font-family: var(--font-display);
+		font-weight: 500;
+		font-size: 40px;
+		line-height: 36px;
+		letter-spacing: -0.05em;
+		text-transform: uppercase;
+	}
+	.copy__sub {
+		margin-top: 19px;
+		font-size: 18px;
+		line-height: 23px;
+	}
+
+	@media (max-width: 799.98px) {
+		.hero {
+			grid-template-columns: 1fr;
+			min-height: 0;
+		}
+		.pane {
+			min-height: 0;
+		}
+		.content {
+			padding: 110px 20px 28px;
+		}
+		.title {
+			font-size: clamp(36px, 11.2vw, 80px);
+		}
+		.pane--right {
+			min-height: 560px;
+		}
+	}
+
+	/* Template entrance: blurred line reveal and the spinning card (desktop only). */
+	@keyframes hero-line-enter {
+		from {
+			opacity: 0;
+			filter: blur(16px);
+		}
+		to {
+			opacity: 1;
+			filter: blur(0);
+		}
+	}
+	@keyframes hero-detail-enter {
+		from {
+			opacity: 0;
+			filter: blur(10px);
+			transform: translateY(8px);
+		}
+		to {
+			opacity: 1;
+			filter: blur(0);
+			transform: translateY(0);
+		}
+	}
+	@keyframes hero-cta-enter {
+		from {
+			opacity: 0;
+			filter: blur(6px);
+			transform: scale(0.96);
+		}
+		to {
+			opacity: 1;
+			filter: blur(0);
+			transform: scale(1);
+		}
+	}
+	@keyframes hero-card-motion {
+		0% {
+			opacity: 0;
+			filter: blur(10px);
+			transform: rotateY(0deg) scale(0.48);
+		}
+		15% {
+			opacity: 1;
+			filter: blur(0);
+			transform: rotateY(0deg) scale(1);
+		}
+		80% {
+			opacity: 1;
+			filter: blur(0);
+			transform: rotateY(270deg) scale(1);
+		}
+		100% {
+			opacity: 1;
+			filter: blur(0);
+			transform: rotateY(360deg) scale(1);
+		}
+	}
+	@media (min-width: 1200px) and (prefers-reduced-motion: no-preference) {
+		.line {
+			animation: hero-line-enter 420ms var(--ease) both;
+		}
+		.line:nth-child(1) {
+			animation-delay: 360ms;
+		}
+		.line:nth-child(2) {
+			animation-delay: 460ms;
+		}
+		.line:nth-child(3) {
+			animation-delay: 560ms;
+		}
+		.line:nth-child(4) {
+			animation-delay: 660ms;
+		}
+		.lede {
+			animation: hero-detail-enter 380ms 880ms var(--ease) both;
+		}
+		.cta {
+			animation: hero-cta-enter 340ms 980ms var(--ease) both;
+			transform-origin: left center;
+		}
+		.ticket {
+			animation: hero-card-motion 4300ms 350ms linear both;
+			will-change: transform, opacity, filter;
+		}
+		.copy__title {
+			animation: hero-detail-enter 380ms 820ms var(--ease) both;
+		}
+		.copy__sub {
+			animation: hero-detail-enter 380ms 930ms var(--ease) both;
+		}
+	}
+</style>
