@@ -116,9 +116,12 @@ export function combine(shares: readonly Uint8Array[]): Uint8Array {
 export const toHex = (b: Uint8Array) =>
 	Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
 
+// A single character class keeps matching linear (no nested quantifier to backtrack into).
+const HEX = /^[0-9a-f]*$/i;
+
 export function fromHex(h: string): Uint8Array {
-	if (!/^([0-9a-f]{2})*$/i.test(h)) throw new SyntaxError("bad hex");
-	return Uint8Array.from(h.match(/../g) ?? [], (x) => parseInt(x, 16));
+	if (h.length % 2 !== 0 || !HEX.test(h)) throw new SyntaxError("bad hex");
+	return Uint8Array.from(h.match(/../g) ?? [], (x) => Number.parseInt(x, 16));
 }
 
 /** A fresh account tag: 16 random bytes, hex. */
