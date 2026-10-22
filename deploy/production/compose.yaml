@@ -49,7 +49,6 @@ services:
     depends_on: [r0]
     environment:
       ZPREDICT_INDEX: 1
-      ZPREDICT_JUDGE: "false"
     secrets:
       - { source: r1_key, target: relayer_key }
       - r0_pub
@@ -65,7 +64,6 @@ services:
     depends_on: [r0]
     environment:
       ZPREDICT_INDEX: 2
-      ZPREDICT_JUDGE: "false"
     secrets:
       - { source: r2_key, target: relayer_key }
       - r0_pub
