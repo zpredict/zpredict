@@ -1,7 +1,7 @@
 # zpredict-settle
 
-FROST 2-of-3 signing glue for the zPredict escrow, plus the findings of the settlement
-spike (issue #5): **a 2-of-3 FROST escrow received Ironwood funds and spent them in a
+Escrow scanning (#10) and FROST 2-of-3 signing glue for the zPredict escrow, plus the
+findings of the settlement spike (issue #5): **a 2-of-3 FROST escrow received Ironwood funds and spent them in a
 mined v6 transaction**, on a Zebra regtest with NU6.3 (Ironwood) and NU7 active.
 
 ## Run it
@@ -20,13 +20,47 @@ the first build. All state (seeds, FROST key shares, PCZTs, logs) lives in
 |---|---|---|
 | 0 | `build-tools.sh` | Clone and build the pinned tools with their own `Cargo.lock` |
 | 1 | `regtest-up.sh` | Zebra regtest + lightwalletd; 110 blocks mined to a funder's Orchard-only address, which NU6.3 pays into **Ironwood** (no transparent coinbase, nothing to shield) |
-| 2 | `frost-dkg.sh` | frostd (local TLS) + 2-of-3 RedPallas DKG between `r0 r1 r2`; `frost-pczt ufvk` turns the group key into the escrow UFVK/address; watch-only escrow wallet |
-| 3 | `fund-escrow.sh` | Funder sends 5 ZEC to the escrow (Ironwood receiver only), 11 confirmations |
+| 2 | `frost-dkg.sh` | frostd (local TLS) + 2-of-3 RedPallas DKG between `r0 r1 r2`; `frost-pczt ufvk` turns the group key into the escrow UFVK/address; UFVK and per-relayer memo keys sealed; watch-only escrow wallet |
+| 3 | `fund-escrow.sh` | Funder sends one fixed-denomination note per `DEPOSIT_UNITS` entry (default one 5-unit = 0.05 ZEC note) with an encrypted account tag in the memo, to the Ironwood receiver only; 10 confirmations |
 | 4 | `frost-spend.sh` | `pczt create` + `prove` → `frost-pczt sighash` → coordinator + `r0`,`r1` sign (`r2` offline) → `frost-pczt apply` → `pczt combine` + `send`; asserts v6, mined, Ironwood actions > 0, zero transparent in/out |
 
 Testnet: `NETWORK=test RUN_DIR=~/.cache/zpredict-testnet scripts/frost-dkg.sh` runs the
 same DKG against `testnet.zec.rocks:443` and prints a testnet escrow address. Fund it by
 hand (see below), then steps 3–4 apply unchanged except that blocks come from the network.
+
+## Escrow scanning (#10)
+
+```sh
+scripts/scan-e2e.sh    # regtest -> DKG -> one tagged 5-unit deposit -> r0, r1, r2 scan it
+```
+
+Each relayer runs a `Scanner` (shared escrow FVK, its relayer index, its memo key) over
+lightwalletd: blocks with Ironwood actions are fetched as full transactions (compact
+blocks drop memos) and trial-decrypted with the escrow's **external** IVK, so escrow
+change is never mistaken for a deposit. Every received note comes out as either
+
+- `Deposit { note: (txid, action), height, units, tag }`: amount exactly 1, 5 or 25
+  units (`UNIT_ZATS` = 1,000,000 zats = 0.01 ZEC, the one place the mapping lives), and
+  the relayer's memo slot opens; `balance_share(i)` is the initial XOR share in
+  half-ticks, `(A·200, 0, 0)` per the #9 decision; or
+- `Flagged { note, height, zats, reason }`: any other amount (`Denomination`) or no
+  readable tag (`NoTag`). Flagged notes are never credited.
+
+**Deposit memo** (`memo.rs`): ZIP 302 `0xFF` memo, `0xFF | 0x01 | epk (32) | slot₀ | slot₁ | slot₂`,
+zero after byte 130. `slotᵢ` = ChaCha20-Poly1305 (zero nonce) of the 16-byte account
+tag under `BLAKE2b-256("zPredictMemoKey1", X25519(esk, pkᵢ) ‖ epk ‖ pkᵢ)`, where `pkᵢ` is
+relayer `i`'s memo public key and `esk` is fresh per memo. No order data, no amounts.
+
+**Secrets at rest** (`store.rs`): the escrow UFVK and each relayer's memo key are
+sealed with ChaCha20-Poly1305 under `ZPREDICT_STORE_KEY` (64 hex chars, environment
+only), the label as AAD. The scripts generate one store key per run and never write it.
+
+Regtest run (fresh chain):
+
+```
+deposit 6098607d12614873b992cd7d9dbf840ef3b9aec63586421164bb15f7ecc9fef5 0 111 5 38a28f79… 1000   (r0)
+deposit 6098607d12614873b992cd7d9dbf840ef3b9aec63586421164bb15f7ecc9fef5 0 111 5 38a28f79… 0      (r1, r2)
+```
 
 ## Result
 
