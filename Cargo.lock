@@ -1389,3 +1389,12 @@ dependencies = [
  "serde",
  "serde_json",
 ]
+
+[[package]]
+name = "zpredict-plugin-nu7-activation"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "zpredict-oracle",
+]

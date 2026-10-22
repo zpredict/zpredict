@@ -3,6 +3,7 @@ resolver = "3"
 members = [
     "packages/core",
     "packages/oracle",
+    "packages/plugins/nu7-activation",
 ]
 
 [workspace.package]
