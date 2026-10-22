@@ -1,0 +1,90 @@
+---
+/**
+ * The ASCII mark. The stage keeps the hero's full size and is cover-scaled inside the frame
+ * while the frame shrinks into the showcase card (scripts/journey.ts).
+ *
+ * First paint is a build-time text snapshot of the same view (the LCP element, and the fallback
+ * without WebGL or with reduced motion). The live canvas fades in over it once ready
+ * (scripts/ascii-live.ts). The framing below must match FRAMING there.
+ */
+import { asciiSnapshot } from "@zpredict/ascii";
+
+const snapshot = asciiSnapshot({ cols: 103, rows: 69 });
+---
+
+<div class="frame js-frame" data-surface="dark">
+	<div class="stage js-stage" role="img" aria-label="The zPredict mark as live ASCII glyphs on a dotted ground">
+		<pre class="snapshot" aria-hidden="true">{snapshot}</pre>
+		<canvas class="canvas js-ascii" aria-hidden="true"></canvas>
+	</div>
+</div>
+
+<style>
+	.frame {
+		position: absolute;
+		left: 0;
+		top: 0;
+		z-index: 1;
+		width: 100%;
+		height: 100%;
+		overflow: hidden;
+		background: var(--zp-bg);
+	}
+	.stage {
+		position: absolute;
+		left: 0;
+		top: 0;
+		/* Hero-sized; scripts/journey.ts pins it in px so the frame can shrink around it. */
+		width: 100%;
+		height: 100%;
+		transform-origin: top left;
+		container-type: size;
+		/*
+		 * Framing of the mark: side of its square as a share of min(w, h), and the square's centre.
+		 * Read by scripts/ascii-live.ts and scripts/journey.ts (and mirrored inline in Base.astro).
+		 */
+		--frame-size: 0.8;
+		--frame-y: 0.52;
+	}
+	@media (max-width: 900px) {
+		.stage {
+			--frame-size: 0.96;
+			--frame-y: 0.62;
+		}
+	}
+	.canvas {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		opacity: 0;
+		transition: opacity 800ms ease;
+	}
+	/*
+	 * 103 × 69 glyphs on the framing square. The text is laid out at 12 px (natural box
+	 * 741.6 × 741.6) and scaled to the square (--snap-scale), so it never counts as small text.
+	 */
+	.snapshot {
+		--side: calc(var(--frame-size) * min(100cqw, 100cqh));
+		position: absolute;
+		left: calc(50cqw - var(--side) / 2);
+		top: calc(var(--frame-y) * 100cqh - var(--side) / 2);
+		width: 741.6px;
+		height: 741.6px;
+		overflow: hidden;
+		color: var(--zp-glyph);
+		font: var(--zp-weight) 12px / 10.748px var(--zp-font);
+		letter-spacing: 0;
+		white-space: pre;
+		transform: scale(var(--snap-scale, 1));
+		transform-origin: top left;
+		transition: opacity 800ms ease;
+		user-select: none;
+	}
+	:global(.hero[data-ready="true"]) .canvas {
+		opacity: 1;
+	}
+	:global(.hero[data-ready="true"]) .snapshot {
+		opacity: 0;
+	}
+</style>

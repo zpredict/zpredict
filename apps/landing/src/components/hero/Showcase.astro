@@ -1,0 +1,166 @@
+---
+/**
+ * Lime showcase behind the hero: the canvas shrinks into `.js-card`. Laid out on the scaled
+ * 1600 × 1000 artboard on wide screens; on phones the description and facts move to
+ * MobileDetails below the journey. `.showcase-copy` fades in via --copy (scripts/journey.ts).
+ */
+import { showcase } from "../../data/showcase";
+import Title from "../ui/Title.astro";
+---
+
+<div class="bg" data-surface="light"></div>
+<div class="layout js-showcase" aria-hidden="true">
+	<div class="intro showcase-copy">
+		<p class="eyebrow">{showcase.eyebrow}</p>
+		<Title class="heading" lines={showcase.title} />
+	</div>
+	<p class="desc showcase-copy">{showcase.description}</p>
+	<div class="card js-card"></div>
+	<ul class="facts showcase-copy">
+		{
+			showcase.facts.map((f) => (
+				<li>
+					<Title as="h3" class="fact-title" lines={[f.title]} />
+					<p>{f.text}</p>
+				</li>
+			))
+		}
+	</ul>
+	<p class="caption showcase-copy">
+		<span>{showcase.caption[0]}</span>
+		<span>{showcase.caption[1]}</span>
+	</p>
+</div>
+
+<style>
+	.bg {
+		position: absolute;
+		inset: 0;
+		background-color: var(--zp-lime);
+	}
+	.bg::after {
+		content: "";
+		position: absolute;
+		inset: 0;
+		background: radial-gradient(circle, #fff 1.2px, transparent 1.5px) 0 0 / 12px 12px;
+		opacity: 0.28;
+		animation: dots 18s linear infinite;
+	}
+	@keyframes dots {
+		to {
+			background-position: 12px 12px;
+		}
+	}
+	.layout {
+		position: absolute;
+		left: 50%;
+		bottom: 0;
+		width: 1600px;
+		height: 1000px;
+		color: var(--zp-ink);
+		font-size: 14px;
+		line-height: 1.6;
+		transform: translateX(-50%) scale(var(--composition-scale));
+		transform-origin: center bottom;
+	}
+	.showcase-copy {
+		opacity: var(--copy, 0);
+		transform: translateY(calc((1 - var(--copy, 0)) * 24px));
+	}
+	.layout > * {
+		position: absolute;
+	}
+	.intro {
+		left: 100px;
+		top: 360px;
+		width: 350px;
+	}
+	.eyebrow {
+		margin-bottom: 16px;
+		font-size: 11px;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+	.heading {
+		font-size: 32px;
+	}
+	.desc {
+		left: 100px;
+		bottom: 280px;
+		width: 350px;
+	}
+	.card {
+		left: 580px;
+		top: 280px;
+		width: 440px;
+		height: 440px;
+	}
+	.facts {
+		left: 1110px;
+		top: 500px;
+		width: 370px;
+		translate: 0 -50%;
+	}
+	.facts li {
+		padding: 18px 0 20px;
+		border-top: 1px solid var(--zp-rule-on-lime);
+	}
+	.facts li:first-child {
+		border-top: 0;
+	}
+	.fact-title {
+		margin-bottom: 6px;
+		font-size: 22px;
+		line-height: 1.2;
+	}
+	.facts p {
+		font-size: 13px;
+		line-height: 1.5;
+	}
+	.caption {
+		left: 580px;
+		top: 736px;
+		display: flex;
+		justify-content: space-between;
+		width: 440px;
+		font-size: 9px;
+		text-transform: uppercase;
+	}
+
+	@media (max-width: 900px) {
+		.layout {
+			left: 0;
+			width: 100%;
+			height: 100%;
+			transform: none;
+		}
+		.intro {
+			left: 20px;
+			top: 110px;
+			width: calc(100% - 40px);
+		}
+		.eyebrow,
+		.desc,
+		.facts {
+			display: none;
+		}
+		.heading {
+			font-size: 28px;
+		}
+		.card {
+			left: 50%;
+			top: 216px;
+			width: min(100vw - 40px, (100svh - 250px) * 4 / 3, 640px);
+			height: auto;
+			aspect-ratio: 4 / 3;
+			translate: -50% 0;
+		}
+		.caption {
+			left: 50%;
+			top: calc(216px + min(100vw - 40px, (100svh - 250px) * 4 / 3, 640px) * 3 / 4 + 12px);
+			width: min(100vw - 40px, (100svh - 250px) * 4 / 3, 640px);
+			font-size: 11px;
+			translate: -50% 0;
+		}
+	}
+</style>
