@@ -70,8 +70,7 @@ export function decodeOrder(b: Uint8Array): Order | null {
 	const side = b[4];
 	const price = b[5];
 	const size = v.getUint32(6, true);
-	if ((side !== 0 && side !== 1) || price < 1 || price > 99 || size > MAX_SIZE)
-		return null;
+	if ((side !== 0 && side !== 1) || price < 1 || price > 99 || size > MAX_SIZE) return null;
 	return {
 		market: v.getUint32(0, true),
 		side,
@@ -245,18 +244,14 @@ export async function getFill(
 ): Promise<{ status: OrderStatus["status"]; fill?: Fill }> {
 	distinct(relayers);
 	const res = await Promise.all(
-		relayers.map((u) =>
-			call<OrderStatus>(at(u, `/orders/${encodeURIComponent(orderId)}`)),
-		),
+		relayers.map((u) => call<OrderStatus>(at(u, `/orders/${encodeURIComponent(orderId)}`))),
 	);
 	if (res.some((r) => r.status === "pending")) return { status: "pending" };
 	if (res.every((r) => r.status === "unfilled")) return { status: "unfilled" };
 	if (!res.every((r) => r.status === "filled" && r.fillShare)) {
 		throw new Error("relayers disagree on the fill");
 	}
-	const fill = decodeFill(
-		combine(res.map((r) => fromHex(r.fillShare as string))),
-	);
+	const fill = decodeFill(combine(res.map((r) => fromHex(r.fillShare as string))));
 	return { status: "filled", fill };
 }
 
@@ -264,14 +259,11 @@ export async function getFill(
 export async function getBalance(relayers: Relayers, tag: string) {
 	distinct(relayers);
 	const res = await Promise.all(
-		relayers.map((u) =>
-			call<AccountShare>(at(u, `/accounts/${encodeURIComponent(tag)}`)),
-		),
+		relayers.map((u) => call<AccountShare>(at(u, `/accounts/${encodeURIComponent(tag)}`))),
 	);
 	return decodeBalance(combine(res.map((r) => fromHex(r.balanceShare))));
 }
 
 export const getMarkets = (url: string) => call<Market[]>(at(url, "/markets"));
 
-export const getView = (url: string, after = 0) =>
-	call<View>(at(url, `/view?after=${after}`));
+export const getView = (url: string, after = 0) => call<View>(at(url, `/view?after=${after}`));

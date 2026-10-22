@@ -6,6 +6,9 @@
 		"build": "pnpm -r build",
 		"test": "pnpm -r test",
 		"check": "biome check .",
+		"check:ci": "biome ci .",
+		"lint": "biome lint .",
+		"format": "biome format --write .",
 		"fix": "biome check --write .",
 		"prepare": "husky"
 	},
