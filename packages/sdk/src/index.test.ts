@@ -19,10 +19,7 @@ import {
 
 // Written by `cargo test -p zpredict-core --test vectors`.
 const v = JSON.parse(
-	readFileSync(
-		new URL("../../core/testdata/vectors.json", import.meta.url),
-		"utf8",
-	),
+	readFileSync(new URL("../../core/testdata/vectors.json", import.meta.url), "utf8"),
 );
 
 type Row = Omit<Order, "account"> & { account: string; hex: string };
