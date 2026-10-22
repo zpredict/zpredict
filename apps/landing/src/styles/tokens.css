@@ -1,28 +1,15 @@
-/* Design tokens from the MotionSites "Crypto Vault" template. */
+/* Shared ASCII Studio tokens (packages/brand), plus the landing's scale variables. */
+@import "@zpredict/brand/tokens.css";
+
 :root {
-	--font-display: "Figtree", "Helvetica Neue", Arial, sans-serif;
-	--font-body: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
-	--font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+	/* 1600 × 1000 artboard scale and the content-section scale; set in Base.astro before first paint. */
+	--composition-scale: 1;
+	--content-scale: 1;
+	--marquee-h: 80px;
+}
 
-	--panel-bg: #020202;
-	--pane-base: #262626;
-	--pane-top: #313131;
-	--pane-bottom: #111212;
-	--card-top: #1a1b1b;
-	--card-bottom: #111212;
-	--hairline: rgba(255, 255, 255, 0.1);
-	--tag-fill: rgba(255, 255, 255, 0.05);
-	--glass-fill: rgba(0, 0, 0, 0.1);
-	--glass-line: rgba(255, 255, 255, 0.14);
-	--surface-card: linear-gradient(0deg, var(--card-bottom) 0%, var(--card-top) 100%);
-
-	--r-panel: 33px;
-	--r-pane: 26px;
-	--r-cta: 14px;
-	--r-pill: 10px;
-	--r-tag: 29px;
-
-	--gap: 20px;
-	--pad: clamp(16px, 3vw, 40px);
-	--ease: cubic-bezier(0.22, 1, 0.36, 1);
+@media (max-width: 900px) {
+	:root {
+		--marquee-h: calc(56px + env(safe-area-inset-bottom));
+	}
 }

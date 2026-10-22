@@ -1,38 +1,55 @@
 ---
-import "@fontsource/figtree/latin-500.css";
-import "@fontsource/instrument-sans/latin-400.css";
-import figtree from "@fontsource/figtree/files/figtree-latin-500-normal.woff2?url";
-import instrumentSans from "@fontsource/instrument-sans/files/instrument-sans-latin-400-normal.woff2?url";
+import "@fontsource/jetbrains-mono/latin-500.css";
+import mono from "@fontsource/jetbrains-mono/files/jetbrains-mono-latin-500-normal.woff2?url";
 import "../styles/global.css";
 import { site } from "../data/site";
 
 interface Props {
 	title?: string;
 	description?: string;
+	/** Show the loading counter (the page must render <Preloader />). */
+	preloader?: boolean;
 }
 
-const { title = site.title, description = site.description } = Astro.props;
+const { title = site.title, description = site.description, preloader = false } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const ogImage = new URL(site.ogImage, Astro.site);
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" data-preload={preloader ? "" : undefined}>
 	<head>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<!-- Cascade layer order must be declared before any bundled CSS; see styles/global.css. -->
 		<style is:inline>
-			@layer reset, base, ui;
+			@layer reset, ui;
 		</style>
-		<!-- The two weights above the fold; the CSS is inlined, so these start with the HTML. -->
-		<link rel="preload" href={figtree} as="font" type="font/woff2" crossorigin />
-		<link rel="preload" href={instrumentSans} as="font" type="font/woff2" crossorigin />
+		<!--
+			Before first paint: the artboard scales (no jump once the bundle runs) and, unless motion
+			is reduced, the preloader. The timeout releases the page even if the bundle never runs.
+		-->
+		<script is:inline>
+			(() => {
+				const d = document.documentElement;
+				const w = innerWidth;
+				const h = innerHeight;
+				d.style.setProperty("--composition-scale", String(Math.min(w / 1600, h / 1000)));
+				d.style.setProperty("--content-scale", String(Math.min(w / 1600, h / 1000)));
+				// Mirrors --frame-size in components/hero/ModelFrame.astro.
+				d.style.setProperty("--snap-scale", String(((w <= 900 ? 0.96 : 0.8) * Math.min(w, h)) / 741.6));
+				if (d.hasAttribute("data-preload") && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+					d.classList.add("is-loading");
+					setTimeout(() => d.classList.remove("is-loading"), 4000);
+				}
+			})();
+		</script>
+		<link rel="preload" href={mono} as="font" type="font/woff2" crossorigin />
 		<slot name="head" />
 		<title>{title}</title>
 		<meta name="description" content={description} />
 		<meta name="referrer" content="no-referrer" />
-		<meta name="theme-color" content="#020202" />
+		<meta name="theme-color" content="#050505" />
 		<link rel="canonical" href={canonical} />
 		<meta property="og:type" content="website" />
 		<meta property="og:site_name" content="zPredict" />
@@ -49,26 +66,6 @@ const ogImage = new URL(site.ogImage, Astro.site);
 		<link rel="manifest" href="/site.webmanifest" />
 	</head>
 	<body>
-		<!-- Gradients shared by every <Ring /> -->
-		<svg class="svg-defs" aria-hidden="true" width="0" height="0">
-			<linearGradient id="ringDown" x1="0" y1="0" x2="0" y2="1">
-				<stop offset=".5436" stop-color="#999" stop-opacity="0"></stop>
-				<stop offset="1" stop-color="#fff" stop-opacity=".14"></stop>
-			</linearGradient>
-			<linearGradient id="ringUp" x1="0" y1="1" x2="0" y2="0">
-				<stop offset=".5436" stop-color="#999" stop-opacity="0"></stop>
-				<stop offset="1" stop-color="#fff" stop-opacity=".14"></stop>
-			</linearGradient>
-		</svg>
 		<slot />
 	</body>
 </html>
-
-<style>
-	.svg-defs {
-		position: absolute;
-		width: 0;
-		height: 0;
-		overflow: hidden;
-	}
-</style>

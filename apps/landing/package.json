@@ -3,13 +3,15 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "node scripts/copy-brand.mjs && astro dev",
-		"build": "node scripts/copy-brand.mjs && astro build",
+		"prepare:deps": "pnpm --filter @zpredict/ascii build && node scripts/copy-brand.mjs",
+		"dev": "pnpm prepare:deps && astro dev",
+		"build": "pnpm prepare:deps && astro build",
 		"preview": "astro preview"
 	},
 	"dependencies": {
-		"@fontsource/figtree": "^5.3.0",
-		"@fontsource/instrument-sans": "^5.3.0",
+		"@fontsource/jetbrains-mono": "^5.3.0",
+		"@zpredict/ascii": "workspace:*",
+		"@zpredict/brand": "workspace:*",
 		"astro": "^7.4.2"
 	}
 }
