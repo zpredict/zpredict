@@ -1,15 +1,21 @@
 """A browser stand-in for scripts: XOR-shares orders and withdrawals to the three
-relayers and combines their shares when reading back, as @zpredict/sdk does.
+relayers and combines their shares when reading back, as @zpredict/sdk does. The tag
+(hex32) is the account's credential and never leaves whole.
 
   relayer_client.py order <tag> <market> <yes|no> <price> <size>   -> orderId
   relayer_client.py fill <orderId>                                  -> pending | <size> <cost> <side> <filled>
   relayer_client.py balance <tag>                                   -> half-ticks
   relayer_client.py withdraw <tag> <half-ticks> <unified address>   -> withdrawalId
+  relayer_client.py forge <tag> <relayer> <half-ticks> <address>    -> withdrawalId
   relayer_client.py withdrawal <withdrawalId>                       -> <status> [txid]
   relayer_client.py outcome <market>                                -> yes | no | -
 
+`forge` plays a malicious relayer: it knows the account id and its own key share (from
+its deposit-memo slot), and asks for a withdrawal with only that. It must be refused.
+
 RELAYERS lists the three relayer base URLs, space-separated, in party order.
 """
+import hashlib
 import json
 import os
 import secrets
@@ -44,8 +50,26 @@ def combine(hexes):
     return out
 
 
-def account(tag):
-    return bytes.fromhex(tag)[:8]
+def account_hex(tag):
+    """The public account id (hex16, u64 LE), as zpredict_settle::memo::account_id."""
+    return hashlib.blake2b(bytes.fromhex(tag), digest_size=8, person=b"zPredictAccount1").hexdigest()
+
+
+def key_shares(tag):
+    """Each relayer's deterministic share of the tag, as zpredict_settle::memo::key_shares."""
+    t = bytes.fromhex(tag)
+    s = [hashlib.blake2b(t + bytes([i]), digest_size=16, person=b"zPredictKeyShare").digest() for i in (0, 1)]
+    return [s[0], s[1], bytes(a ^ b ^ c for a, b, c in zip(t, *s))]
+
+
+def withdraw(shares, amount, address):
+    wid = secrets.token_hex(16)
+    bodies = [
+        {"withdrawalId": wid, "share": s.hex(), "amount": int(amount), "address": address}
+        for s in shares
+    ]
+    post_all("/withdrawals", bodies)
+    return wid
 
 
 def post_all(path, bodies):
@@ -59,7 +83,7 @@ def main(cmd, *args):
     if cmd == "order":
         tag, market, side, price, size = args
         side = {"yes": 0, "no": 1}[side]
-        order = struct.pack("<IBBI", int(market), side, int(price), int(size)) + account(tag)
+        order = struct.pack("<IBBI", int(market), side, int(price), int(size)) + bytes.fromhex(tag)
         oid = secrets.token_hex(16)
         post_all("/orders", [{"orderId": oid, "share": s.hex()} for s in split(order)])
         print(oid)
@@ -72,17 +96,17 @@ def main(cmd, *args):
         size, cost = struct.unpack("<II", rec[:8])
         print(size, cost, rec[8], rec[9] & 1)
     elif cmd == "balance":
-        shares = [call(u, f"/accounts/{args[0]}")[1]["balanceShare"] for u in URLS]
+        tag = args[0]
+        paths = [f"/accounts/{account_hex(tag)}?key={k.hex()}" for k in key_shares(tag)]
+        shares = [call(u, p)[1]["balanceShare"] for u, p in zip(URLS, paths)]
         print(struct.unpack("<Q", combine(shares))[0])
     elif cmd == "withdraw":
         tag, amount, address = args
-        wid = secrets.token_hex(16)
-        bodies = [
-            {"withdrawalId": wid, "share": s.hex(), "amount": int(amount), "address": address}
-            for s in split(account(tag))
-        ]
-        post_all("/withdrawals", bodies)
-        print(wid)
+        print(withdraw(split(bytes.fromhex(tag)), amount, address))
+    elif cmd == "forge":
+        tag, relayer, amount, address = args
+        mine = key_shares(tag)[int(relayer)]
+        print(withdraw([mine, bytes(16), bytes(16)], amount, address))
     elif cmd == "withdrawal":
         _, w = call(URLS[0], f"/withdrawals/{args[0]}")
         print(w.get("status", "unknown"), w.get("txid", ""))

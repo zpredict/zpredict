@@ -1,6 +1,6 @@
 "use client";
-// The account: a random tag kept only in this browser, and its balance,
-// combined from the three relayers' XOR balance shares.
+// The account: a random tag kept only in this browser (its credential: relayers only ever
+// get shares of it), and its balance, combined from the three relayers' XOR balance shares.
 import { newTag } from "@zpredict/sdk";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { POLL_MS } from "@/lib/config";
@@ -39,9 +39,10 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 	usePoll(refresh, POLL_MS.balance, tag);
 
 	const claim = useCallback(async () => {
-		const r = await claimJudge();
-		save(KEYS.tag, r.tag);
-		setTag(r.tag);
+		const t = newTag();
+		await claimJudge(t);
+		save(KEYS.tag, t);
+		setTag(t);
 	}, []);
 
 	const create = useCallback(() => {

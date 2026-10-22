@@ -8,13 +8,13 @@ use zpredict_circuit::{
 use zpredict_core::{Order, Side, clear, fill_records};
 
 /// Fill records with no market or balance checks, to see that those checks mattered.
-fn unchecked(orders: &[[u8; 18]]) -> Vec<[u8; 10]> {
+fn unchecked(orders: &[[u8; 26]]) -> Vec<[u8; 10]> {
     let dummy = Order {
         market: 0,
         side: Side::Yes,
         price: 1,
         size: 0,
-        account: 0,
+        key: [0; 16],
     };
     let batch: Vec<Order> = orders
         .iter()
@@ -72,6 +72,39 @@ fn other_shapes_match() {
     for _ in 0..30 {
         let batch = random_batch(&mut rng, 7, 5);
         assert_eq!(agreed(&batch), expected(&batch));
+    }
+}
+
+/// A relayer knows every account's id and its own share of every key, nothing more. A
+/// withdrawal or an order built from that, for a funded account, must not touch its row.
+#[test]
+fn a_relayer_cannot_act_as_an_account() {
+    let mut rng = Rng(85);
+    for _ in 0..20 {
+        let mut b = random_batch(&mut rng, 8, 16);
+        let Some(r) = (0..16).find(|&r| b.accounts[r].id != 0 && b.accounts[r].balance > 0) else {
+            continue;
+        };
+        for p in 0..3 {
+            // Relayer p withdraws the whole balance with the only key material it has.
+            let forged = b.key_shares[p][r];
+            let ids: Vec<[u8; 16]> = vec![forged, [0; 16]];
+            b.withdrawal_shares = [ids.clone(), vec![[0; 16]; 2], vec![[0; 16]; 2]];
+            b.withdrawals = vec![
+                zpredict_core::Withdrawal {
+                    key: forged,
+                    amount: b.accounts[r].balance,
+                },
+                zpredict_core::Withdrawal {
+                    key: [0; 16],
+                    amount: 0,
+                },
+            ];
+            b.public.withdrawals = vec![b.accounts[r].balance, 0];
+            let got = agreed(&b);
+            assert_eq!(got, expected(&b));
+            assert!(!got.withdrawn[0], "relayer {p} withdrew from row {r}");
+        }
     }
 }
 

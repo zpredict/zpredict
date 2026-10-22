@@ -1,7 +1,8 @@
 //! `POST /withdrawals` and `GET /withdrawals/{id}` (only with `[settlement]` on).
 //!
-//! The browser sends the same request to all three relayers, each with its own XOR
-//! share of the account id: no relayer learns whose withdrawal it is. Amount and address
+//! The browser sends the same request to all three relayers, each with its own fresh
+//! XOR share of the account key: no relayer learns whose withdrawal it is, and none can
+//! forge one (the circuit pays only if the shares rebuild a row's key). Amount and address
 //! are public (the payout needs them). The circuit takes the amount only if the account
 //! covers it; then relayer 0 and 1 sign one batched payout.
 
@@ -27,7 +28,7 @@ struct WithdrawalPost {
     address: String,
 }
 
-/// `{withdrawalId: hex32, share: hex16, amount: half-ticks, address: unified address}`
+/// `{withdrawalId: hex32, share: hex32, amount: half-ticks, address: unified address}`
 /// → `202 {}`. The address must carry an Orchard-shaped receiver for the escrow's
 /// network; the amount must exceed the fee ([`WITHDRAWAL_FEE`] half-ticks, kept).
 pub async fn post(State(api): State<Api>, body: Bytes) -> Response {
@@ -38,7 +39,7 @@ pub async fn post(State(api): State<Api>, body: Bytes) -> Response {
     let Ok(b) = serde_json::from_slice::<WithdrawalPost>(&body) else {
         return bad("bad withdrawal");
     };
-    if !is_hex(&b.withdrawal_id, 32) || !is_hex(&b.share, 16) {
+    if !is_hex(&b.withdrawal_id, 32) || !is_hex(&b.share, 32) {
         return bad("bad withdrawal");
     }
     if b.amount <= WITHDRAWAL_FEE || b.amount > u64::MAX / crate::ledger::ZATS_PER_HALF_TICK {

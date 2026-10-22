@@ -9,29 +9,29 @@ fn hex(b: &[u8]) -> String {
 
 fn order_json(o: &Order) -> String {
     format!(
-        r#"{{"market": {}, "side": {}, "price": {}, "size": {}, "account": "{}", "hex": "{}"}}"#,
+        r#"{{"market": {}, "side": {}, "price": {}, "size": {}, "key": "{}", "hex": "{}"}}"#,
         o.market,
         o.side as u8,
         o.price,
         o.size,
-        o.account,
+        hex(&o.key),
         hex(&o.encode())
     )
 }
 
 fn vectors() -> String {
-    let o = |market, side, price, size, account| Order {
+    let o = |market, side, price, size, key: u8| Order {
         market,
         side,
         price,
         size,
-        account,
+        key: std::array::from_fn(|i| key.wrapping_add(i as u8)),
     };
     let orders = [
         o(7, Side::Yes, 63, 10, 42),
         o(1, Side::No, 1, 1, 0),
-        o(u32::MAX, Side::No, 99, MAX_SIZE, u64::MAX),
-        o(0x0102_0304, Side::Yes, 50, 0, 0x0102_0304_0506_0708),
+        o(u32::MAX, Side::No, 99, MAX_SIZE, 0xf0),
+        o(0x0102_0304, Side::Yes, 50, 0, 1),
     ];
 
     let plain = orders[0].encode();

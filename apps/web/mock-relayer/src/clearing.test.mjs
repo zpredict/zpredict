@@ -10,7 +10,7 @@ const o = (side, price, size) => ({
 	side,
 	price,
 	size,
-	account: 42n,
+	key: "2a".repeat(16),
 });
 
 test("crosses at midpoint", () => {

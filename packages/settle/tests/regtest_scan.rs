@@ -6,7 +6,7 @@
 use std::path::PathBuf;
 
 use zpredict_oracle::{Chain, Lightwalletd};
-use zpredict_settle::{HALF_TICKS_PER_UNIT, MemoKey, Scanner, decode_fvk, store};
+use zpredict_settle::{HALF_TICKS_PER_UNIT, MemoKey, Scanner, decode_fvk, memo, store};
 
 fn env(name: &str) -> String {
     std::env::var(name).unwrap_or_else(|_| panic!("{name} not set; run scripts/scan-e2e.sh"))
@@ -16,7 +16,7 @@ fn env(name: &str) -> String {
 #[ignore = "needs the regtest chain from scripts/scan-e2e.sh"]
 fn every_relayer_sees_the_deposit() {
     let run = PathBuf::from(env("RUN_DIR"));
-    let tag = hex::decode(env("DEPOSIT_TAG")).unwrap();
+    let tag: [u8; 16] = hex::decode(env("DEPOSIT_TAG")).unwrap().try_into().unwrap();
     let units: u64 = env("DEPOSIT_UNITS").parse().unwrap();
     let from: u32 = env("DEPOSIT_FROM").parse().unwrap();
 
@@ -36,7 +36,8 @@ fn every_relayer_sees_the_deposit() {
         let deposits: Vec<_> = found.iter().filter_map(|s| s.as_ref().ok()).collect();
         assert_eq!(deposits.len(), 1, "relayer {relayer}: {found:?}");
         let d = deposits[0];
-        assert_eq!((d.units, &d.tag[..]), (units, &tag[..]));
+        let slot = (memo::account_id(&tag), memo::key_shares(&tag)[relayer]);
+        assert_eq!((d.units, (d.account, d.key_share)), (units, slot));
         let share = if relayer == 0 {
             units * HALF_TICKS_PER_UNIT
         } else {

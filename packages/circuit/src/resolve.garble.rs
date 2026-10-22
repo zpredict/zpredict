@@ -7,8 +7,9 @@ struct Party {
     accounts: [[u8; 16]; {rows}],
     balance_mask: [[u8; 8]; {rows}],
     fills: [[u8; 10]; {k}],
+    keys: [[u8; 16]; {rows}],
     market: u32,
-    orders: [[u8; 18]; {k}],
+    orders: [[u8; 26]; {k}],
     outcome: u8,
 }
 
@@ -23,25 +24,33 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 8]; {rows}], bool) {
         & (p2.outcome == outcome)
         & (outcome <= 1u8);
 
-    // Rebuild the balance table: id u64 | balance u64 per row.
-    let mut id = [0u64; {rows}];
+    // Rebuild each row's key (shares from the three relayers, two u64 words): an order or
+    // withdrawal may use a row only by carrying the same key, which no single relayer holds.
+    let mut klo = [0u64; {rows}];
+    let mut khi = [0u64; {rows}];
+    for m in 0usize..{rows}usize {
+        for k in 0usize..8usize {
+            let lo = p0.keys[m][k] ^ p1.keys[m][k] ^ p2.keys[m][k];
+            let hi = p0.keys[m][8usize + k] ^ p1.keys[m][8usize + k] ^ p2.keys[m][8usize + k];
+            klo[m] = klo[m] | ((lo as u64) << ((8usize * k) as u8));
+            khi[m] = khi[m] | ((hi as u64) << ((8usize * k) as u8));
+        }
+    }
+
+    // Rebuild the balances: id u64 | balance u64 per row (the id is only a label).
     let mut balance = [0u64; {rows}];
     for m in 0usize..{rows}usize {
-        let mut r = [0u8; 16];
-        for k in 0usize..16usize {
-            r[k] = p0.accounts[m][k] ^ p1.accounts[m][k] ^ p2.accounts[m][k];
-        }
         for k in 0usize..8usize {
-            id[m] = id[m] | ((r[k] as u64) << ((8usize * k) as u8));
-            balance[m] = balance[m] | ((r[8usize + k] as u64) << ((8usize * k) as u8));
+            let b = p0.accounts[m][8usize + k] ^ p1.accounts[m][8usize + k] ^ p2.accounts[m][8usize + k];
+            balance[m] = balance[m] | ((b as u64) << ((8usize * k) as u8));
         }
     }
 
     // Each position (an order and its combined fill record) that filled on the winning
-    // side of this market pays size × 200 half-ticks into its account's first row.
+    // side of this market pays size × 200 half-ticks into the first row with its key.
     for e in 0usize..{k}usize {
-        let mut o = [0u8; 18];
-        for k in 0usize..18usize {
+        let mut o = [0u8; 26];
+        for k in 0usize..26usize {
             o[k] = p0.orders[e][k] ^ p1.orders[e][k] ^ p2.orders[e][k];
         }
         let mut f = [0u8; 10];
@@ -54,16 +63,18 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 8]; {rows}], bool) {
             m = m | ((o[k] as u32) << ((8usize * k) as u8));
             size = size | ((f[k] as u64) << ((8usize * k) as u8));
         }
-        let mut account = 0u64;
+        let mut olo = 0u64;
+        let mut ohi = 0u64;
         for k in 0usize..8usize {
-            account = account | ((o[10usize + k] as u64) << ((8usize * k) as u8));
+            olo = olo | ((o[10usize + k] as u64) << ((8usize * k) as u8));
+            ohi = ohi | ((o[18usize + k] as u64) << ((8usize * k) as u8));
         }
         let wins = agreed & (m == market) & ((f[9] & 1u8) == 1u8) & (f[8] == outcome);
         // size × 200 = size × (128 + 64 + 8), by shifts: Garble's multiplier costs more.
         let pay = if wins { (size << 7u8) + (size << 6u8) + (size << 3u8) } else { 0u64 };
         let mut found = false;
         for r in 0usize..{rows}usize {
-            let hit = !found & (account == id[r]);
+            let hit = !found & (olo == klo[r]) & (ohi == khi[r]);
             found = found | hit;
             balance[r] = balance[r] + if hit { pay } else { 0u64 };
         }

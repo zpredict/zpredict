@@ -39,8 +39,8 @@ export default function DepositInfo() {
 				<li>
 					From a shielded wallet, send exactly <strong>{zec} ZEC</strong> with this payment request.
 					It pays the escrow&apos;s unified address (Ironwood receiver only, FROST 2-of-3) and
-					carries a memo holding only your tag, encrypted separately to each relayer. Don&apos;t
-					edit the amount or the memo.
+					carries a memo giving each relayer only its own share of your tag. Don&apos;t edit the
+					amount or the memo.
 					{request && (
 						<>
 							<code className="deposit__ua">{request.uri}</code>

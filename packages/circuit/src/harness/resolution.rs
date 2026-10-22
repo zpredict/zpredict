@@ -1,9 +1,9 @@
 //! Seeded resolutions and what the resolution circuit must output for them.
 
-use zpredict_core::{ACCOUNT_LEN, Account, BALANCE_LEN, FILL_LEN, ORDER_LEN, Side, resolve};
+use zpredict_core::{ACCOUNT_LEN, Account, BALANCE_LEN, FILL_LEN, Key, ORDER_LEN, Side, resolve};
 
 use super::{MARKETS, Rng, UNLISTED, decoded, expected, random_batch, split3};
-use crate::resolve::Position;
+use crate::resolve::{Position, Table};
 
 /// A market resolving over positions from a cleared batch.
 pub struct Resolution {
@@ -15,6 +15,14 @@ pub struct Resolution {
     pub accounts: Vec<Account>,
     pub position_shares: [Vec<Position>; 3],
     pub account_shares: [Vec<[u8; ACCOUNT_LEN]>; 3],
+    pub key_shares: [Vec<Key>; 3],
+}
+
+impl Resolution {
+    /// Party `p`'s shares of the table.
+    pub fn table(&self, p: usize) -> Table<'_> {
+        (&self.account_shares[p], &self.key_shares[p])
+    }
 }
 
 /// `positions` positions from one random batch, cleared by the reference, over the
@@ -25,8 +33,8 @@ pub fn random_resolution(rng: &mut Rng, positions: usize, rows: usize) -> Resolu
     let after = expected(&batch);
     let accounts: Vec<Account> = (batch.accounts.iter().zip(&after.balances))
         .map(|(a, b)| Account {
-            id: a.id,
             balance: u64::from_le_bytes(*b),
+            ..*a
         })
         .collect();
     let market = [MARKETS[0], MARKETS[1], MARKETS[0], UNLISTED][rng.below(4) as usize];
@@ -49,6 +57,7 @@ pub fn random_resolution(rng: &mut Rng, positions: usize, rows: usize) -> Resolu
                 .collect()
         }),
         account_shares: split3(rng, &rows_plain),
+        key_shares: batch.key_shares,
         orders,
         records,
         accounts,

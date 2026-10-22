@@ -1,6 +1,7 @@
 //! The deposit scanner: each relayer reads the escrow chain with the shared viewing key
 //! and its own memo key, and records every confirmed, fixed-denomination deposit with a
-//! readable account tag. Flagged notes (odd amounts, no tag) are never credited.
+//! readable memo slot (account id and this relayer's key share). Flagged notes (odd
+//! amounts, no readable slot) are never credited.
 //!
 //! A deposit is credited only once all three scanners have recorded it (the batch hello
 //! intersects their offers), so no relayer can credit what the chain does not show.
@@ -54,11 +55,11 @@ fn step(
     let found = scanner.blocks(node, from, to)?;
     let mut s = state.lock().expect("state lock");
     for d in found.into_iter().flatten() {
-        let mut account = [0u8; 8];
-        account.copy_from_slice(&d.tag[..8]);
+        let (id, share) = (d.account, hex::encode(d.key_share));
+        s.record(Event::Key { id, share })?;
         s.record(Event::Deposit {
             note: format!("{}-{}", hex::encode(d.note.txid), d.note.action),
-            account: u64::from_le_bytes(account),
+            account: d.account,
             amount: d.units * HALF_TICKS_PER_UNIT,
         })?;
     }

@@ -24,12 +24,13 @@ impl<M: Matcher> Batcher<M> {
         n: usize,
     ) -> Result<()> {
         let side = if outcome == 0 { Side::Yes } else { Side::No };
-        let (positions, mut table) = {
+        let (positions, mut table, keys) = {
             let mut s = self.state.lock().expect("state lock");
             if links.party == 0 {
                 s.record(Event::Seal { rows: n })?;
             }
-            (s.positions(), s.table.shares(n, self.rows))
+            let keys = s.table.key_shares(n, self.rows);
+            (s.positions(), s.table.shares(n, self.rows), keys)
         };
         let empty: Position = ([0; ORDER_LEN], [0; FILL_LEN]);
         let mut chunks: Vec<Vec<Position>> = positions
@@ -41,7 +42,7 @@ impl<M: Matcher> Batcher<M> {
             .for_each(|c| c.resize(DEFAULT_POSITIONS, empty));
         for chunk in &chunks {
             let balances = (self.matcher)
-                .resolve(links, market, side, chunk, &table)
+                .resolve(links, market, side, chunk, (&table, &keys))
                 .await?;
             (table.iter_mut().zip(&balances)).for_each(|(row, b)| row[8..].copy_from_slice(b));
         }

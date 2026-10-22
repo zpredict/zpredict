@@ -1,22 +1,26 @@
 //! A batch with collateral: an order only crosses if its market is in the batch and its
 //! account can cover its worst case.
 
-use crate::ACCOUNT_LEN;
 use crate::clearing::{Fill, clear, clearing_price};
 use crate::order::Order;
+use crate::{ACCOUNT_LEN, Key};
 
 /// One row of the relayers' balance table.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Account {
-    /// The account tag's first 8 bytes as `u64`, as in [`Order::account`].
+    /// The account's public label (`BLAKE2b("zPredictAccount1", key)[..8]`, made by the
+    /// browser): what relayers credit deposits to and serve balances by. It spends nothing.
     pub id: u64,
+    /// The credential, held by relayers only as XOR shares: an order or withdrawal uses
+    /// this row only if it carries the same key.
+    pub key: Key,
     /// Half-ticks: 1 unit of collateral = 200.
     pub balance: u64,
 }
 
 impl Account {
-    /// Little-endian layout: id(8) balance(8). Relayers XOR-share rows like orders.
-    /// An all-zero row is padding: free to give to a new account.
+    /// Little-endian layout: id(8) balance(8). Relayers XOR-share rows like orders; the
+    /// key is shared separately. An all-zero row is padding.
     pub fn encode(&self) -> [u8; ACCOUNT_LEN] {
         let mut b = [0u8; ACCOUNT_LEN];
         b[0..8].copy_from_slice(&self.id.to_le_bytes());
@@ -46,13 +50,13 @@ pub struct Cleared {
 ///
 /// `markets` lists the batch's markets; `0` marks an unused slot. Orders for any market
 /// not listed are dummies. Then, in batch order, each order reserves its
-/// [`worst_case_cost`] from the first account row whose id matches its `account`. An
+/// [`worst_case_cost`] from the first account row whose key matches its `key`. An
 /// order with no matching row, or whose worst case exceeds what is left after earlier
 /// orders' reservations (across all markets), becomes a size-0 dummy. Each market's
 /// survivors are cleared with [`clear`] on their own, and each account is debited what
 /// its orders actually paid, which never exceeds what they reserved.
 pub fn clear_with_balances(markets: &[u32], batch: &[Order], accounts: &[Account]) -> Cleared {
-    let row = |o: &Order| accounts.iter().position(|a| a.id == o.account);
+    let row = |o: &Order| accounts.iter().position(|a| a.key == o.key);
     let mut left: Vec<u64> = accounts.iter().map(|a| a.balance).collect();
     let funded: Vec<Order> = batch
         .iter()
@@ -110,12 +114,14 @@ mod tests {
     use super::*;
     use crate::order::{Side, test_order as o};
 
-    fn acct(id: u64, balance: u64) -> Account {
-        Account { id, balance }
+    /// Account `n`'s row: id `n`, key `[n; 16]`.
+    fn acct(n: u8, balance: u64) -> Account {
+        let (id, key) = (n.into(), [n; 16]);
+        Account { id, key, balance }
     }
 
-    fn with_account(mut ord: Order, account: u64) -> Order {
-        ord.account = account;
+    fn with_account(mut ord: Order, n: u8) -> Order {
+        ord.key = [n; 16];
         ord
     }
 

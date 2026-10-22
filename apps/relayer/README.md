@@ -64,11 +64,12 @@ After a batch, **every** batched order is `filled` with a `fillShare`, because a
 
 ## Balances (`table.rs`)
 
-The circuit (#46) checks collateral against a **balance table** of `table_rows` rows (`id u64 | balance u64`, XOR-shared). The **whole table goes into every batch**, so no relayer learns who traded. Each order spends from the first row whose id matches its `account`. An order with no row, or one that can't cover its worst case, becomes a dummy.
+The circuit (#46) checks collateral against a **balance table** of `table_rows` rows (`id u64 | balance u64`, XOR-shared). The **whole table goes into every batch**, so no relayer learns who traded. Each row also has a 128-bit **key** (the account's credential), which each relayer holds only as its own share, and each order spends from the first row whose key equals the order's `key`. The row id is a public label and grants nothing. An order with no row, or one that can't cover its worst case, becomes a dummy.
 
 - **Rows and order:** relayer 0 owns the row order. Its share of a new row is the plain id and amount: `(row, 0, 0)`. Relayers 1 and 2 learn new row ids from relayer 0's hello and append all-zero shares. Rows are only ever appended, and a table that is not a prefix of relayer 0's fails the batch.
-- **Credits:** scanned deposits enter the circuit as public per-row credits once all three relayers scanned them; relayer 0 opens a zero row for a new depositor's account. Judge claims (`State::credit`, relayer 0) add to a fresh row's `(row, 0, 0)` share, or become a pending public credit once the row has been through MPC (#57).
-- **Reads:** `/accounts/:tag` serves the balance share of the tag's first row (`tag` → id = first 8 bytes, little-endian, as in `Order::account`).
+- **Credits:** scanned deposits enter the circuit as public per-row credits once all three relayers scanned them; relayer 0 opens a zero row for a new depositor's account. A judge claim (`State::claim`, new ids only) credits a fresh row's `(row, 0, 0)` share at relayer 0. Top-ups to a row that has been through MPC become a pending public credit (#57).
+- **Keys (`table.rs`):** each relayer records its key share per account id from its own deposit-memo slot or a judge claim. Honest shares are deterministic per account, so a second, different share for a known id means another relayer tried to choose this relayer's share; the key is then burned here (a fresh random share every batch), which loses the row instead of handing it over. Rows without a usable share get fresh randomness the same way.
+- **Reads:** `GET /accounts/{id}?key={share}` serves the balance share of account `id` (hex16, u64 LE) only to a caller holding this relayer's key share for it, so a relayer cannot collect the other two shares of someone's balance.
 - **Sealing:** relayer 0 marks the rows it puts into a batch as sealed before the run, so a credit that arrives mid-batch goes to a new row instead of being overwritten by the batch output.
 
 ## Matchers
@@ -80,24 +81,24 @@ The circuit (#46) checks collateral against a **balance table** of `table_rows` 
 
 ## State (`state.rs`, `store.rs`)
 
-Every change is first appended to `data_dir/events.jsonl` (fsynced) and then applied in memory (`state/apply.rs`). Events are: order shares, credits, adopted rows, seals, batch results (fill shares, balance shares, prices, expiries, credited deposits, withdrawal results), scanned deposits and scan progress, withdrawal requests, resolved markets and payout status. At startup the log is replayed through the same code, so a restart keeps every acknowledged share. A torn last line from a crash mid-write is dropped. The directory is mode 0700. The log holds only this relayer's own shares.
+Every change is first appended to `data_dir/events.jsonl` (fsynced) and then applied in memory (`state/apply.rs`). Events are: order shares, credits, key shares, adopted rows, seals, batch results (fill shares, balance shares, prices, expiries, credited deposits, withdrawal results), scanned deposits and scan progress, withdrawal requests, resolved markets and payout status. At startup the log is replayed through the same code, so a restart keeps every acknowledged share. A torn last line from a crash mid-write is dropped. The directory is mode 0700. The log holds only this relayer's own shares.
 
 ## Settlement (`escrow/`, `ledger.rs`)
 
-- **Deposits:** `escrow/scan.rs` reads the escrow chain (`escrow_lightwalletd`) every 20 s with the shared viewing key and this relayer's memo key, and records each confirmed fixed-denomination deposit with a readable tag. They are credited through the circuit once all three relayers recorded them.
+- **Deposits:** `escrow/scan.rs` reads the escrow chain (`escrow_lightwalletd`) every 20 s with the shared viewing key and this relayer's memo key, and records each confirmed fixed-denomination deposit with a readable memo slot (account id and this relayer's key share). They are credited through the circuit once all three relayers recorded them.
 - **Positions:** `State::positions()`, every batched order's share with its fill share, is the input to the resolution program.
-- **Withdrawals:** `POST /withdrawals {withdrawalId, share, amount, address}` (all three get the same request, each with its own XOR share of the account id) and `GET /withdrawals/{id}` → `pending | refused | debited | paying | paid` (+ txid). Each keeps 2 half-ticks (10,000 zats) toward the ZIP 317 fee; the escrow pays the rest of the fee.
+- **Withdrawals:** `POST /withdrawals {withdrawalId, share, amount, address}` (all three get the same request, each with its own fresh XOR share of the account key, hex32) and `GET /withdrawals/{id}` → `pending | refused | debited | paying | paid` (+ txid). Each keeps 2 half-ticks (10,000 zats) toward the ZIP 317 fee; the escrow pays the rest of the fee.
 - **End to end:** `scripts/relayer-e2e.sh` runs deposit → trade → resolution → withdrawal on regtest through three real relayers.
 
 ## Privacy
 
-There are no access logs, no client addresses (the peer address is never read), and no cookies. Logs never contain request bodies. CORS answers only `web_origin`, bodies are capped at 1 KiB, and every response is `no-store`. A second share for the same orderId is refused (409). The relayer never forwards a share: peers exchange orderIds, table row ids (8-byte account ids, which every relayer already sees with each deposit) and MPC messages. The only outbound connections go to the two peers and the two configured lightwalletd endpoints (oracle and escrow).
+There are no access logs, no client addresses (the peer address is never read), and no cookies. Logs never contain request bodies. CORS answers only `web_origin`, bodies are capped at 1 KiB, and every response is `no-store`. A second share for the same orderId is refused (409). The relayer never forwards a share: peers exchange orderIds, table row ids (8-byte public account labels, which every relayer already sees with each deposit) and MPC messages. Key shares never leave the relayer that holds them except as MPC input. The only outbound connections go to the two peers and the two configured lightwalletd endpoints (oracle and escrow).
 
 ## Known gaps
 
-- **Table size (#48):** a batch carries only the first `table_rows` rows. Orders from accounts in later rows become dummies; rows are never reclaimed yet (that needs the withdrawal path, see DESIGN.md).
+- **Table size (#48):** a batch carries only the first `table_rows` rows. Orders from accounts in later rows become dummies; rows are never reclaimed yet (#64, see DESIGN.md).
 - **Pending top-ups:** a credit to an account whose row has already been batched waits for the next window's MPC (one runs even without orders), so `/accounts` shows it a window late.
-- **A relayer can act as any account:** relayers read every account's tag from deposit memos, so one of them could post order or withdrawal shares for someone else's account (DESIGN.md threat model, #85).
+- **Burned keys:** a relayer that registers a different key share for someone's id at another relayer cannot spend the account, but it does lock it (denial of service, like aborting MPC).
 - **A crashed payout stays `paying`:** if relayer 0 dies between recording `paying` and the broadcast, nothing retries; an operator checks the chain first.
 - **Positions are never pruned:** every resolution runs over all positions so far (16 per MPC run, ~3 s each on an M4 Pro).
 - **Outcome signatures:** markets resolve from the oracle lightwalletd, but `outcomeSig` waits for the FROST signer.

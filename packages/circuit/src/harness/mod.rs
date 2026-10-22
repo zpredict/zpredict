@@ -52,7 +52,7 @@ fn decoded(orders: &[[u8; zpredict_core::ORDER_LEN]]) -> Vec<Order> {
         side: Side::Yes,
         price: 1,
         size: 0,
-        account: 0,
+        key: [0; 16],
     };
     let decode = |o| Order::decode(o).unwrap_or(dummy);
     orders.iter().map(decode).collect()

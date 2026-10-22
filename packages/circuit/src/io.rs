@@ -3,7 +3,7 @@
 use polytune::garble_lang::GarbleProgram;
 use polytune::garble_lang::literal::Literal;
 use polytune::garble_lang::token::UnsignedNumType;
-use zpredict_core::{ACCOUNT_LEN, BALANCE_LEN, FILL_LEN, ORDER_LEN};
+use zpredict_core::{ACCOUNT_LEN, BALANCE_LEN, FILL_LEN, KEY_LEN, ORDER_LEN};
 
 use crate::Error;
 
@@ -15,8 +15,8 @@ pub struct Public {
     pub markets: Vec<u32>,
     /// Half-ticks added to each table row before clearing (deposits, judge credits).
     pub credits: Vec<u64>,
-    /// Each withdrawal slot's amount in half-ticks (0 = unused slot), taken from its
-    /// account's row only if the row covers it. Its length picks the program: keep it
+    /// Each withdrawal slot's amount in half-ticks (0 = unused slot), taken from the row
+    /// with its key only if the row covers it. Its length picks the program: keep it
     /// fixed, e.g. [`DEFAULT_WITHDRAWALS`](crate::DEFAULT_WITHDRAWALS).
     pub withdrawals: Vec<u64>,
 }
@@ -41,9 +41,12 @@ pub struct Shares<'a> {
     /// Its share of every balance-table row (`Account::encode`), in the same order at all
     /// three; the length picks the table size.
     pub accounts: &'a [[u8; ACCOUNT_LEN]],
-    /// Its share of each withdrawal slot's account id (`u64` LE), one per
-    /// `Public::withdrawals` entry; zero shares for unused slots.
-    pub withdrawals: &'a [[u8; 8]],
+    /// Its share of every row's key, one per row: a row is usable only by an order or
+    /// withdrawal carrying the same key, which no single relayer holds.
+    pub keys: &'a [[u8; KEY_LEN]],
+    /// Its share of each withdrawal slot's key, one per `Public::withdrawals` entry; zero
+    /// shares for unused slots.
+    pub withdrawals: &'a [[u8; KEY_LEN]],
 }
 
 /// What one relayer gets back from a batch.
@@ -136,9 +139,10 @@ pub(crate) fn input_bits(
         ("balance_mask", rows(&mask.balances)),
         ("credits", u64s(&public.credits)),
         ("fill_mask", rows(&mask.fills)),
+        ("keys", rows(shares.keys)),
         ("markets", markets),
         ("orders", rows(shares.orders)),
-        ("withdraw_accounts", rows(shares.withdrawals)),
+        ("withdraw_keys", rows(shares.withdrawals)),
         ("withdrawals", u64s(&public.withdrawals)),
     ];
     party_bits(prg, party, fields)

@@ -26,7 +26,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use tokio::time::{Instant, sleep, timeout};
 use zpredict_circuit::{DEFAULT_WITHDRAWALS, Public, Shares};
-use zpredict_core::ORDER_LEN;
+use zpredict_core::{KEY_LEN, ORDER_LEN};
 use zpredict_oracle::Status;
 use zpredict_settle::KeyShare;
 
@@ -125,7 +125,7 @@ impl<M: Matcher> Batcher<M> {
             .take(DEFAULT_WITHDRAWALS)
             .collect();
         let run = !ids.is_empty() || credits.iter().any(|&c| c > 0) || !slots.is_empty();
-        let (expired, orders, accounts, withdrawal_shares) = {
+        let (expired, orders, accounts, keys, withdrawal_shares) = {
             let mut s = self.state.lock().expect("state lock");
             if links.party == 0 && run {
                 s.record(Event::Seal { rows: n })?;
@@ -137,14 +137,21 @@ impl<M: Matcher> Batcher<M> {
                     .ok_or_else(|| Error::Peer("order vanished".into()))?;
                 *slot = o.share;
             }
-            let mut shares = vec![[0u8; 8]; DEFAULT_WITHDRAWALS];
+            let mut shares = vec![[0u8; KEY_LEN]; DEFAULT_WITHDRAWALS];
             for (slot, (id, _)) in shares.iter_mut().zip(&slots) {
                 let w = (s.ledger.withdrawal(id))
                     .ok_or_else(|| Error::Peer("withdrawal vanished".into()))?;
                 *slot = w.share;
             }
             let expired = s.expirable(a.batch, self.expire, &a.pending);
-            (expired, orders, s.table.shares(n, self.rows), shares)
+            let table = s.table.shares(n, self.rows);
+            (
+                expired,
+                orders,
+                table,
+                s.table.key_shares(n, self.rows),
+                shares,
+            )
         };
 
         let mut withdrawals = vec![0u64; DEFAULT_WITHDRAWALS];
@@ -157,6 +164,7 @@ impl<M: Matcher> Batcher<M> {
         let shares = Shares {
             orders: &orders,
             accounts: &accounts,
+            keys: &keys,
             withdrawals: &withdrawal_shares,
         };
         let done = if run {

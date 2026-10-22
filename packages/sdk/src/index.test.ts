@@ -2,20 +2,23 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
+	accountHex,
+	claimJudge,
 	combine,
 	decodeBalance,
 	decodeFill,
 	decodeOrder,
 	encodeOrder,
 	fromHex,
+	getBalance,
 	getFill,
+	keyShares,
 	type Order,
 	payoutZats,
 	RELAYERS,
 	split,
 	submitOrder,
 	submitWithdrawal,
-	tagAccount,
 	toHex,
 } from "./index.js";
 
@@ -24,13 +27,13 @@ const v = JSON.parse(
 	readFileSync(new URL("../../core/testdata/vectors.json", import.meta.url), "utf8"),
 );
 
-type Row = Omit<Order, "account"> & { account: string; hex: string };
+type Row = Order & { hex: string };
 const order = (r: Row): Order => ({
 	market: r.market,
 	side: r.side,
 	price: r.price,
 	size: r.size,
-	account: BigInt(r.account),
+	key: r.key,
 });
 
 test("orders encode and decode exactly like core", () => {
@@ -87,16 +90,50 @@ test("rejects malformed orders", () => {
 		{ price: 100 },
 		{ size: 2 ** 32 },
 		{ market: -1 },
-		{ account: 1n << 64n },
+		{ key: "00" },
+		{ key: "AB".repeat(16) },
 	]) {
 		assert.throws(() => encodeOrder({ ...ok, ...bad }), RangeError);
 	}
 });
 
-test("balance and tag", () => {
+test("balances: each relayer is asked with its own key share only", async (t) => {
 	assert.equal(decodeBalance(fromHex("c800000000000000")), 200n);
-	assert.equal(tagAccount(`2a${"00".repeat(15)}`), 42n);
-	assert.throws(() => tagAccount("2a"), RangeError);
+	const tag = `2a${"00".repeat(15)}`;
+	const shares = split(fromHex("c800000000000000"));
+	const urls: string[] = [];
+	t.mock.method(globalThis, "fetch", async (url: string) => {
+		urls.push(url);
+		const i = RELAYERS.findIndex((r) => url.startsWith(r));
+		return Response.json({ balanceShare: toHex(shares[i]) });
+	});
+	assert.equal(await getBalance(RELAYERS, tag), 200n);
+	const k = keyShares(tag);
+	assert.deepEqual(
+		urls,
+		RELAYERS.map((r, i) => `${r}/accounts/${accountHex(tag)}?key=${toHex(k[i])}`),
+	);
+	assert.ok(
+		urls.every((u) => !u.includes(tag)),
+		"the tag itself never leaves",
+	);
+	assert.throws(() => accountHex("2a"), RangeError);
+});
+
+test("judge claims send relayer i only share i of the tag", async (t) => {
+	const posts: [string, { account: string; keyShare: string }][] = [];
+	t.mock.method(globalThis, "fetch", async (url: string, init: RequestInit) => {
+		posts.push([url, JSON.parse(init.body as string)]);
+		return Response.json({});
+	});
+	const tag = "11".repeat(16);
+	await claimJudge(RELAYERS, tag);
+	assert.deepEqual(
+		posts.map(([u]) => u),
+		RELAYERS.map((r) => `${r}/judge/claim`),
+	);
+	assert.ok(posts.every(([, b]) => b.account === accountHex(tag)));
+	assert.equal(toHex(combine(posts.map(([, b]) => fromHex(b.keyShare)))), tag);
 });
 
 test("submitOrder sends exactly one share to each relayer", async (t) => {
@@ -119,7 +156,7 @@ test("submitOrder sends exactly one share to each relayer", async (t) => {
 	assert.deepEqual(decodeOrder(combine(shares)), o);
 });
 
-test("submitWithdrawal sends each relayer only its share of the account", async (t) => {
+test("submitWithdrawal sends each relayer only a fresh share of the tag", async (t) => {
 	const posts: [string, { withdrawalId: string; share: string; amount: number }][] = [];
 	t.mock.method(globalThis, "fetch", async (url: string, init: RequestInit) => {
 		posts.push([url, JSON.parse(init.body as string)]);
@@ -132,8 +169,8 @@ test("submitWithdrawal sends each relayer only its share of the account", async 
 		RELAYERS.map((r) => `${r}/withdrawals`),
 	);
 	assert.ok(posts.every(([, b]) => b.withdrawalId === withdrawalId && b.amount === 5850));
-	const account = combine(posts.map(([, b]) => fromHex(b.share)));
-	assert.equal(tagAccount(`${toHex(account)}${"00".repeat(8)}`), 42n);
+	assert.equal(toHex(combine(posts.map(([, b]) => fromHex(b.share)))), tag);
+	assert.ok(posts.every(([, b]) => b.share !== tag));
 	assert.equal(payoutZats(5850n), 29_240_000n);
 	await assert.rejects(submitWithdrawal(RELAYERS, tag, 2n, "u"), RangeError);
 });

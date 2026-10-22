@@ -15,8 +15,10 @@ roll(markets, chain.height);
 
 /** orderId -> { shares: [Buffer|null x3], status, fillShares, born } */
 export const orders = new Map();
-/** account (bigint) -> { bal: bigint half-ticks, mask: [Buffer, Buffer] } */
+/** tag (hex32) -> { bal: bigint half-ticks, mask: [Buffer, Buffer] } */
 const accounts = new Map();
+/** account id (hex16) -> each relayer's share of the tag (Buffer | null) x3 */
+export const keys = new Map();
 /** Per relayer: the share stream it has seen. */
 export const views = PORTS.map(() => ({ seq: 0, items: [] }));
 

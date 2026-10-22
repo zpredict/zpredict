@@ -80,12 +80,14 @@ impl Scanner {
                     reason,
                 };
                 let units = units(zats).ok_or(flag(Flag::Denomination))?;
-                let tag = memo::decode(&memo, self.relayer, &self.key).ok_or(flag(Flag::NoTag))?;
+                let (account, key_share) =
+                    memo::decode(&memo, self.relayer, &self.key).ok_or(flag(Flag::NoTag))?;
                 Ok(Deposit {
                     note: note_id,
                     height,
                     units,
-                    tag,
+                    account,
+                    key_share,
                 })
             })
             .collect()
@@ -156,7 +158,11 @@ mod tests {
                 "change and foreign outputs are not deposits"
             );
             let d = found[0].as_ref().unwrap();
-            assert_eq!((d.units, d.tag, d.height), (5, [7; 16], 9));
+            let slot = (
+                memo::account_id(&[7; 16]),
+                memo::key_shares(&[7; 16])[relayer],
+            );
+            assert_eq!((d.units, (d.account, d.key_share), d.height), (5, slot, 9));
             assert_eq!(
                 d.balance_share(relayer),
                 if relayer == 0 { 1000 } else { 0 }

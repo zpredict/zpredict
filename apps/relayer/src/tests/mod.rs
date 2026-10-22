@@ -10,13 +10,13 @@ use std::time::Duration;
 
 use axum::Router;
 use serde_json::json;
-use zpredict_core::{FILL_LEN, ORDER_LEN, Order, Side, split};
+use zpredict_core::{FILL_LEN, KEY_LEN, Key, ORDER_LEN, Order, Side, split};
+use zpredict_settle::memo::{account_id, key_shares};
 
 use crate::api::tests::{app, call};
 use crate::batch::Batcher;
 use crate::mpc::Matcher;
 use crate::peers::Peering;
-use crate::state::tag_account;
 
 pub(super) struct Relayer<M> {
     pub http: Router,
@@ -52,7 +52,7 @@ pub(super) fn relayers<M: Matcher>(
     let public = [keys[0].1, keys[1].1, keys[2].1];
     (0..3)
         .map(|i| {
-            let (http, state) = app(i, &format!("{name}-{i}"), i == 0);
+            let (http, state) = app(i, &format!("{name}-{i}"), true);
             let private = if wrong_key && i == 2 {
                 keypair().0
             } else {
@@ -117,33 +117,52 @@ pub(super) async fn fill<M>(r: &[Relayer<M>], id: &str) -> Option<[u8; FILL_LEN]
     Some(out)
 }
 
-pub(super) fn order(market: u32, side: Side, price: u8, size: u32, account: u64) -> Order {
+pub(super) fn order(market: u32, side: Side, price: u8, size: u32, key: Key) -> Order {
     Order {
         market,
         side,
         price,
         size,
-        account,
+        key,
     }
+}
+
+/// Fresh XOR shares of `key`, one per relayer (what a browser sends with a withdrawal).
+pub(super) fn fresh_shares(key: &Key) -> [Key; 3] {
+    let (mut a, mut b) = ([0u8; KEY_LEN], [0u8; KEY_LEN]);
+    getrandom::fill(&mut a).unwrap();
+    getrandom::fill(&mut b).unwrap();
+    [a, b, std::array::from_fn(|j| key[j] ^ a[j] ^ b[j])]
+}
+
+/// An account's id as the API takes it: hex16 of the u64 LE.
+pub(super) fn hex_id(key: &Key) -> String {
+    hex::encode(account_id(key).to_le_bytes())
 }
 
 pub(super) fn id(n: u8) -> String {
     format!("{n:02x}").repeat(16)
 }
 
-/// A judge-mode account on relayer 0 (5000 half-ticks): its tag and order `account`.
-pub(super) async fn funded<M>(r: &[Relayer<M>]) -> (String, u64) {
-    let (_, claim) = call(&r[0].http, "POST", "/judge/claim", None).await;
-    let tag = claim["tag"].as_str().unwrap().to_owned();
-    let account = tag_account(&tag);
-    (tag, account)
+/// A judge-mode account (5000 half-ticks from relayer 0): its key, made here as a browser
+/// would, with one key share claimed at each relayer.
+pub(super) async fn funded<M>(r: &[Relayer<M>]) -> Key {
+    let mut key = [0u8; KEY_LEN];
+    getrandom::fill(&mut key).unwrap();
+    for (x, share) in r.iter().zip(key_shares(&key)) {
+        let body = json!({"account": hex_id(&key), "keyShare": hex::encode(share)});
+        let (code, _) = call(&x.http, "POST", "/judge/claim", Some(body)).await;
+        assert_eq!(code.as_u16(), 200);
+    }
+    key
 }
 
 /// The owner's view of a balance: XOR of the three relayers' shares.
-pub(super) async fn balance<M>(r: &[Relayer<M>], tag: &str) -> u64 {
+pub(super) async fn balance<M>(r: &[Relayer<M>], key: &Key) -> u64 {
     let mut b = [0u8; 8];
-    for x in r {
-        let (_, v) = call(&x.http, "GET", &format!("/accounts/{tag}"), None).await;
+    for (x, share) in r.iter().zip(key_shares(key)) {
+        let path = format!("/accounts/{}?key={}", hex_id(key), hex::encode(share));
+        let (_, v) = call(&x.http, "GET", &path, None).await;
         let share = hex::decode(v["balanceShare"].as_str().unwrap()).unwrap();
         b.iter_mut().zip(share).for_each(|(a, s)| *a ^= s);
     }

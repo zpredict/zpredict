@@ -11,10 +11,11 @@ web_origin = "https://app.zpredict.site"
 # Markets resolve from mainnet; the escrow and deposits are on testnet.
 oracle_lightwalletd = "https://zec.rocks:443"
 escrow_lightwalletd = "https://testnet.zec.rocks:443"
-# 8 slots, 32 rows (default), all open markets in one run: ~5 s MPC on an M4 Pro, ~23 s
-# measured on the demo VPS (one core per party), so the window is batch time + 2.
+# 8 slots, 32 rows (default), all open markets in one run: ~6.3 s MPC on an M4 Pro. The
+# demo VPS measured ~23 s before account keys (#85, +7% AND gates: ~24.6 s estimated), so
+# the window is batch time + 2.
 batch_size = 8
-window_secs = 25
+window_secs = 27
 expire_batches = 3
 judge = true
 judge_credit = 5000 # 25 units in half-ticks

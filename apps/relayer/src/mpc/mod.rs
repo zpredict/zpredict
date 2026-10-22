@@ -9,8 +9,8 @@ mod insecure;
 
 #[cfg(any(test, feature = "dev-insecure"))]
 pub use insecure::InsecureLocalMatcher;
-use zpredict_circuit::{Outcome, Position, Public, Shares};
-use zpredict_core::{ACCOUNT_LEN, BALANCE_LEN, Side};
+use zpredict_circuit::{Outcome, Position, Public, Shares, Table};
+use zpredict_core::{BALANCE_LEN, Side};
 
 use crate::error::{Error, Result};
 use crate::peers::Links;
@@ -19,8 +19,9 @@ pub trait Matcher {
     /// Clears one batch: `public` holds exactly [`zpredict_circuit::DEFAULT_MARKETS`]
     /// market slots (`0` = unused), a credit per table row and
     /// [`zpredict_circuit::DEFAULT_WITHDRAWALS`] withdrawal amounts; `shares` this
-    /// relayer's shares of the orders, the table and the withdrawals' accounts. Padding
-    /// is all-zero shares: price 0 orders (dummies), rows with balance 0, account 0.
+    /// relayer's shares of the orders, the table (rows and keys) and the withdrawals'
+    /// keys. Padding is all-zero shares: price 0 orders (dummies), rows with balance 0,
+    /// key 0.
     #[allow(async_fn_in_trait)] // runs on the batch thread via block_on; no Send needed
     async fn clear(&self, links: &Links, public: &Public, shares: &Shares<'_>) -> Result<Outcome>;
 
@@ -33,7 +34,7 @@ pub trait Matcher {
         market: u32,
         outcome: Side,
         positions: &[Position],
-        accounts: &[[u8; ACCOUNT_LEN]],
+        table: Table<'_>,
     ) -> Result<Vec<[u8; BALANCE_LEN]>>;
 }
 
@@ -55,10 +56,10 @@ impl Matcher for Polytune {
         market: u32,
         outcome: Side,
         positions: &[Position],
-        accounts: &[[u8; ACCOUNT_LEN]],
+        table: Table<'_>,
     ) -> Result<Vec<[u8; BALANCE_LEN]>> {
         let party = links.party;
-        zpredict_circuit::run_resolution_on(links, party, market, outcome, positions, accounts)
+        zpredict_circuit::run_resolution_on(links, party, market, outcome, positions, table)
             .await
             .map_err(|e| Error::Mpc(e.to_string()))
     }

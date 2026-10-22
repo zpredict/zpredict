@@ -23,7 +23,7 @@ Nothing secret is checked in.
 | 0 | `build-tools.sh` | Clone and build zcash-devtool with its own `Cargo.lock`, and this crate's binaries |
 | 1 | `regtest-up.sh` | Zebra regtest + lightwalletd; 110 blocks mined to a funder's Orchard-only address, which NU6.3 pays into **Ironwood** (no transparent coinbase, nothing to shield) |
 | 2 | `frost-dkg.sh` | `settle-payout dkg`: 2-of-3 RedPallas DKG for `r0 r1 r2` with frost-core as a library; each share and the escrow UFVK are sealed as they are made. One memo key per relayer (sealed). The watch-only escrow wallet is created and then sealed |
-| 3 | `fund-escrow.sh` | Funder sends one fixed-denomination note per `DEPOSIT_UNITS` entry (default one 5-unit = 0.05 ZEC note) with an encrypted account tag in the memo, to the Ironwood receiver only; 10 confirmations |
+| 3 | `fund-escrow.sh` | Funder sends one fixed-denomination note per `DEPOSIT_UNITS` entry (default one 5-unit = 0.05 ZEC note) with the account id and one share of a fresh account tag per relayer in the memo, to the Ironwood receiver only; 10 confirmations |
 | 4 | `payout-escrow.sh` | One batched payout, signed 2-of-3 (see Batched payouts below) |
 
 Testnet: `NETWORK=test RUN_DIR=~/.cache/zpredict-testnet scripts/frost-dkg.sh` runs the
@@ -49,17 +49,19 @@ lightwalletd: blocks with Ironwood actions are fetched as full transactions (com
 blocks drop memos) and trial-decrypted with the escrow's **external** IVK, so escrow
 change is never mistaken for a deposit. Every received note comes out as either
 
-- `Deposit { note: (txid, action), height, units, tag }`: amount exactly 1, 5 or 25
+- `Deposit { note: (txid, action), height, units, account, key_share }`: amount exactly 1, 5 or 25
   units (`UNIT_ZATS` = 1,000,000 zats = 0.01 ZEC, the one place the mapping lives), and
   the relayer's memo slot opens; `balance_share(i)` is the initial XOR share in
   half-ticks, `(A·200, 0, 0)` per the #9 decision; or
 - `Flagged { note, height, zats, reason }`: any other amount (`Denomination`) or no
-  readable tag (`NoTag`). Flagged notes are never credited.
+  readable memo slot (`NoTag`). Flagged notes are never credited.
 
-**Deposit memo** (`memo.rs`): ZIP 302 `0xFF` memo, `0xFF | 0x01 | epk (32) | slot₀ | slot₁ | slot₂`,
-zero after byte 130. `slotᵢ` = ChaCha20-Poly1305 (zero nonce) of the 16-byte account
-tag under `BLAKE2b-256("zPredictMemoKey1", X25519(esk, pkᵢ) ‖ epk ‖ pkᵢ)`, where `pkᵢ` is
-relayer `i`'s memo public key and `esk` is fresh per memo. No order data, no amounts.
+**Deposit memo** (`memo.rs`): ZIP 302 `0xFF` memo, `0xFF | 0x02 | epk (32) | slot₀ | slot₁ | slot₂`,
+zero after byte 154. `slotᵢ` = ChaCha20-Poly1305 (zero nonce) of `id u64 LE ‖ sᵢ` under
+`BLAKE2b-256("zPredictMemoKey1", X25519(esk, pkᵢ) ‖ epk ‖ pkᵢ)`, where `pkᵢ` is relayer
+`i`'s memo public key and `esk` is fresh per memo. `id = account_id(tag)` is the account's
+public label and `sᵢ = key_shares(tag)[i]` relayer `i`'s share of the 16-byte tag (the
+account's credential), so no relayer ever reads the tag. No order data, no amounts.
 
 **Secrets at rest** (`store.rs`): the escrow UFVK and each relayer's memo key are
 sealed with ChaCha20-Poly1305 under `ZPREDICT_STORE_KEY` (64 hex chars, environment

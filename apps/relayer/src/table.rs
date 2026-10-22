@@ -11,8 +11,18 @@
 //! that the shares are random, so relayer 0 queues the top-up as a *pending credit* for
 //! the row; the next batch passes it to the circuit as a public input, which adds it
 //! inside the MPC (#57). Every relayer sees deposit amounts anyway.
+//!
+//! Each relayer also keeps its own share of every account's key (the credential, from
+//! its deposit-memo slot or a judge claim). The circuit lets an order or withdrawal use a
+//! row only if it carries the key the three shares rebuild, so the row id is just a label.
+//! Honest shares are deterministic per account, so a second, different share for a known
+//! id means someone (another relayer) tried to choose this relayer's share: the key is
+//! *burned* here, every batch gets a fresh random share for it, and nobody can use the
+//! row again. That loses the row (denial of service) instead of handing it over.
 
-use zpredict_core::{ACCOUNT_LEN, Account, BALANCE_LEN};
+use std::collections::HashMap;
+
+use zpredict_core::{ACCOUNT_LEN, Account, BALANCE_LEN, KEY_LEN, Key};
 
 use crate::error::{Error, Result};
 
@@ -28,9 +38,48 @@ pub struct Table {
     rows: Vec<Row>,
     /// Relayer 0: half-ticks waiting to be credited to each sealed row by the circuit.
     pending: Vec<u64>,
+    /// This relayer's key share per account id; `None` = burned (two different shares).
+    keys: HashMap<u64, Option<Key>>,
 }
 
 impl Table {
+    /// Records this relayer's key share for account `id`: the first one sticks, the same
+    /// one again is a no-op, a different one burns the key. False if burned.
+    pub fn register(&mut self, id: u64, share: Key) -> bool {
+        let k = self.keys.entry(id).or_insert(Some(share));
+        if *k != Some(share) {
+            *k = None;
+        }
+        k.is_some()
+    }
+
+    /// Whether `share` is this relayer's (unburned) key share for `id`.
+    pub fn key_matches(&self, id: u64, share: &Key) -> bool {
+        self.keys.get(&id) == Some(&Some(*share))
+    }
+
+    pub fn has_key(&self, id: u64) -> bool {
+        self.keys.contains_key(&id)
+    }
+
+    /// Key shares of the first `n` rows, padded with zero to `len`. Rows without a usable
+    /// share here (burned, or never registered at this relayer) get a fresh random one,
+    /// so their key is unknown to everyone.
+    pub fn key_shares(&self, n: usize, len: usize) -> Vec<Key> {
+        let mut out: Vec<Key> = (self.rows.iter().take(n))
+            .map(|r| match self.keys.get(&r.id) {
+                Some(Some(k)) => *k,
+                _ => {
+                    let mut k = [0u8; KEY_LEN];
+                    getrandom::fill(&mut k).expect("os rng");
+                    k
+                }
+            })
+            .collect();
+        out.resize(len.max(out.len()), [0; KEY_LEN]);
+        out
+    }
+
     /// Relayer 0 only: credit `amount` half-ticks to account `id`.
     pub fn credit(&mut self, id: u64, amount: u64) {
         if let Some(k) = self.rows.iter().position(|r| r.id == id) {
@@ -46,6 +95,7 @@ impl Table {
         }
         let share = Account {
             id,
+            key: [0; KEY_LEN],
             balance: amount,
         }
         .encode();
@@ -158,11 +208,33 @@ mod tests {
             t.shares(1, 3)[0],
             Account {
                 id: 7,
+                key: [0; KEY_LEN],
                 balance: 150
             }
             .encode()
         );
         assert_eq!(t.shares(1, 3)[2], [0; ACCOUNT_LEN]);
+    }
+
+    #[test]
+    fn a_second_different_key_share_burns_the_key() {
+        let mut t = Table::default();
+        t.credit(7, 1);
+        t.credit(8, 1);
+        assert!(t.register(7, [1; KEY_LEN]));
+        assert!(t.register(7, [1; KEY_LEN]), "the same share again is fine");
+        assert!(t.key_matches(7, &[1; KEY_LEN]));
+        assert_eq!(
+            t.key_shares(1, 3),
+            vec![[1; KEY_LEN], [0; KEY_LEN], [0; KEY_LEN]]
+        );
+        assert!(!t.register(7, [2; KEY_LEN]));
+        assert!(!t.register(7, [1; KEY_LEN]), "burned for good");
+        assert!(!t.key_matches(7, &[1; KEY_LEN]) && t.has_key(7));
+        let (a, b) = (t.key_shares(2, 2), t.key_shares(2, 2));
+        assert_ne!(a[0], [1; KEY_LEN]);
+        assert_ne!(a[0], b[0], "burned and unknown keys are fresh randomness");
+        assert_ne!(a[1], b[1]);
     }
 
     #[test]

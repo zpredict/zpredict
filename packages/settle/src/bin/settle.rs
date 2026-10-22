@@ -8,7 +8,7 @@
 //! settle memo-key <out.sealed>                      -> `pubkey <hex>`
 //! settle deposit-memo <tag-hex> <pk0> <pk1> <pk2>   -> base64url memo for a ZIP 321 `memo=`
 //! settle scan <relayer> <ufvk.sealed> <memo-key.sealed> <lightwalletd-url> <from> <to>
-//!   -> `deposit <txid> <action> <height> <units> <tag> <balance-share>` per credit,
+//!   -> `deposit <txid> <action> <height> <units> <account> <key-share> <balance-share>` per credit,
 //!      `flagged <txid> <action> <height> <zats> <reason>` per note left alone
 //! ```
 
@@ -92,12 +92,13 @@ fn scan(relayer: usize, ufvk: &Path, memo_key: &Path, lwd: &str, range: (u32, u3
     for s in Scanner::new(&fvk, relayer, key).blocks(&lwd, range.0, range.1)? {
         match s {
             Ok(d) => println!(
-                "deposit {} {} {} {} {} {}",
+                "deposit {} {} {} {} {} {} {}",
                 txid(&d.note.txid),
                 d.note.action,
                 d.height,
                 d.units,
-                hex::encode(d.tag),
+                d.account,
+                hex::encode(d.key_share),
                 d.balance_share(relayer)
             ),
             Err(f) => println!(

@@ -10,13 +10,16 @@ pub struct NoteId {
     pub action: usize,
 }
 
-/// A deposit the relayers credit: a fixed denomination with a readable account tag.
+/// A deposit the relayers credit: a fixed denomination with a readable deposit memo slot.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Deposit {
     pub note: NoteId,
     pub height: u32,
     pub units: u64,
-    pub tag: Tag,
+    /// The account's public id ([`crate::memo::account_id`]).
+    pub account: u64,
+    /// This relayer's share of the account's credential ([`crate::memo::key_shares`]).
+    pub key_share: Tag,
 }
 
 /// A note received by the escrow that is not credited to anyone.
@@ -86,7 +89,8 @@ mod tests {
             },
             height: 1,
             units: 5,
-            tag: [0; 16],
+            account: 1,
+            key_share: [0; 16],
         };
         let shares: Vec<u64> = (0..3).map(|r| d.balance_share(r)).collect();
         assert_eq!(shares, [1000, 0, 0]);

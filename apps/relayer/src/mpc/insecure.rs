@@ -5,10 +5,10 @@
 //! refuses it unless both the `dev-insecure` feature and `insecure_matcher = true` are set.
 
 use serde::{Deserialize, Serialize};
-use zpredict_circuit::{Outcome, Position, Public, Shares};
+use zpredict_circuit::{Outcome, Position, Public, Shares, Table};
 use zpredict_core::{
-    ACCOUNT_LEN, Account, BALANCE_LEN, FILL_LEN, ORDER_LEN, Order, Side, Withdrawal, apply_flows,
-    clear_with_balances, fill_records, resolve,
+    ACCOUNT_LEN, Account, BALANCE_LEN, FILL_LEN, Key, ORDER_LEN, Order, Side, Withdrawal,
+    apply_flows, clear_with_balances, fill_records, resolve,
 };
 
 use super::Matcher;
@@ -23,7 +23,8 @@ struct Held {
     orders: Vec<[u8; ORDER_LEN]>,
     fills: Vec<[u8; FILL_LEN]>,
     accounts: Vec<[u8; ACCOUNT_LEN]>,
-    withdrawals: Vec<[u8; 8]>,
+    keys: Vec<Key>,
+    withdrawals: Vec<Key>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -39,6 +40,7 @@ impl Matcher for InsecureLocalMatcher {
         let held = Held {
             orders: shares.orders.to_vec(),
             accounts: shares.accounts.to_vec(),
+            keys: shares.keys.to_vec(),
             withdrawals: shares.withdrawals.to_vec(),
             ..Held::default()
         };
@@ -57,18 +59,19 @@ impl Matcher for InsecureLocalMatcher {
         market: u32,
         outcome: Side,
         positions: &[Position],
-        accounts: &[[u8; ACCOUNT_LEN]],
+        (accounts, keys): Table<'_>,
     ) -> Result<Vec<[u8; BALANCE_LEN]>> {
         let held = Held {
             orders: positions.iter().map(|p| p.0).collect(),
             fills: positions.iter().map(|p| p.1).collect(),
             accounts: accounts.to_vec(),
+            keys: keys.to_vec(),
             ..Held::default()
         };
         let r = round(links, held, |all| {
             let orders = decoded(&all.orders);
             let positions: Vec<_> = orders.into_iter().zip(all.fills.clone()).collect();
-            let balances = resolve(market, outcome, &positions, &table(&all.accounts));
+            let balances = resolve(market, outcome, &positions, &table(all));
             Reply {
                 fills: vec![],
                 balances: balances.iter().map(|b| b.to_le_bytes()).collect(),
@@ -94,6 +97,7 @@ async fn round(links: &Links, mine: Held, compute: impl FnOnce(&Held) -> Reply) 
         xor_into(&mut all.orders, &theirs.orders);
         xor_into(&mut all.fills, &theirs.fills);
         xor_into(&mut all.accounts, &theirs.accounts);
+        xor_into(&mut all.keys, &theirs.keys);
         xor_into(&mut all.withdrawals, &theirs.withdrawals);
     }
     let mut r = compute(&all);
@@ -113,12 +117,9 @@ async fn round(links: &Links, mine: Held, compute: impl FnOnce(&Held) -> Reply) 
 fn clear_all(public: &Public, all: &Held) -> Reply {
     let orders = decoded(&all.orders);
     let withdrawals: Vec<Withdrawal> = (all.withdrawals.iter().zip(&public.withdrawals))
-        .map(|(a, &amount)| Withdrawal {
-            account: u64::from_le_bytes(*a),
-            amount,
-        })
+        .map(|(&key, &amount)| Withdrawal { key, amount })
         .collect();
-    let (table, withdrawn) = apply_flows(&table(&all.accounts), &public.credits, &withdrawals);
+    let (table, withdrawn) = apply_flows(&table(all), &public.credits, &withdrawals);
     let c = clear_with_balances(&public.markets, &orders, &table);
     Reply {
         fills: fill_records(&orders, &c.fills),
@@ -134,7 +135,7 @@ fn decoded(orders: &[[u8; ORDER_LEN]]) -> Vec<Order> {
         side: Side::Yes,
         price: 1,
         size: 0,
-        account: 0,
+        key: [0; 16],
     };
     orders
         .iter()
@@ -142,11 +143,12 @@ fn decoded(orders: &[[u8; ORDER_LEN]]) -> Vec<Order> {
         .collect()
 }
 
-fn table(rows: &[[u8; ACCOUNT_LEN]]) -> Vec<Account> {
+fn table(all: &Held) -> Vec<Account> {
     let u64_at = |b: &[u8], i: usize| u64::from_le_bytes(b[i..i + 8].try_into().expect("8 bytes"));
-    (rows.iter())
-        .map(|b| Account {
+    (all.accounts.iter().zip(&all.keys))
+        .map(|(b, &key)| Account {
             id: u64_at(b, 0),
+            key,
             balance: u64_at(b, 8),
         })
         .collect()

@@ -1,7 +1,7 @@
 //! Clearing a batch: one matcher run per group of open markets.
 
 use zpredict_circuit::{DEFAULT_MARKETS, Public, Shares};
-use zpredict_core::{BALANCE_LEN, FILL_LEN};
+use zpredict_core::{BALANCE_LEN, FILL_LEN, KEY_LEN};
 
 use super::Batcher;
 use crate::error::{Error, Result};
@@ -44,7 +44,7 @@ impl<M: Matcher> Batcher<M> {
             credits: vec![0; first.credits.len()],
             withdrawals: vec![0; first.withdrawals.len()],
         };
-        let no_accounts = vec![[0u8; 8]; first.withdrawals.len()];
+        let no_keys = vec![[0u8; KEY_LEN]; first.withdrawals.len()];
         let mut done = Cleared {
             fills: vec![[0u8; FILL_LEN]; shares.orders.len()],
             ..Cleared::default()
@@ -59,11 +59,8 @@ impl<M: Matcher> Batcher<M> {
             let mine = Shares {
                 orders: shares.orders,
                 accounts: &table,
-                withdrawals: if k == 0 {
-                    shares.withdrawals
-                } else {
-                    &no_accounts
-                },
+                keys: shares.keys,
+                withdrawals: if k == 0 { shares.withdrawals } else { &no_keys },
             };
             let out = self.matcher.clear(links, &public, &mine).await?;
             if out.fills.len() < shares.orders.len() || out.balances.len() < table.len() {

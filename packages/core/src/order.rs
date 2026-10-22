@@ -1,6 +1,6 @@
-//! Orders and their 18-byte wire encoding, shared with the browser sdk.
+//! Orders and their 26-byte wire encoding, shared with the browser sdk.
 
-use crate::{MAX_SIZE, ORDER_LEN, TICKS};
+use crate::{Key, MAX_SIZE, ORDER_LEN, TICKS};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Side {
@@ -16,11 +16,12 @@ pub struct Order {
     pub price: u8,
     /// Contracts, at most [`MAX_SIZE`]; 0 marks a dummy order used to pad a batch.
     pub size: u32,
-    pub account: u64,
+    /// The account's key: the order spends from the row holding this key.
+    pub key: Key,
 }
 
 impl Order {
-    /// Little-endian layout: market(4) side(1) price(1) size(4) account(8).
+    /// Little-endian layout: market(4) side(1) price(1) size(4) key(16).
     /// The browser must produce exactly these bytes.
     pub fn encode(&self) -> [u8; ORDER_LEN] {
         let mut b = [0u8; ORDER_LEN];
@@ -28,7 +29,7 @@ impl Order {
         b[4] = self.side as u8;
         b[5] = self.price;
         b[6..10].copy_from_slice(&self.size.to_le_bytes());
-        b[10..18].copy_from_slice(&self.account.to_le_bytes());
+        b[10..26].copy_from_slice(&self.key);
         b
     }
 
@@ -49,12 +50,12 @@ impl Order {
             side,
             price,
             size,
-            account: u64::from_le_bytes(b[10..18].try_into().unwrap()),
+            key: b[10..26].try_into().unwrap(),
         })
     }
 }
 
-/// Market 7, account 42: the fixture every unit test builds batches from.
+/// Market 7, key `[42; 16]`: the fixture every unit test builds batches from.
 #[cfg(test)]
 pub(crate) fn test_order(side: Side, price: u8, size: u32) -> Order {
     Order {
@@ -62,7 +63,7 @@ pub(crate) fn test_order(side: Side, price: u8, size: u32) -> Order {
         side,
         price,
         size,
-        account: 42,
+        key: [42; 16],
     }
 }
 
