@@ -30,9 +30,9 @@ judge = true
 judge_credit = 5000 # 25 units in half-ticks
 data_dir = "/data"
 insecure_matcher = false
-# Outcome signing stays off until the key ceremony (#78): then each relayer gets its sealed
-# share in its volume and ZPREDICT_FROST_SHARE_FILE=/data/frost-share.sealed plus
-# ZPREDICT_STORE_KEY. Until then /markets shows outcomes as resolved (unsigned).
+# Key ceremony output (#78, deploy/production/ceremony.sh) in each relayer's own volume.
+# Served at GET /memo-key; the sealed secrets are opened with ZPREDICT_STORE_KEY (env).
+memo_key_file = "/data/escrow/memo.pub"
 
 # Rolling markets (apps/relayer/src/markets/rolling.rs): every hour of nominal block time, a
 # new "Will mainnet block H contain ≥ N shielded actions?" with H one hour ahead (48 blocks
@@ -77,3 +77,17 @@ params = { minActions = 5 }
 closeHeight = 3549000
 resolveHeight = 3550000
 status = "open"
+
+# Real testnet deposits and payouts. The FROST key share also signs outcomes, so
+# /group-key answers and outcomes carry outcomeSig. Relayer 0 is the prover: zcash-devtool
+# is in the image, its escrow wallet is opened into tmpfs by the escrow-wallet sidecar.
+# r1 and r2 ignore the three prover keys.
+[settlement]
+network = "test"
+ufvk = "/data/escrow/ufvk.sealed"
+memo_key = "/data/escrow/memo.sealed"
+key_share = "/data/escrow/share.sealed"
+start_height = 0 # set from the ceremony output
+devtool = "/usr/local/bin/zcash-devtool"
+wallet_dir = "/wallet"
+devtool_server = "zecrocks"

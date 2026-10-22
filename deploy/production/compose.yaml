@@ -8,8 +8,9 @@
 # Secrets: set in Coolify (Environment Variables), never in git. R{0,1,2}_KEY are the
 # Noise private keys, R{0,1,2}_PUB the public keys (hex). Compose mounts them as files
 # under /run/secrets, so the private key is never in a container's environment.
-# Deposit-memo public keys (`settle memo-key`), once they exist: add secrets rN_memo_pub
-# (environment: RN_MEMO_PUB) and ZPREDICT_MEMO_KEY_FILE=/run/secrets/rN_memo_pub per service.
+# R{0,1,2}_STORE_KEY (64 hex, different per relayer) opens that relayer's sealed escrow
+# secrets in /data/escrow (key ceremony, deploy/production/ceremony.sh). The settle store
+# reads it from the environment only.
 
 # The image is built once (by r0) and shared, so three cargo builds never run at once.
 x-relayer: &relayer
@@ -32,25 +33,49 @@ services:
       context: ../..
       dockerfile: deploy/production/relayer.Dockerfile
     pull_policy: build
-    mem_limit: 1280m
-    memswap_limit: 1280m
+    # 48-row peak ~1.1 GiB (above) + headroom for zcash-devtool proving payouts next to it.
+    mem_limit: 1536m
+    memswap_limit: 1536m
+    depends_on:
+      escrow-wallet: { condition: service_healthy }
     environment:
       ZPREDICT_INDEX: 0
+      ZPREDICT_STORE_KEY: ${R0_STORE_KEY:?}
     secrets:
       - { source: r0_key, target: relayer_key }
       - r0_pub
       - r1_pub
       - r2_pub
-    volumes: [r0-data:/data]
+    volumes: [r0-data:/data, escrow-wallet:/wallet]
     ports: ["127.0.0.1:3172:8080"]
     networks:
       default:
       peers: { ipv4_address: 10.0.250.10 }
+  # Relayer 0's escrow wallet (holds the viewing key) lives only in this tmpfs volume:
+  # the sidecar opens the sealed copy into it and stays up so it survives r0 restarts.
+  escrow-wallet:
+    build:
+      context: ../..
+      dockerfile: deploy/production/relayer.Dockerfile
+      target: ceremony
+    image: zpredict-ceremony:local
+    restart: unless-stopped
+    entrypoint: ["escrow-wallet.sh"]
+    environment:
+      ZPREDICT_STORE_KEY: ${R0_STORE_KEY:?}
+    volumes: [r0-data:/data:ro, escrow-wallet:/wallet]
+    network_mode: none
+    mem_limit: 64m
+    healthcheck:
+      test: ["CMD", "test", "-e", "/tmp/ready"]
+      interval: 5s
+      retries: 30
   r1:
     <<: *relayer
     depends_on: [r0]
     environment:
       ZPREDICT_INDEX: 1
+      ZPREDICT_STORE_KEY: ${R1_STORE_KEY:?}
     secrets:
       - { source: r1_key, target: relayer_key }
       - r0_pub
@@ -66,6 +91,7 @@ services:
     depends_on: [r0]
     environment:
       ZPREDICT_INDEX: 2
+      ZPREDICT_STORE_KEY: ${R2_STORE_KEY:?}
     secrets:
       - { source: r2_key, target: relayer_key }
       - r0_pub
@@ -93,6 +119,9 @@ networks:
         - subnet: 10.0.250.0/24
 
 volumes:
+  # tmpfs: the unsealed escrow wallet never reaches the disk.
+  escrow-wallet:
+    driver_opts: { type: tmpfs, device: tmpfs, o: "size=256m,uid=65532,gid=65532,mode=0700" }
   r0-data:
   r1-data:
   r2-data:
