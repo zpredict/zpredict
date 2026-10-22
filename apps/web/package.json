@@ -1,0 +1,29 @@
+{
+	"name": "@zpredict/web",
+	"private": true,
+	"version": "0.1.0",
+	"type": "module",
+	"scripts": {
+		"predev": "node scripts/brand.mjs",
+		"prebuild": "node scripts/brand.mjs",
+		"dev": "next dev -p 3000",
+		"build": "next build && node scripts/privacy.mjs",
+		"mock": "node mock-relayer/server.mjs",
+		"dev:mock": "node scripts/brand.mjs && node scripts/dev-mock.mjs",
+		"test": "node --test mock-relayer/clear.test.mjs"
+	},
+	"dependencies": {
+		"@fontsource/figtree": "^5.3.0",
+		"@fontsource/instrument-sans": "^5.3.0",
+		"@zpredict/sdk": "workspace:*",
+		"next": "^16.4.2",
+		"react": "^19.3.1",
+		"react-dom": "^19.3.1"
+	},
+	"devDependencies": {
+		"@types/node": "^26.6.5",
+		"@types/react": "^19.3.0",
+		"@types/react-dom": "^19.3.0",
+		"typescript": "^5.9.3"
+	}
+}

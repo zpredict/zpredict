@@ -1,0 +1,5 @@
+# Copied from packages/brand by scripts/brand.mjs
+/public/*.png
+/public/*.ico
+/public/site.webmanifest
+/public/white/
