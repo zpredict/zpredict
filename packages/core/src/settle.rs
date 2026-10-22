@@ -4,18 +4,19 @@
 
 use crate::balance::Account;
 use crate::order::{Order, Side};
-use crate::{FILL_LEN, HALF_TICKS_PER_UNIT};
+use crate::{FILL_LEN, HALF_TICKS_PER_UNIT, Key};
 
-/// One withdrawal request: the account (secret-shared in the circuit, like an order's)
-/// and the amount in half-ticks (public: the payout needs it). Amount 0 is an unused slot.
+/// One withdrawal request: the account's key (secret-shared in the circuit, like an
+/// order's) and the amount in half-ticks (public: the payout needs it). Amount 0 is an
+/// unused slot.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Withdrawal {
-    pub account: u64,
+    pub key: Key,
     pub amount: u64,
 }
 
 /// Adds `credits[r]` to row `r` (deposits are public to every relayer anyway), then, in
-/// slot order, takes each withdrawal from the first row of its account only if that row
+/// slot order, takes each withdrawal from the first row with its key only if that row
 /// covers it. Returns the new table and, per slot, whether the withdrawal went through.
 /// Relayers learn amounts and the `ok` bits, never whose withdrawal it was.
 pub fn apply_flows(
@@ -32,7 +33,7 @@ pub fn apply_flows(
     let ok = withdrawals
         .iter()
         .map(|w| {
-            let row = table.iter().position(|a| a.id == w.account);
+            let row = table.iter().position(|a| a.key == w.key);
             match row {
                 Some(r) if w.amount > 0 && table[r].balance >= w.amount => {
                     table[r].balance -= w.amount;
@@ -47,7 +48,7 @@ pub fn apply_flows(
 
 /// New balances once `market` resolves to `outcome`: every position (an order and its
 /// combined fill record) that filled on the winning side in that market pays its size in
-/// units (one unit per contract, 200 half-ticks) into the first row of its account.
+/// units (one unit per contract, 200 half-ticks) into the first row with its key.
 /// Positions in other markets, losers and unfilled orders pay nothing. Run it exactly
 /// once per market: positions are not consumed.
 pub fn resolve(
@@ -60,7 +61,7 @@ pub fn resolve(
     for (o, record) in positions {
         let size = u32::from_le_bytes(record[0..4].try_into().expect("4 bytes"));
         let wins = o.market == market && record[9] & 1 == 1 && record[8] == outcome as u8;
-        let row = accounts.iter().position(|a| a.id == o.account);
+        let row = accounts.iter().position(|a| a.key == o.key);
         if let (true, Some(r)) = (wins, row) {
             balances[r] += u64::from(size) * HALF_TICKS_PER_UNIT;
         }
@@ -76,18 +77,16 @@ mod tests {
 
     #[test]
     fn credits_then_withdrawals_that_fit() {
-        let w = |account, amount| Withdrawal { account, amount };
-        let accts = [
-            Account {
-                id: 1,
-                balance: 100,
-            },
-            Account {
-                id: 2,
-                balance: 100,
-            },
-            Account { id: 3, balance: 0 },
-        ];
+        let w = |n: u8, amount| Withdrawal {
+            key: [n; 16],
+            amount,
+        };
+        let acct = |n: u8, balance| Account {
+            id: n.into(),
+            key: [n; 16],
+            balance,
+        };
+        let accts = [acct(1, 100), acct(2, 100), acct(3, 0)];
         // Account 3 withdraws twice: the second no longer fits; 9 has no row; 0 is unused.
         let ws = [w(1, 100), w(2, 151), w(3, 6), w(3, 6), w(9, 1), w(1, 0)];
         let (after, ok) = apply_flows(&accts, &[0, 50, 10], &ws);
@@ -103,7 +102,11 @@ mod tests {
         let batch = [o(Side::Yes, 60, 3), o(Side::No, 45, 2), other];
         let records = fill_records(&batch, &clear(&batch[..2]));
         let positions: Vec<_> = batch.iter().copied().zip(records.iter().copied()).collect();
-        let accts = [Account { id: 42, balance: 7 }];
+        let accts = [Account {
+            id: 42,
+            key: [42; 16],
+            balance: 7,
+        }];
         // YES filled 2 of 3: two units. The unfilled remainder and market 8 pay nothing.
         assert_eq!(resolve(7, Side::Yes, &positions, &accts), vec![7 + 400]);
         assert_eq!(resolve(7, Side::No, &positions, &accts), vec![7 + 400]);

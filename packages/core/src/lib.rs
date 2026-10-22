@@ -21,7 +21,12 @@ pub use shares::{combine, split};
 /// Prices are in ticks of 1/100 of a unit: a YES bid at 63 pays up to 0.63.
 pub const TICKS: u16 = 100;
 /// Encoded order length in bytes; also the share length.
-pub const ORDER_LEN: usize = 18;
+pub const ORDER_LEN: usize = 26;
+/// Account key length: the credential an order or withdrawal must carry for its row.
+pub const KEY_LEN: usize = 16;
+/// An account key. The browser makes it and never sends it whole: relayers hold only
+/// XOR shares, so no single relayer can spend from the account.
+pub type Key = [u8; KEY_LEN];
 /// Per-order fill record length; also the fill share length.
 pub const FILL_LEN: usize = 10;
 /// Encoded balance-table row length (`id u64 | balance u64`); also its share length.

@@ -1,16 +1,16 @@
 {
   "orders": [
-    {"market": 7, "side": 0, "price": 63, "size": 10, "account": "42", "hex": "07000000003f0a0000002a00000000000000"},
-    {"market": 1, "side": 1, "price": 1, "size": 1, "account": "0", "hex": "010000000101010000000000000000000000"},
-    {"market": 4294967295, "side": 1, "price": 99, "size": 1000000, "account": "18446744073709551615", "hex": "ffffffff016340420f00ffffffffffffffff"},
-    {"market": 16909060, "side": 0, "price": 50, "size": 0, "account": "72623859790382856", "hex": "040302010032000000000807060504030201"}
+    {"market": 7, "side": 0, "price": 63, "size": 10, "key": "2a2b2c2d2e2f30313233343536373839", "hex": "07000000003f0a0000002a2b2c2d2e2f30313233343536373839"},
+    {"market": 1, "side": 1, "price": 1, "size": 1, "key": "000102030405060708090a0b0c0d0e0f", "hex": "01000000010101000000000102030405060708090a0b0c0d0e0f"},
+    {"market": 4294967295, "side": 1, "price": 99, "size": 1000000, "key": "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff", "hex": "ffffffff016340420f00f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"},
+    {"market": 16909060, "side": 0, "price": 50, "size": 0, "key": "0102030405060708090a0b0c0d0e0f10", "hex": "040302010032000000000102030405060708090a0b0c0d0e0f10"}
   ],
-  "split": {"order": "07000000003f0a0000002a00000000000000", "r0": "0b30557a9fc4e90e33587da2c7ec11365b80", "r1": "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efee", "shares": ["0b30557a9fc4e90e33587da2c7ec11365b80", "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efee", "f3cea88664011af6c4aea256341ee0c6b46e"]},
+  "split": {"order": "07000000003f0a0000002a2b2c2d2e2f30313233343536373839", "r0": "0b30557a9fc4e90e33587da2c7ec11365b80a5caef14395e83a8", "r1": "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6", "shares": ["0b30557a9fc4e90e33587da2c7ec11365b80a5caef14395e83a8", "fffefdfcfbfaf9f8f7f6f5f4f3f2f1f0efeeedecebeae9e8e7e6", "f3cea88664011af6c4aea27d1833cee9845f7a1530cbe6815c77"]},
   "batch": [
-    {"market": 7, "side": 0, "price": 55, "size": 4, "account": "1", "hex": "070000000037040000000100000000000000"},
-    {"market": 7, "side": 0, "price": 70, "size": 2, "account": "2", "hex": "070000000046020000000200000000000000"},
-    {"market": 7, "side": 1, "price": 50, "size": 5, "account": "3", "hex": "070000000132050000000300000000000000"},
-    {"market": 7, "side": 1, "price": 99, "size": 0, "account": "0", "hex": "070000000163000000000000000000000000"}
+    {"market": 7, "side": 0, "price": 55, "size": 4, "key": "0102030405060708090a0b0c0d0e0f10", "hex": "070000000037040000000102030405060708090a0b0c0d0e0f10"},
+    {"market": 7, "side": 0, "price": 70, "size": 2, "key": "02030405060708090a0b0c0d0e0f1011", "hex": "0700000000460200000002030405060708090a0b0c0d0e0f1011"},
+    {"market": 7, "side": 1, "price": 50, "size": 5, "key": "030405060708090a0b0c0d0e0f101112", "hex": "07000000013205000000030405060708090a0b0c0d0e0f101112"},
+    {"market": 7, "side": 1, "price": 99, "size": 0, "key": "000102030405060708090a0b0c0d0e0f", "hex": "07000000016300000000000102030405060708090a0b0c0d0e0f"}
   ],
   "records": [
     "030000003b0100000001",
