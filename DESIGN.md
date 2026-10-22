@@ -52,7 +52,7 @@ Judges see four things — the description (read first), the repo, a demo they c
 ### 1. Deposit
 - The trader sends fixed-denomination notes (1 / 5 / 25 units) to the escrow's unified address (Ironwood receiver only).
 - The memo (`0xFF` app memo, ZIP 302) carries only a random account tag, encrypted separately to each relayer. No order data ever goes in a memo.
-- Each relayer scans the escrow with the shared viewing key and credits the account's **XOR-shared balance**.
+- Each relayer scans the escrow with the shared viewing key and its own memo key (`[settlement]` in the relayer config). A deposit is credited once it has 10 confirmations and **all three** relayers' scans found it: the batch handshake intersects what each offers, and the credit enters the circuit as a public per-row input (the amount is visible to every relayer anyway). So no single relayer can credit money the chain does not show. Judge-mode credits are the one exception, accepted only where judge mode is on.
 
 ### 2. Order
 - In the browser: `order = {market, side, price, size, account, salt}` → split into three XOR shares → each share POSTed **directly to its own relayer** over TLS (onion service optional). No backend ever holds two shares.
@@ -70,10 +70,12 @@ Judges see four things — the description (read first), the repo, a demo they c
 - Signed bytes: `"zPredict outcome v1\n"` then the compact JSON `{"market":id,"outcome":"yes"|"no","height":h,"blockHash":"…"}` (`Resolution::message`). The market id fixes the terms (config, or the rolling window). `packages/settle/testdata/outcome-vectors.json` pins it for Rust and TS.
 - Signing is **config-gated**: without a sealed share (`frost_share_file`, after the key ceremony #78) a relayer still resolves, and the app shows "Resolved (unsigned)". Nothing is ever signed with a stand-in key.
 - **Rolling markets** (`apps/relayer/src/markets/rolling.rs`): every hour of nominal block time, "Will mainnet block H contain ≥ N shielded actions?", H one hour ahead (48 blocks at 75 s; 144 blocks at 25 s from NU7, 3,543,405), trading closing 5 minutes before H, N the median of the 24 blocks before the window so YES/NO are about even. Ids are `1,000,000 + window`, derived from heights only, so the three relayers make the same market without talking. **Cap:** a window's market is only made while fewer than 4 markets (`DEFAULT_MARKETS`, one MPC run) are open at its start: 3 headline markets + 1 rolling market. Resolved rolling markets stay 24 h as history (`keep_resolved`).
+- When all three nodes agree a market resolved and on its outcome, the relayers run a second, small MPC program (`zpredict_circuit::resolve`) over **every** position (each batched order's share with its fill share): one unit per winning contract goes into the account's balance row, as shares. Nobody learns which positions were in that market, filled or won. It runs once per market; reference `zpredict_core::resolve`.
 
-### 5. Settlement
-- MPC computes the payout vector from the shared positions.
-- The relayers build one PCZT (v6, Ironwood bundle) paying every winner and every withdrawal to a **fresh diversified address**, with change back to escrow; ZIP 317 default fee; wallet-default padding, so a payout has the same shape as any wallet's send.
+### 5. Settlement (withdrawals)
+- Winnings stay in the balance table until the owner withdraws: `POST /withdrawals` to all three relayers with the amount, a **fresh shielded address**, and an XOR share of the account id each, so no relayer learns whose withdrawal it is.
+- Requests all three hold fill the clearing circuit's withdrawal slots (2 per batch): the amount is taken from the account's row inside MPC only if the row covers it, before orders reserve funds. A public bit per slot says whether it went through.
+- Debited withdrawals are paid in one PCZT (v6, Ironwood bundle) to the requested addresses, with change back to escrow; ZIP 317 default fee (each withdrawal keeps 2 half-ticks, 10,000 zats, toward it); wallet-default padding, so a payout has the same shape as any wallet's send. Relayer 0 builds and proves it from the escrow wallet with zcash-devtool; relayers 0 and 1 sign it over the Noise peer links; relayer 0 broadcasts and tells the others the txid. `scripts/relayer-e2e.sh` runs deposit → trade → resolution → withdrawal on regtest through three real relayers.
 - Signing: FROST 2-of-3 with `frost-core` called as a library (`zpredict-settle`), one session for every spend. Before signing, each relayer recomputes the sighash from the PCZT and checks every output against the agreed payout vector (`verify_then_sign`). One relayer proves, off the signing path. Key shares, the viewing key and the escrow wallet are sealed at rest; the DKG is frost-core too, so no share is ever in a clear file (PRIVACY.md). Details and the regtest run are in `packages/settle/README.md`.
 
 ## Relayer API
@@ -95,6 +97,8 @@ Each relayer is its own origin: `https://r0.zpredict.site`, `https://r1.zpredict
 | `GET /group-key` | `{relayer: 0\|1\|2, groupKey: hex64, threshold: 2}`: the escrow's FROST group key, which outcome signatures verify against; `404` while signing is off. The sdk's `getGroupKey` only accepts it if all three relayers serve the same key |
 | `GET /view?after=<seq>` | `{items: [{seq, kind: "order"\|"fill", orderId, share}]}`: exactly what this relayer sees; powers the Relayer View |
 | `POST /judge/claim` | `{tag}`: **mock**, testnet only (see below) |
+| `POST /withdrawals` body `{withdrawalId: hex32, share: hex16, amount: half-ticks, address: unified address}` | `202 {}`; only with `[settlement]` on. Share i of the account id goes only to relayer i |
+| `GET /withdrawals/:withdrawalId` | `{status: "pending"\|"refused"\|"debited"\|"paying"\|"paid", txid?}` |
 
 `Market = {id, question, plugin, params, closeHeight, resolveHeight, status: "open"|"closed"|"resolved", outcome?: "yes"|"no", outcomeSig?: hex128, blockHash?: hex64, blockHeight?: number, rolling?: true, lastPrice?: number, history?: number[]}`; `blockHash`/`blockHeight` are the block the outcome was computed from, `outcomeSig` the FROST 2-of-3 signature (R ‖ S) over it (Resolution above), absent until the relayers agree or while signing is off. `rolling` marks the hourly generated markets; resolved ones stay in the list as history.
 - `lastPrice` is the public price: cents per YES contract at the market's latest cross (the clearing midpoint, so it can end in .5). `history` is the last N clearing prices, oldest first, one per batch that crossed. Both are absent until the first fill. They are public by design ("price public, participants private"): the batch reveals that a cross happened and at what price, never who, which orders, how many, or what size.
@@ -106,6 +110,7 @@ Encodings (all little-endian, identical in `zpredict-core` and `@zpredict/sdk`; 
 - **Account tag**: 16 random bytes chosen by the browser; the order's `account` field is the tag's first 8 bytes read as `u64`. The tag is the only credential, so it stays in the browser.
 - **Deposit memo** (512 bytes, ZIP 302 `0xFF`): `0xFF | 0x01 | epk (32) | slot₀ | slot₁ | slot₂`, then zeros. `slotᵢ` = ChaCha20-Poly1305 with a zero nonce, applied to the tag under `BLAKE2b-256(personal "zPredictMemoKey1", X25519(esk, memoKeyᵢ) ‖ epk ‖ memoKeyᵢ)`, with a fresh `esk` per memo. The browser fetches `memoKeyᵢ` from relayer `i` only (`getMemoKeys`) and hands the wallet a ZIP 321 request (`depositUri`: escrow UA, fixed amount, base64url memo). `packages/settle/testdata/memo-vectors.json` pins this format for both `zpredict_settle::memo` and `@zpredict/sdk`. The memo key is generated sealed (`settle memo-key`) and is distinct from the FROST share and the viewing key.
 - **orderId**: 16 random bytes from the browser; it links the three shares of one order and nothing else.
+- **Withdrawal share** (8 bytes): the account id (`u64`), XOR-split like an order; amount and address are public.
 
 `POST /judge/claim` is a testnet-only demo shortcut: it credits a fresh tag with prefunded test balance so judges can trade without a faucet. It is labelled "Mock" in the UI and in `SUBMISSION.md`, and does not exist on mainnet builds.
 
@@ -114,13 +119,15 @@ Encodings (all little-endian, identical in `zpredict-core` and `@zpredict/sdk`; 
 | Observer | Learns | Doesn't learn |
 |---|---|---|
 | Chain observer | The escrow address exists and makes batched shielded txs | Who bet, which side, how much, who won |
-| Any single relayer | "A 5-unit deposit arrived" (shared viewing key) | Orders, sides, prices, positions, which deposit belongs to which payout |
+| Any single relayer | "A 5-unit deposit arrived for account X" (shared viewing key, its memo slot); "someone withdrew A to address Y" (amount and address are needed to pay it) | Orders, sides, prices, positions, balances, whose withdrawal it was, so which deposit belongs to which payout (beyond amount and timing) |
 | 2 colluding relayers | Same as one for orders; **can move escrow funds** (FROST 2-of-3) | Orders (polytune needs all 3 to collude) |
 | All 3 colluding | Everything | — |
 | Counterparty | That a fill happened at the midpoint | Who you are, your size beyond the fill |
 | Network observer | That someone talks to an zPredict relayer | Contents (TLS); your IP if you use Tor |
 
 **Stated up front:** funds are 2-of-3, order privacy is 3-of-3. A judge should read this in our README before they work it out.
+
+**Known gap: a relayer can act as any account.** Every relayer reads each depositor's account tag from its memo slot, and orders and withdrawals name the account only by its id (the tag's first 8 bytes). So one dishonest relayer could post shares of an order or a withdrawal for someone else's account, posing as a browser to all three. It still learns nothing it didn't know, and a withdrawal it forges pays only where it says, which is visible on the requests. The fix is an account credential relayers never see (an id derived from a secret, checked inside the circuit), tracked in #85.
 
 **Not quantum-recoverable (ZIP 2005).** The escrow's spend authority `ak` is the FROST group key, so its viewing key cannot be derived from a seed. Its `nk` and `rivk` are random, generated once at the DKG (the same construction as `zcash-sign generate`). Escrow notes therefore don't use the ZIP 2005 derivation, which would let a key holder recover them after a quantum break of discrete log. For a hackathon escrow that holds collateral for days, this is acceptable. A production escrow would need a FROST-compatible ZIP 2005 derivation, or would have to sweep to a recoverable key before such a break.
 
