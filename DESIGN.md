@@ -118,22 +118,33 @@ Judges see four things — the description (read first), the repo, a demo they c
 
 ## Monorepo
 
-One repo, `zpredict`: a Cargo workspace for everything Rust, `apps/` for everything web. Crates join the workspace automatically (`members = ["crates/*"]`) and are created when their work starts.
+One repo, `zpredict`, Rust and TypeScript side by side.
+- **`apps/`** holds anything that runs or deploys.
+- **`packages/`** holds the libraries those apps share.
+- **`packages/plugins/`** holds one market resolver per market type, all implementing the `Resolver` trait from `oracle`. A new market type is a new plugin; nothing else changes.
+
+Each directory is created when its work starts. Cargo members are listed explicitly in `Cargo.toml`: a `packages/*` glob would also catch the TS packages and break Cargo. pnpm globs `apps/*` and `packages/*`; it skips folders that have no `package.json`.
 
 ```
 zpredict/
-├── Cargo.toml                 # workspace
-├── crates/
-│   ├── zpredict-core/         # order encoding, XOR shares, clearing rule (plaintext reference)   ← exists
-│   ├── zpredict-circuit/      # Garble clearing circuit + polytune runner, tested against core   (Oct 24)
-│   ├── zpredict-relayer/      # binary: share intake, escrow scanner, MPC party, FROST signer    (Oct 24)
-│   ├── zpredict-settle/       # PCZT building + FROST glue for batched Ironwood payouts          (Oct 23–25)
-│   └── zpredict-oracle/       # chain-data market resolution                                      (Oct 26)
 ├── apps/
-│   ├── landing/               # public site                                                      ← exists
-│   └── web/                   # trade page, Relayer View, judge mode (static TS)                 (Oct 24)
-├── deploy/                    # 3 relayers + Zebra regtest (docker compose)                      (Oct 23)
-├── DESIGN.md · SUBMISSION.md · README.md · PRIVACY.md · LICENSE
+│   ├── landing/               # public site                                                ← exists
+│   ├── web/                   # trade page, Relayer View, judge mode (TS)                  (Oct 24)
+│   └── relayer/               # Rust binary: share intake, scanner, MPC party, FROST signer (Oct 24)
+├── packages/
+│   ├── core/                  # zpredict-core: order encoding, XOR shares, clearing rule   ← exists
+│   ├── circuit/               # Garble clearing circuit + polytune runner                   (Oct 24)
+│   ├── settle/                # PCZT + FROST glue for batched Ironwood payouts              (Oct 23–25)
+│   ├── oracle/                # Resolver trait, market registry, FROST-signed outcomes      (Oct 26)
+│   ├── plugins/               # one resolver per market type                                (Oct 26)
+│   │   ├── nu7-activation/
+│   │   ├── ironwood-pool/
+│   │   └── shielded-actions/
+│   └── sdk/                   # TS: order encoding + browser XOR sharing, mirrors core      (Oct 24)
+├── deploy/                    # 3 relayers + Zebra regtest (docker compose)                 (Oct 23)
+├── Cargo.toml                 # Rust workspace
+├── package.json · pnpm-workspace.yaml · biome.json · .husky/
+└── DESIGN.md · SUBMISSION.md · README.md · LICENSE
 ```
 
 ## Stack
