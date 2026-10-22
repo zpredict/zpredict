@@ -41,7 +41,7 @@ Coolify UI → resource → **Deployments** → pick an earlier build → **Rede
 ### Relayers (pending #47)
 
 1. Generate three key pairs (`zpredict-relayer keygen rN`) on a trusted machine.
-2. Coolify → project `zpredict` → **+ New → Docker Compose** from this repo, compose file `deploy/production/compose.yaml`. Publish `127.0.0.1:3172:8080`, `…3173…`, `…3174…` for r0/r1/r2 (no Coolify domains; host nginx serves them).
+2. Coolify → project `zpredict` → **+ New → Docker Compose** from this repo, compose file `deploy/production/compose.yaml`. It publishes r0/r1/r2 on `127.0.0.1:3172–3174`; set no Coolify domains (host nginx serves them).
 3. Secrets, in the resource's **Environment Variables** (never in git): `R0_KEY`, `R1_KEY`, `R2_KEY` (private, hex) and `R0_PUB`, `R1_PUB`, `R2_PUB`. Coolify stores them encrypted; `entrypoint.sh` writes them to a tmpfs and removes the private key from the environment before the relayer starts. FROST key shares and the viewing-key passphrase go in the same place once the signer lands.
 4. Deploy, then check `https://rN.zpredict.site/health` (`peers` all `true`). Measure memory over a few batches with `docker stats` and set `mem_limit` (1 GiB placeholder).
 

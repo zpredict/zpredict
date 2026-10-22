@@ -1,6 +1,6 @@
 # PENDING (needs apps/relayer on main, PR #47): the three hosted testnet relayers as one
-# Coolify "Docker Compose" resource. Coolify's Traefik serves each on its own HTTPS
-# origin (r0/r1/r2.zpredict.site -> port 8080); nothing is published on the host.
+# Coolify "Docker Compose" resource. Each API is published on loopback only; host nginx
+# (nginx.conf) serves it as https://rN.zpredict.site.
 # MPC peer traffic (Noise KK, encrypted) stays on the internal `peers` network.
 #
 # Demo only: all three run on one VM, so one operator could read every share. The
@@ -35,6 +35,7 @@ services:
       ZPREDICT_INDEX: 0
       RELAYER_KEY: ${R0_KEY:?}
     volumes: [r0-data:/data]
+    ports: ["127.0.0.1:3172:8080"]
     networks:
       default:
       peers: { ipv4_address: 10.0.250.10 }
@@ -45,6 +46,7 @@ services:
       ZPREDICT_INDEX: 1
       RELAYER_KEY: ${R1_KEY:?}
     volumes: [r1-data:/data]
+    ports: ["127.0.0.1:3173:8080"]
     networks:
       default:
       peers: { ipv4_address: 10.0.250.11 }
@@ -55,6 +57,7 @@ services:
       ZPREDICT_INDEX: 2
       RELAYER_KEY: ${R2_KEY:?}
     volumes: [r2-data:/data]
+    ports: ["127.0.0.1:3174:8080"]
     networks:
       default:
       peers: { ipv4_address: 10.0.250.12 }
