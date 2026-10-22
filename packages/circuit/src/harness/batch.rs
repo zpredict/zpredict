@@ -1,7 +1,7 @@
 //! Seeded clearing batches and what the clearing circuit must output for them.
 
 use zpredict_core::{
-    ACCOUNT_LEN, Account, MAX_SIZE, ORDER_LEN, Order, Side, Withdrawal, apply_flows,
+    ACCOUNT_LEN, Account, Key, MAX_SIZE, ORDER_LEN, Order, Side, Withdrawal, apply_flows,
     clear_with_balances, fill_records,
 };
 
@@ -23,7 +23,8 @@ pub struct Batch {
     pub withdrawals: Vec<Withdrawal>,
     pub order_shares: [Vec<[u8; ORDER_LEN]>; 3],
     pub account_shares: [Vec<[u8; ACCOUNT_LEN]>; 3],
-    pub withdrawal_shares: [Vec<[u8; 8]>; 3],
+    pub key_shares: [Vec<Key>; 3],
+    pub withdrawal_shares: [Vec<Key>; 3],
 }
 
 impl Batch {
@@ -32,6 +33,7 @@ impl Batch {
         Shares {
             orders: &self.order_shares[p],
             accounts: &self.account_shares[p],
+            keys: &self.key_shares[p],
             withdrawals: &self.withdrawal_shares[p],
         }
     }
@@ -40,30 +42,45 @@ impl Batch {
 /// Random [`MARKETS`] batch of `slots` orders over a `rows`-row table (at least 4), with
 /// dummies, malformed slots, orders in two markets plus unlisted ones, price ties,
 /// partial fills, the odd `MAX_SIZE` order, short and unknown accounts, accounts with
-/// several orders, a duplicated row id, zero padding rows, deposits and withdrawals that
-/// fit or don't, so every branch gets exercised.
+/// several orders, a duplicated row key, zero padding rows, deposits and withdrawals that
+/// fit or don't, and orders and withdrawals impersonating an account with what one relayer
+/// knows of it (its share of the key), so every branch gets exercised.
 pub fn random_batch(rng: &mut Rng, slots: usize, rows: usize) -> Batch {
     let used = 4 + rng.below(rows.min(16) as u64 - 3) as usize; // the rest is padding
-    let mut accounts = vec![Account { id: 0, balance: 0 }; rows];
+    let zero = Account {
+        id: 0,
+        key: [0; 16],
+        balance: 0,
+    };
+    let mut accounts = vec![zero; rows];
     for a in accounts.iter_mut().take(used) {
         a.id = 1 + rng.below(1 << 40);
+        a.key = rng.bytes();
         a.balance = match rng.below(8) {
             0 => 0,
             1 => 1 << 40, // covers even MAX_SIZE orders
             _ => rng.below(6000),
         };
     }
-    accounts[used - 1].id = accounts[0].id; // duplicate: the first row must win
+    accounts[used - 1].key = accounts[0].key; // duplicate: the first row must win
     // Spread the live rows over the table so high row indices get exercised too.
     for k in 0..used {
         let j = rng.below(rows as u64) as usize;
         accounts.swap(k, j);
     }
-    let live: Vec<u64> = accounts
+    let live: Vec<Key> = accounts
         .iter()
         .filter(|a| a.id != 0)
-        .map(|a| a.id)
+        .map(|a| a.key)
         .collect();
+    let rows_plain: Vec<[u8; ACCOUNT_LEN]> = accounts.iter().map(Account::encode).collect();
+    let keys: Vec<Key> = accounts.iter().map(|a| a.key).collect();
+    let key_shares = split3(rng, &keys);
+    // What relayer `p` alone knows of a live account: its share of the key.
+    let forged = |rng: &mut Rng| {
+        let r = rng.below(rows as u64) as usize;
+        key_shares[rng.below(3) as usize][r]
+    };
     let orders: Vec<[u8; ORDER_LEN]> = (0..slots)
         .map(|_| {
             let side = if rng.below(2) == 0 {
@@ -80,8 +97,9 @@ pub fn random_batch(rng: &mut Rng, slots: usize, rows: usize) -> Batch {
                 1 => MAX_SIZE - rng.below(3) as u32,
                 _ => 1 + rng.below(20) as u32,
             };
-            let account = match rng.below(8) {
-                0 => rng.next_u64(), // no such account
+            let key = match rng.below(14) {
+                0 => rng.bytes(), // no such account
+                1 => forged(rng), // a relayer impersonating an account
                 _ => live[rng.below(live.len() as u64) as usize],
             };
             let market = match rng.below(10) {
@@ -94,7 +112,7 @@ pub fn random_batch(rng: &mut Rng, slots: usize, rows: usize) -> Batch {
                 side,
                 price,
                 size,
-                account,
+                key,
             }
             .encode();
             match rng.below(16) {
@@ -117,25 +135,25 @@ pub fn random_batch(rng: &mut Rng, slots: usize, rows: usize) -> Batch {
     // two in one batch, and accounts with no row.
     let withdrawals: Vec<Withdrawal> = (0..DEFAULT_WITHDRAWALS)
         .map(|_| match rng.below(6) {
-            0 | 1 => Withdrawal {
-                account: 0,
+            0 => Withdrawal {
+                key: [0; 16],
                 amount: 0,
             },
+            1 => Withdrawal {
+                key: forged(rng), // a relayer impersonating an account
+                amount: 1 + rng.below(100),
+            },
             2 => Withdrawal {
-                account: rng.next_u64(),
+                key: rng.bytes(),
                 amount: 1 + rng.below(100),
             },
             _ => Withdrawal {
-                account: live[rng.below(live.len() as u64) as usize],
+                key: live[rng.below(live.len() as u64) as usize],
                 amount: 1 + rng.below(5000),
             },
         })
         .collect();
-    let rows: Vec<[u8; ACCOUNT_LEN]> = accounts.iter().map(Account::encode).collect();
-    let ids: Vec<[u8; 8]> = withdrawals
-        .iter()
-        .map(|w| w.account.to_le_bytes())
-        .collect();
+    let wkeys: Vec<Key> = withdrawals.iter().map(|w| w.key).collect();
     Batch {
         public: Public {
             markets: MARKETS.to_vec(),
@@ -143,8 +161,9 @@ pub fn random_batch(rng: &mut Rng, slots: usize, rows: usize) -> Batch {
             withdrawals: withdrawals.iter().map(|w| w.amount).collect(),
         },
         order_shares: split3(rng, &orders),
-        account_shares: split3(rng, &rows),
-        withdrawal_shares: split3(rng, &ids),
+        account_shares: split3(rng, &rows_plain),
+        key_shares,
+        withdrawal_shares: split3(rng, &wkeys),
         withdrawals,
         orders,
         accounts,

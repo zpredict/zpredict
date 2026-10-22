@@ -8,8 +8,7 @@ use zpredict_circuit::{Error, resolve_in_clear, run_resolution_on};
 
 fn eval(r: &Resolution, markets: [u32; 3], outcomes: [u8; 3]) -> Result<Vec<[u8; 8]>, Error> {
     let positions = [0, 1, 2].map(|p| r.position_shares[p].as_slice());
-    let accounts = [0, 1, 2].map(|p| r.account_shares[p].as_slice());
-    resolve_in_clear(markets, outcomes, positions, accounts)
+    resolve_in_clear(markets, outcomes, positions, [0, 1, 2].map(|p| r.table(p)))
 }
 
 fn agreed(r: &Resolution) -> Vec<[u8; 8]> {
@@ -56,8 +55,8 @@ async fn three_parties_match_resolve() {
         let r = &r;
         async move {
             let channel = TcpChannel::connect(p, &peers).await?;
-            let (positions, accounts) = (&r.position_shares[p], &r.account_shares[p]);
-            run_resolution_on(&channel, p, r.market, r.outcome, positions, accounts).await
+            let positions = &r.position_shares[p];
+            run_resolution_on(&channel, p, r.market, r.outcome, positions, r.table(p)).await
         }
     };
     let (a, b, c) = tokio::join!(party(0), party(1), party(2));

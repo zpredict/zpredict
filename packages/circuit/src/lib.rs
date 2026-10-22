@@ -19,7 +19,7 @@
 //! orders. Credits (deposits, judge credits: amounts every relayer already sees) are
 //! added to their rows before clearing, so a top-up lands in the account's existing
 //! row. Then each withdrawal (a public amount; whose it is stays secret-shared, like an
-//! order's account) is taken only if its account's row covers it, before any order
+//! order's key) is taken only if the row with its key covers it, before any order
 //! reserves funds, and the public `withdrawn` output says which went through: relayers
 //! need the amount to pay it out, and never learn whose withdrawal it was, so they
 //! cannot link a deposit to a payout. If the parties disagree on any public input,
@@ -30,8 +30,10 @@
 //! # Balances
 //!
 //! The whole table goes in every batch, and each order finds its row inside the circuit
-//! (first row whose id equals the order's `account`). Relayers never learn which
-//! accounts traded: they only hold shares of orders, so they could not pick per-batch
+//! (first row whose key equals the order's `key`). A row's key is the account's
+//! credential: every relayer holds a share of it and requests carry it as fresh shares,
+//! so no single relayer can spend a row (the row id is only a public label). A wrong key
+//! finds no row. Relayers never learn which accounts traded: they only hold shares of orders, so they could not pick per-batch
 //! rows without that link leaking. In batch order, each order reserves its worst case
 //! (`size × 2 × price` half-ticks) from its row; one that doesn't fit what's left, or
 //! has no row, becomes a dummy. Rows are then debited what their orders actually paid.
@@ -70,17 +72,18 @@
 //! | slots | rows | AND gates | MPC per batch | compile | peak RSS     |
 //! |-------|------|-----------|---------------|---------|--------------|
 //! | 8     | 16   | 167,949   | 3.6 s         | 2.5 s   | 0.36 GB      |
-//! | 8     | 32   | 269,753   | 5.9 s         | 5.9 s   | 0.63 GB      |
+//! | 8     | 32   | 290,543   | 6.3 s         | 6.8 s   | 0.63 GB      |
 //! | 16    | 16   | 490,829   | 10.5 s        | 14 s    | 0.7–1.0 GB   |
 //! | 16    | 32   | 622,597   | 13.5 s        | 21 s    | 1.0–1.4 GB   |
 //!
 //! Crossing costs ~N² AND gates and each table row ~8k; four market slots cost ~24k
 //! together, so one run replaces one run per market. Each party uses about one core.
 //! Traffic scales with AND gates (16 slots, one market sent 0.5–0.6 GB per party).
-//! The other rows predate withdrawals; 8 × 32 includes [`DEFAULT_WITHDRAWALS`] = 2
-//! withdrawal slots (~9k gates each).
-//! A resolution run of [`DEFAULT_POSITIONS`] = 16 positions over 32 rows is 125,087 AND
-//! gates (~2.8 s by the same rate).
+//! The other rows predate withdrawals and row keys; 8 × 32 includes
+//! [`DEFAULT_WITHDRAWALS`] = 2 withdrawal slots (~9k gates each) and 128-bit row keys
+//! (+21k gates, +0.4 s over id matching).
+//! A resolution run of [`DEFAULT_POSITIONS`] = 16 positions over 32 rows is 158,335 AND
+//! gates (~3.5 s by the same rate).
 //!
 //! # Trust
 //!

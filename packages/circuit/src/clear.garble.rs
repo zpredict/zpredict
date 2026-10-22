@@ -10,9 +10,10 @@ struct Party {
     balance_mask: [[u8; 8]; {rows}],
     credits: [u64; {rows}],
     fill_mask: [[u8; 10]; {n}],
+    keys: [[u8; 16]; {rows}],
     markets: [u32; {markets}],
-    orders: [[u8; 18]; {n}],
-    withdraw_accounts: [[u8; 8]; {w}],
+    orders: [[u8; 26]; {n}],
+    withdraw_keys: [[u8; 16]; {w}],
     withdrawals: [u64; {w}],
 }
 
@@ -23,7 +24,7 @@ pub fn main(
 ) -> ([[u8; 10]; {n}], [[u8; 8]; {rows}], [u16; {markets}], [bool; {w}], bool) {
     // The batch's markets (0 = unused slot), credits and withdrawal amounts (0 = unused
     // slot) are public; whose withdrawals they are is secret-shared like an order's
-    // account. If the parties disagree on a public input, nothing fills, nothing moves,
+    // key. If the parties disagree on a public input, nothing fills, nothing moves,
     // and `agreed` (public) says so.
     let markets = p0.markets;
     let credits = p0.credits;
@@ -41,10 +42,11 @@ pub fn main(
     let mut market = [0u32; {n}];
     let mut price = [0u8; {n}];
     let mut size = [0u32; {n}];
-    let mut account = [0u64; {n}];
+    let mut olo = [0u64; {n}];
+    let mut ohi = [0u64; {n}];
     for i in 0usize..{n}usize {
-        let mut o = [0u8; 18];
-        for k in 0usize..18usize {
+        let mut o = [0u8; 26];
+        for k in 0usize..26usize {
             o[k] = p0.orders[i][k] ^ p1.orders[i][k] ^ p2.orders[i][k];
         }
         let s = (o[6] as u32)
@@ -70,42 +72,56 @@ pub fn main(
         price[i] = o[5];
         size[i] = if ok { s } else { 0u32 };
         for k in 0usize..8usize {
-            account[i] = account[i] | ((o[10usize + k] as u64) << ((8usize * k) as u8));
+            olo[i] = olo[i] | ((o[10usize + k] as u64) << ((8usize * k) as u8));
+            ohi[i] = ohi[i] | ((o[18usize + k] as u64) << ((8usize * k) as u8));
         }
     }
 
-    // Rebuild the balance table (id u64 | balance u64 per row) and add this batch's
-    // credits (deposits, judge credits) so they are spendable right away.
-    let mut id = [0u64; {rows}];
+    // Rebuild each row's key (shares from the three relayers, two u64 words): an order or
+    // withdrawal may use a row only by carrying the same key, which no single relayer holds.
+    let mut klo = [0u64; {rows}];
+    let mut khi = [0u64; {rows}];
+    for m in 0usize..{rows}usize {
+        for k in 0usize..8usize {
+            let lo = p0.keys[m][k] ^ p1.keys[m][k] ^ p2.keys[m][k];
+            let hi = p0.keys[m][8usize + k] ^ p1.keys[m][8usize + k] ^ p2.keys[m][8usize + k];
+            klo[m] = klo[m] | ((lo as u64) << ((8usize * k) as u8));
+            khi[m] = khi[m] | ((hi as u64) << ((8usize * k) as u8));
+        }
+    }
+
+    // Rebuild the balance table (id u64 | balance u64 per row; the id is only a label) and
+    // add this batch's credits (deposits, judge credits) so they are spendable right away.
     let mut balance = [0u64; {rows}];
     for m in 0usize..{rows}usize {
-        let mut r = [0u8; 16];
-        for k in 0usize..16usize {
-            r[k] = p0.accounts[m][k] ^ p1.accounts[m][k] ^ p2.accounts[m][k];
-        }
         for k in 0usize..8usize {
-            id[m] = id[m] | ((r[k] as u64) << ((8usize * k) as u8));
-            balance[m] = balance[m] | ((r[8usize + k] as u64) << ((8usize * k) as u8));
+            let b = p0.accounts[m][8usize + k] ^ p1.accounts[m][8usize + k] ^ p2.accounts[m][8usize + k];
+            balance[m] = balance[m] | ((b as u64) << ((8usize * k) as u8));
         }
         balance[m] = balance[m] + if agreed { credits[m] } else { 0u64 };
     }
 
     // Withdrawals, in slot order and before any order reserves funds: each is taken from
-    // its account's first row only if that row covers it. `withdrawn` (public) says which
+    // the first row with its key only if that row covers it. `withdrawn` (public) says which
     // went through, never whose they were.
     let mut withdrawn = [false; {w}];
     for s in 0usize..{w}usize {
-        let mut acct = 0u64;
+        let mut wlo = 0u64;
+        let mut whi = 0u64;
         for k in 0usize..8usize {
-            let b = p0.withdraw_accounts[s][k] ^ p1.withdraw_accounts[s][k] ^ p2.withdraw_accounts[s][k];
-            acct = acct | ((b as u64) << ((8usize * k) as u8));
+            let lo = p0.withdraw_keys[s][k] ^ p1.withdraw_keys[s][k] ^ p2.withdraw_keys[s][k];
+            let hi = p0.withdraw_keys[s][8usize + k]
+                ^ p1.withdraw_keys[s][8usize + k]
+                ^ p2.withdraw_keys[s][8usize + k];
+            wlo = wlo | ((lo as u64) << ((8usize * k) as u8));
+            whi = whi | ((hi as u64) << ((8usize * k) as u8));
         }
         let amount = withdrawals[s];
         let mut row = [false; {rows}];
         let mut found = false;
         let mut have = 0u64;
         for m in 0usize..{rows}usize {
-            row[m] = !found & (acct == id[m]);
+            row[m] = !found & (wlo == klo[m]) & (whi == khi[m]);
             found = found | row[m];
             have = have | if row[m] { balance[m] } else { 0u64 };
         }
@@ -116,12 +132,12 @@ pub fn main(
         }
     }
 
-    // Each order's account row: the first row whose id matches.
+    // Each order's row: the first row whose key matches the order's.
     let mut hit = [[false; {rows}]; {n}];
     let mut found = [false; {n}];
     for i in 0usize..{n}usize {
         for m in 0usize..{rows}usize {
-            hit[i][m] = !found[i] & (account[i] == id[m]);
+            hit[i][m] = !found[i] & (olo[i] == klo[m]) & (ohi[i] == khi[m]);
             found[i] = found[i] | hit[i][m];
         }
     }
