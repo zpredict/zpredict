@@ -1,0 +1,38 @@
+---
+/**
+ * Heading whose lines run the continuous text scramble on hover (scripts/scramble.ts).
+ * The real text is the accessible name; the animated line spans are aria-hidden.
+ */
+interface Props {
+	lines: string[];
+	as?: "h1" | "h2" | "h3";
+	id?: string;
+	class?: string;
+}
+
+const { lines, as: Tag = "h2", id, class: className } = Astro.props;
+---
+
+<Tag id={id} class:list={["title", className]} aria-label={lines.join(" ")} data-scramble="continuous">
+	{
+		lines.map((line) => (
+			<span class="line" aria-hidden="true" data-scramble-line>
+				{line}
+			</span>
+		))
+	}
+</Tag>
+
+<style>
+	@layer ui {
+		.title {
+			width: fit-content;
+			letter-spacing: -0.04em;
+			line-height: 1.25;
+		}
+		.line {
+			display: block;
+			width: fit-content;
+		}
+	}
+</style>

@@ -1,0 +1,82 @@
+---
+/**
+ * Giant lime percentage over black while the page settles (scripts/preloader.ts). Only shown
+ * while <html> has `.is-loading` (set inline in Base.astro, never with reduced motion); the
+ * hero snapshot underneath is already painted, so it costs no LCP.
+ */
+---
+
+<div
+	class="preloader js-preloader"
+	role="progressbar"
+	aria-label="Loading"
+	aria-valuemin="0"
+	aria-valuemax="100"
+	aria-valuenow="0"
+>
+	<p class="counter" aria-hidden="true">
+		<span class="num js-preloader-num">0</span><span class="pct">%</span>
+	</p>
+	<span class="bar" aria-hidden="true"><span class="fill js-preloader-fill"></span></span>
+</div>
+
+<script>
+	import "../scripts/preloader";
+</script>
+
+<style>
+	.preloader {
+		position: fixed;
+		inset: 0;
+		z-index: 100;
+		display: none;
+		place-items: center;
+		background: var(--zp-bg);
+		color: var(--zp-lime);
+		touch-action: none;
+		transition: opacity 550ms ease;
+	}
+	:global(html.is-loading) .preloader {
+		display: grid;
+	}
+	.preloader[data-state="leaving"] {
+		opacity: 0;
+	}
+	.counter {
+		display: flex;
+		align-items: baseline;
+		gap: 0.08em;
+		font-size: clamp(96px, 22vw, 360px);
+		line-height: 1;
+		letter-spacing: -0.07em;
+	}
+	.num {
+		min-width: 3ch;
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+	}
+	.pct {
+		font-size: 0.28em;
+		letter-spacing: -0.04em;
+	}
+	.bar {
+		position: absolute;
+		left: var(--zp-gutter);
+		right: var(--zp-gutter);
+		bottom: var(--zp-gutter);
+		height: 4px;
+		background: #d2fc5229;
+	}
+	.fill {
+		display: block;
+		height: 100%;
+		background: var(--zp-lime);
+		transform: scaleX(var(--load-progress, 0));
+		transform-origin: left;
+	}
+	@media (max-width: 900px) {
+		.bar {
+			bottom: max(24px, env(safe-area-inset-bottom));
+		}
+	}
+</style>

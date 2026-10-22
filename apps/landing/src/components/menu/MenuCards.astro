@@ -1,0 +1,72 @@
+---
+/** The menu's two cards: ASCII snapshots of the mark linking to the app and the source. */
+import { asciiSnapshot } from "@zpredict/ascii";
+import { site } from "../../data/site";
+
+interface Props {
+	class?: string;
+}
+
+const { class: className } = Astro.props;
+const cards = [
+	{ href: site.appUrl, caption: "Open the app", art: asciiSnapshot({ cols: 60, rows: 40 }) },
+	{
+		href: site.repoUrl,
+		caption: "Source on GitHub",
+		art: asciiSnapshot({ cols: 60, rows: 40, yaw: 0.45 }),
+	},
+];
+---
+
+<div class:list={["cards", className]}>
+	{
+		cards.map((card) => (
+			<a class="card" href={card.href}>
+				<span class="art" aria-hidden="true">
+					<pre>{card.art}</pre>
+				</span>
+				<span class="caption">{card.caption}</span>
+			</a>
+		))
+	}
+</div>
+
+<style>
+	.cards {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 12px;
+		min-height: 0;
+	}
+	.card {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		min-height: 0;
+	}
+	.art {
+		position: relative;
+		flex: 1;
+		min-height: 0;
+		overflow: hidden;
+		background: #10140f;
+		color: var(--zp-glyph);
+	}
+	/* Laid out at 12 px and scaled down: decoration, not reading text. */
+	.art pre {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		font-size: 12px;
+		line-height: 14px;
+		transform: translate(-50%, -50%) scale(0.26);
+		transition: transform 700ms var(--zp-ease);
+	}
+	.card:hover .art pre {
+		transform: translate(-50%, -50%) scale(0.27);
+	}
+	.caption {
+		font-size: 9px;
+		text-transform: uppercase;
+	}
+</style>

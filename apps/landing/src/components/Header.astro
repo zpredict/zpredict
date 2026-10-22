@@ -1,0 +1,140 @@
+---
+/**
+ * Fixed header: logo, centred Menu button (opens MenuDialog), CTA blocks.
+ * scripts/header-surface.ts adds `.is-on-light` to each item over a light surface.
+ */
+import { site } from "../data/site";
+import CtaButton from "./ui/CtaButton.astro";
+import Logo from "./ui/Logo.astro";
+---
+
+<header class="header">
+	<Logo class="item logo js-surface" />
+	<button
+		class="menu item js-surface js-menu-open"
+		type="button"
+		aria-haspopup="dialog"
+		aria-expanded="false"
+		aria-controls="menu"
+	>
+		<span>Menu</span>
+		<span class="icon" aria-hidden="true"></span>
+	</button>
+	<CtaButton class="item cta js-surface" href={site.appUrl} label={site.cta} />
+</header>
+
+<script>
+	import "../scripts/header-surface";
+</script>
+
+<style>
+	.header {
+		position: fixed;
+		top: var(--zp-gutter);
+		left: var(--zp-gutter);
+		right: var(--zp-gutter);
+		z-index: 8;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: center;
+		pointer-events: none;
+	}
+	.item {
+		pointer-events: auto;
+	}
+	.logo {
+		justify-self: start;
+		transition: filter 250ms ease;
+	}
+	.logo:global(.is-on-light) {
+		filter: brightness(0);
+	}
+
+	.menu {
+		position: absolute;
+		left: 50%;
+		top: 0;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		width: 320px;
+		height: var(--zp-control-h);
+		padding: 0 16px;
+		border: 0;
+		background: rgb(255 255 255 / 0.08);
+		-webkit-backdrop-filter: blur(40px);
+		backdrop-filter: blur(40px);
+		color: #fff;
+		font-size: 14px;
+		line-height: 1.4;
+		cursor: pointer;
+		transform: translateX(-50%);
+		transition:
+			background-color 250ms ease,
+			color 250ms ease;
+	}
+	.menu:hover {
+		background: rgb(255 255 255 / 0.14);
+	}
+	.menu:focus-visible {
+		outline-offset: 5px;
+	}
+	.menu:global(.is-on-light) {
+		background: #0505050d;
+		color: var(--zp-bg);
+	}
+	/* Two 2px lines in a 32 × 24 box. */
+	.icon {
+		position: relative;
+		width: 32px;
+		height: 24px;
+	}
+	.icon::before,
+	.icon::after {
+		content: "";
+		position: absolute;
+		left: 0;
+		width: 100%;
+		height: 2px;
+		background: currentColor;
+	}
+	.icon::before {
+		top: 7px;
+	}
+	.icon::after {
+		top: 17px;
+	}
+
+	.cta {
+		justify-self: end;
+	}
+	.cta:global(.is-on-light) {
+		--fg: var(--zp-lime);
+		--block: var(--zp-bg);
+	}
+
+	@media (max-width: 1000px) {
+		.menu {
+			width: 220px;
+		}
+	}
+	@media (max-width: 900px) {
+		.header {
+			top: max(16px, env(safe-area-inset-top));
+			display: flex;
+			justify-content: space-between;
+		}
+		.cta {
+			display: none;
+		}
+		.menu {
+			position: static;
+			width: 116px;
+			font-size: 13px;
+			transform: none;
+		}
+		.icon {
+			width: 24px;
+		}
+	}
+</style>
