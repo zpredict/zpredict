@@ -133,6 +133,8 @@ export interface Health {
 	height: number;
 	batch: number;
 	peers: boolean[];
+	/** Commit the relayer image was built from; null outside a release image. */
+	version?: string | null;
 }
 
 export interface Market {

@@ -83,7 +83,7 @@ Each relayer is its own origin: `https://r0.zpredict.site`, `https://r1.zpredict
 
 | Call | Reply |
 |---|---|
-| `GET /health` | `{relayer: 0\|1\|2, height: number, batch: number, peers: boolean[]}` |
+| `GET /health` | `{relayer: 0\|1\|2, height: number, batch: number, peers: boolean[], version: string\|null}` (`version`: image commit) |
 | `GET /markets` | `Market[]` (below) |
 | `POST /orders` body `{orderId: hex32, share: hex36}` | `202 {batch}`: the batch the share joins |
 | `GET /orders/:orderId` | `{status: "pending"\|"filled"\|"unfilled", fillShare?: hex20}` |
