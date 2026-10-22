@@ -29,7 +29,7 @@ Relayer URLs are baked in at build time from `NEXT_PUBLIC_RELAYERS="url0,url1,ur
 
 ## Mock relayer
 
-`mock-relayer/src` implements the relayer API from DESIGN.md with the real clearing rule (`clearing.mjs` is a port of `zpredict_core::clear` and `fill_records`, tested against `packages/core/testdata/vectors.json`). Background bots trade through the same share path, so every batch has counterparties.
+`mock-relayer/src` implements the relayer API from DESIGN.md with the real clearing rule (`clearing.mjs` is a port of `zpredict_core::clear` and `fill_records`, tested against `packages/core/testdata/vectors.json`). Background bots trade through the same share path, so every batch has counterparties. Markets mirror the landing (`apps/landing/src/data/markets.ts`) at future mainnet heights; each batch that crosses publishes the public `lastPrice` and appends it to `history`, and 24 warm-up batches at startup mean the cards have a price and sparkline on first load.
 
 **Mock:** the three relayers share one process and combine shares in the clear; the real ones run the batch inside 3-party MPC and never see each other's shares. Judge mode credits balance directly instead of a testnet deposit.
 
