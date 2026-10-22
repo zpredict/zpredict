@@ -2,7 +2,8 @@
 # Runs a 2-of-3 FROST DKG (RedPallas) between three relayers through a local frostd,
 # derives the escrow viewing key and Ironwood address from the group key, and imports
 # the viewing key into a watch-only "escrow" wallet. No single party ever holds the
-# spending key. Writes $RUN_DIR/escrow.env (group key, address).
+# spending key. Writes $RUN_DIR/escrow.env (group key, address, memo public keys); the
+# UFVK and each relayer's memo key are sealed under ZPREDICT_STORE_KEY, never in clear.
 set -euo pipefail
 source "$(dirname "$0")/lib/env.sh"
 
@@ -52,7 +53,12 @@ wait "${pids[@]}" || die "DKG failed, see $F/dkg-*.log"
 GROUP=$("$BIN/frost-client" groups -c r0.toml 2>&1 | awk '/^Public key/{print $3}')
 [ -n "$GROUP" ] || die "no FROST group"
 read -r UFVK ADDRESS < <("$BIN/frost-pczt" ufvk "$GROUP" "$NETWORK" | awk '{print $2}' | paste -sd' ' -)
-printf 'GROUP=%s\nESCROW_ADDRESS=%s\n' "$GROUP" "$ADDRESS" >"$RUN_DIR/escrow.env"
+printf %s "$UFVK" | "$BIN/settle" seal ufvk >escrow-ufvk.sealed
+MEMO_PKS=()
+for p in "${PARTIES[@]}"; do
+  MEMO_PKS+=("$("$BIN/settle" memo-key "$p-memo.sealed" | awk '{print $2}')")
+done
+printf 'GROUP=%s\nESCROW_ADDRESS=%s\nMEMO_PKS="%s"\n' "$GROUP" "$ADDRESS" "${MEMO_PKS[*]}" >"$RUN_DIR/escrow.env"
 echo "group key (ak): $GROUP"
 echo "escrow address: $ADDRESS"
 
