@@ -69,7 +69,7 @@ Judges see four things — the description (read first), the repo, a demo they c
 ### 5. Settlement
 - MPC computes the payout vector from the shared positions.
 - The relayers build one PCZT (v6, Ironwood bundle) paying every winner and every withdrawal to a **fresh diversified address**, with change back to escrow; ZIP 317 default fee; wallet-default padding, so a payout has the same shape as any wallet's send.
-- Signing: FROST 2-of-3 with `frost-core` called as a library (`zpredict-settle`), one session for every spend. Before signing, each relayer recomputes the sighash from the PCZT and checks every output against the agreed payout vector (`verify_then_sign`). One relayer proves, off the signing path. Key shares and the viewing key are sealed at rest. Details and the regtest run are in `packages/settle/README.md`.
+- Signing: FROST 2-of-3 with `frost-core` called as a library (`zpredict-settle`), one session for every spend. Before signing, each relayer recomputes the sighash from the PCZT and checks every output against the agreed payout vector (`verify_then_sign`). One relayer proves, off the signing path. Key shares, the viewing key and the escrow wallet are sealed at rest; the DKG is frost-core too, so no share is ever in a clear file (PRIVACY.md). Details and the regtest run are in `packages/settle/README.md`.
 
 ## Relayer API
 
@@ -183,7 +183,7 @@ zpredict/
 
 - Rust crates as above
 - librustzcash release of 2026-10-21 (`pczt` 0.10, `orchard` 0.16 with the Ironwood pool, `zcash_primitives` 0.31, `zcash_client_backend` 0.25); `zcash-devtool` `0b3436bb` for wallets, proving and broadcast
-- ZF `frost-core` 2.2 / `frost-rerandomized` 2.1 via frost-zcash-demo `53df99c` (RedPallas from `reddsa` at `ed49e9c`): `frost-client` + `frostd` run the DKG, `frost-core` signs as a library, plus our `frost-pczt` signer glue (`packages/settle`)
+- ZF `frost-core` 2.2 / `frost-rerandomized` 2.1 via frost-zcash-demo `53df99c` (RedPallas from `reddsa` at `ed49e9c`): `frost-core` runs as a library for both the DKG and signing, plus our PCZT signer glue (`packages/settle`). frost-client and frostd are no longer used
 - `polytune` (3-party MPC, Garble language)
 - Network: Zcash testnet via `testnet.zec.rocks:443`; Zebra regtest as the fallback
 - Landing: Astro (static), MotionSites template, self-hosted fonts and media

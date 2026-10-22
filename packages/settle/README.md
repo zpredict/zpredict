@@ -8,26 +8,31 @@ mined v6 transaction**, on a Zebra regtest with NU6.3 (Ironwood) and NU7 active.
 ## Run it
 
 ```sh
-scripts/frost-e2e.sh                 # build pinned tools, then the whole flow on a fresh chain
-SKIP_BUILD=1 scripts/frost-e2e.sh    # reuse built tools
-KEEP=1 scripts/frost-e2e.sh          # leave regtest + frostd up to poke at
+scripts/settle-e2e.sh                 # build pinned tools, then the whole flow on a fresh chain
+SKIP_BUILD=1 scripts/settle-e2e.sh    # reuse built tools
+KEEP=1 scripts/settle-e2e.sh          # leave regtest up to poke at
 ```
 
-Needs Docker, Rust (tested 1.91.1), `uv`, `jq`, `openssl`, `xxd`. About 2 minutes after
-the first build. All state (seeds, FROST key shares, PCZTs, logs) lives in
-`~/.cache/zpredict-run` and is wiped at the start of every run. Nothing secret is checked in.
+Needs Docker, Rust (tested 1.91.1), `uv`, `jq`, `openssl`. About 2 minutes after the
+first build. State lives in `~/.cache/zpredict-run` and is wiped at the start of every
+run. Relayer secrets are only ever sealed there; see [PRIVACY.md](../../PRIVACY.md).
+Nothing secret is checked in.
 
 | Step | Script | What happens |
 |---|---|---|
-| 0 | `build-tools.sh` | Clone and build the pinned tools with their own `Cargo.lock` |
+| 0 | `build-tools.sh` | Clone and build zcash-devtool with its own `Cargo.lock`, and this crate's binaries |
 | 1 | `regtest-up.sh` | Zebra regtest + lightwalletd; 110 blocks mined to a funder's Orchard-only address, which NU6.3 pays into **Ironwood** (no transparent coinbase, nothing to shield) |
-| 2 | `frost-dkg.sh` | frostd (local TLS) + 2-of-3 RedPallas DKG between `r0 r1 r2`; `frost-pczt ufvk` turns the group key into the escrow UFVK/address; UFVK and per-relayer memo keys sealed; watch-only escrow wallet |
+| 2 | `frost-dkg.sh` | `settle-payout dkg`: 2-of-3 RedPallas DKG for `r0 r1 r2` with frost-core as a library; each share and the escrow UFVK are sealed as they are made. One memo key per relayer (sealed). The watch-only escrow wallet is created and then sealed |
 | 3 | `fund-escrow.sh` | Funder sends one fixed-denomination note per `DEPOSIT_UNITS` entry (default one 5-unit = 0.05 ZEC note) with an encrypted account tag in the memo, to the Ironwood receiver only; 10 confirmations |
-| 4 | `frost-spend.sh` | `pczt create` + `prove` → `frost-pczt sighash` → coordinator + `r0`,`r1` sign (`r2` offline) → `frost-pczt apply` → `pczt combine` + `send`; asserts v6, mined, Ironwood actions > 0, zero transparent in/out |
+| 4 | `payout-escrow.sh` | One batched payout, signed 2-of-3 (see Batched payouts below) |
 
 Testnet: `NETWORK=test RUN_DIR=~/.cache/zpredict-testnet scripts/frost-dkg.sh` runs the
 same DKG against `testnet.zec.rocks:443` and prints a testnet escrow address. Fund it by
 hand (see below), then steps 3–4 apply unchanged except that blocks come from the network.
+
+The spike's own flow (frost-client + frostd DKG, one `y`-answered frost-client session per
+spend, `frost-pczt` CLI) was replaced by the steps above in #53: it left key shares in
+frost-client's clear TOML. Its result is kept below.
 
 ## Escrow scanning (#10)
 
@@ -63,7 +68,7 @@ deposit 6098607d12614873b992cd7d9dbf840ef3b9aec63586421164bb15f7ecc9fef5 0 111 5
 deposit 6098607d12614873b992cd7d9dbf840ef3b9aec63586421164bb15f7ecc9fef5 0 111 5 38a28f79… 0      (r1, r2)
 ```
 
-## Result
+## Spike result (#5)
 
 Regtest run (every run is a fresh chain, so ids differ per run):
 
@@ -83,7 +88,6 @@ the byte-reversed txid (ZIP 244), which the logs show.
 | Zebra | `zfnd/zebra:7.0.0` (digest pinned in `deploy/regtest/compose.yaml`) |
 | lightwalletd | `electriccoinco/lightwalletd:v0.6.0` (amd64 only, emulated on arm64) |
 | zcash-devtool | `0b3436bb` (librustzcash `eb38d7a`, pczt 0.10.0-pre.2, orchard 0.16.0), feature `regtest_support` |
-| frostd, frost-client | frost-zcash-demo `53df99c2` (frost-core 2.2.0, frost-rerandomized 2.1.0, reddsa git `ed49e9c`) |
 | this crate | pczt 0.10.0, orchard 0.16.0, zcash_primitives 0.31.0, zcash_protocol 0.11.0, zcash_keys 0.17.0, zcash_client_backend 0.25.0, zcash_client_sqlite 0.23.0; reddsa `ed49e9c` (frost-core 2.2.0) |
 
 ## Why this crate exists (the glue)
@@ -95,7 +99,7 @@ zcash-devtool carries NU7 branch ID `0x77190AD9` on testnet (since 4,465,026) an
 regtest, so `zcash-sign` fails at `into_effects`. Its `generate` also only encodes for
 main/test, not regtest. No upstream PR fixes this yet.
 
-`frost-pczt` (about 370 lines with docs and tests) replaces it on the 2026-10-21 librustzcash release:
+This crate replaces it on the 2026-10-21 librustzcash release:
 
 - `keys` — escrow FVK = FROST group `ak` + throwaway `nk`/`rivk` (same construction as
   `zcash-sign generate`, via `FullViewingKey::from_bytes`); UFVK and an Orchard-only UA
@@ -108,12 +112,11 @@ main/test, not regtest. No upstream PR fixes this yet.
 ## Batched payouts (#11)
 
 ```sh
-scripts/settle-e2e.sh    # regtest -> DKG -> shares sealed -> two deposits -> one batched payout -> mined
+scripts/settle-e2e.sh    # regtest -> DKG (sealed) -> two deposits -> one batched payout -> mined -> nothing left in clear
 ```
 
 | Step | What happens |
 |---|---|
-| `settle-payout import-share` | Each relayer's FROST key package leaves frost-client's clear TOML for a sealed file; the TOML is deleted. frostd is stopped: signing no longer needs it |
 | `settle-payout create` | `payout::create`: payout vector (`<UA> <zats>` per winner; only the UA's Orchard-shaped receiver is paid, anything else is refused) → `zcash_client_backend` proposal over the escrow wallet → **one PCZT**: an Ironwood output per payout, change to the escrow's internal scope, ZIP 317 fee, ZIP 315 expiry, wallet-default padding |
 | `devtool pczt prove` | The prover relayer proves in the background while the others sign |
 | `settle-payout sign` | `frost::sign_all`: **one FROST session for every spend** (round 1: a commitment per spend; round 2: a signing package + randomizer per spend). Each signer runs `verify_then_sign`, so the coordinator's word is never taken for anything |
@@ -137,27 +140,25 @@ winner-1:     Balance:   0.04000000 REG
 
 ## Spike gaps: status
 
-1. **Embed instead of shelling out**: done. `frost-core` (reddsa RedPallas, the rev
-   frost-zcash-demo uses) is called as a library; no CLI, no `y`. frost-client + frostd
-   remain only for the DKG. Between hosts, the round-1/round-2 messages still need a
-   transport: today `sign_all` runs all signers in one process. The relayer must carry
-   `SigningCommitments`/`SignRequest`/`SignatureShare` over its TLS channel.
+1. **Embed instead of shelling out**: done, for the DKG and for signing. `frost-core`
+   (reddsa RedPallas, the rev frost-zcash-demo uses) is called as a library: no CLI, no
+   `y`, no frostd. Between hosts, the DKG round packages and the signing messages still
+   need a transport. Today `dkg_local` and `sign_all` run all parties in one process; the
+   relayer must carry them over its Noise channel.
 2. **Participants check what they sign**: done (`verify_then_sign`, tested with a
    tampered output and a wrong message).
 3. **One FROST session for all spends**: done.
 4. **Batched multi-output PCZT**: done (`payout::create`).
-5. **Viewing key distribution**: the UFVK is generated once at the DKG and sealed
-   (`store`). Still open: the zcash-devtool wallet DB the prover syncs (`data.sqlite`)
-   holds the UFVK and note data in clear, so it needs disk encryption on the host.
-   frost-client's DKG writes the share to its TOML in clear for the length of the
-   ceremony.
+5. **Viewing key distribution**: done (#53). The UFVK is generated once at the DKG and
+   sealed. The prover's zcash-devtool wallet is sealed at rest and unsealed only for one
+   step, into tmpfs where there is one. What remains is listed in PRIVACY.md.
 6. **Prover placement**: done. One relayer proves in parallel with signing.
 7. **Not quantum-recoverable**: documented in DESIGN.md's threat model.
-8. **frostd needs TLS**: still true for the DKG.
+8. **frostd needs TLS**: no longer applies, because frostd is gone.
 
 ## Gotchas
 
-- `zcash-sign` + post-NU7: see above. Don't bump it piecemeal; use `frost-pczt`.
+- `zcash-sign` + post-NU7: see above. Don't bump it piecemeal; use this crate.
 - lightwalletd cannot serve the tree state at height 0, so regtest wallets use
   birthday ≥ 2 (or default to the tip).
 - Wallets need a running chain and the chain needs a miner address: derive the funder
@@ -167,10 +168,8 @@ winner-1:     Balance:   0.04000000 REG
 - The escrow treats an incoming deposit as untrusted: 10 confirmations before
   `pczt create` will spend it.
 - `zcash-devtool inspect` and `generate-address` print to stderr.
-- `frost-client` reads `-m`/`-r` files as raw bytes; hex goes through `xxd -r -p`.
-- A stale frostd from an earlier run keeps port 2744 with the old certificate, so the
-  next DKG fails with `InvalidCertificate(BadSignature)`; the scripts track and kill it
-  by pid.
+- Run steps by hand only with `ZPREDICT_STORE_KEY` exported once; each driver script
+  generates one and every step inherits it. The sealed files are useless without it.
 
 ## Testnet
 
