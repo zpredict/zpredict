@@ -1,191 +1,205 @@
-/* Primitives: pills, buttons, CTA, badges, cards, panes. */
+/* Primitives: CTA blocks, buttons, badges, cards, panes, scramble headings. All square. */
 
-.pill {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	height: 46px;
-	padding: 16px;
-	border-radius: var(--r-pill);
-	font-family: var(--font-display);
-	font-weight: 500;
-	font-size: 16px;
-	line-height: 14px;
-	white-space: nowrap;
-	transition: background-color 0.18s ease;
+/* CTA: [+] label [+]. Rest: label flush left, right square showing. Hover/focus: left square
+   grows in, label slides right, right square folds away. Width never changes. */
+.cta {
+	--h: var(--zp-control-h);
+	position: relative;
+	display: inline-flex;
+	flex: none;
+	height: var(--h);
+	padding: 0 0 0 calc(var(--h) + 6px);
+	border: 0;
+	background: none;
+	color: var(--zp-bg);
+	font-size: 14px;
+	line-height: 1.4;
+	text-transform: uppercase;
+	overflow: hidden;
 }
 
-.pill:hover,
-.pill.is-active {
-	background: rgba(255, 255, 255, 0.1);
+.cta__label,
+.cta__sq {
+	background: var(--zp-lime);
+	transition:
+		transform 700ms var(--zp-ease),
+		background-color 250ms ease,
+		color 250ms ease;
+}
+
+.cta__label {
+	display: flex;
+	align-items: center;
+	padding: 0 16px;
+	white-space: nowrap;
+	transform: translateX(calc(-1 * (var(--h) + 6px)));
+}
+
+.cta__sq {
+	position: absolute;
+	top: 0;
+	display: grid;
+	place-items: center;
+	width: var(--h);
+	height: var(--h);
+}
+
+.cta__sq--in {
+	left: 0;
+	transform-origin: left center;
+	transform: rotate(-45deg) scale(0);
+}
+
+.cta__sq--out {
+	right: 0;
+	transform-origin: right center;
+}
+
+.cta:not(:disabled):focus-visible .cta__sq--in,
+.cta:not(:disabled):focus-visible .cta__label {
+	transform: none;
+}
+
+.cta:not(:disabled):focus-visible .cta__sq--out {
+	transform: rotate(-45deg) scale(0);
+}
+
+/* Hover only where there is one: a tap must not leave the CTA stuck open. */
+@media (hover: hover) {
+	.cta:not(:disabled):hover .cta__sq--in,
+	.cta:not(:disabled):hover .cta__label {
+		transform: none;
+	}
+	.cta:not(:disabled):hover .cta__sq--out {
+		transform: rotate(-45deg) scale(0);
+	}
+}
+
+.cta:focus-visible {
+	outline-offset: 5px;
+}
+
+.cta__plus {
+	width: 0.75em;
+	height: 0.75em;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.5;
+	stroke-linecap: square;
 }
 
 .btn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	height: 46px;
+	height: 44px;
 	padding: 0 16px;
-	border-radius: var(--r-pill);
 	border: 1px solid transparent;
-	font-family: var(--font-display);
-	font-weight: 500;
-	font-size: 16px;
-	letter-spacing: -0.02em;
+	font-size: 12px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
 	white-space: nowrap;
+	transition:
+		background-color 250ms ease,
+		border-color 250ms ease;
 }
 
-.btn--white {
-	background: var(--white);
-	color: var(--ink);
-	min-width: 132px;
+.btn--lime {
+	background: var(--zp-lime);
+	color: var(--zp-ink);
 }
 
 .btn--ghost {
 	background: transparent;
-	border-color: var(--hairline);
+	border-color: var(--line-strong);
 }
 
 .btn--ghost:hover {
-	background: rgba(255, 255, 255, 0.06);
-}
-
-/* Template CTA: a label block and an arrow block, both white, overlapping by 8px. */
-.cta {
-	position: relative;
-	display: flex;
-	width: 244px;
-	height: 63px;
-	padding: 0;
-	border: 0;
-	background: none;
-	color: var(--ink);
-	text-align: left;
-}
-
-.cta__label {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 189px;
-	height: 63px;
-	padding: 10px 24px;
-	border-radius: var(--r-cta);
-	background: var(--white);
-	font-family: var(--font-display);
-	font-weight: 500;
-	font-size: 19px;
-	line-height: 19px;
-	white-space: nowrap;
-}
-
-.cta__arrow {
-	position: absolute;
-	left: 181px;
-	top: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 63px;
-	height: 63px;
-	border-radius: var(--r-cta);
-	background: var(--white);
-	transition: transform 0.25s var(--ease);
-}
-
-.cta__arrow .arrow {
-	transform: rotate(90deg);
-}
-
-.cta:not(:disabled):hover .cta__arrow {
-	transform: translateX(4px);
+	border-color: var(--zp-lime);
+	background: var(--fill);
 }
 
 .badge {
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	height: 34px;
-	padding: 0 14px;
-	border: 1px solid var(--hairline);
-	border-radius: var(--r-tag);
-	background: var(--tag-fill);
-	color: rgba(255, 255, 255, 0.8);
-	font-size: 14px;
-	line-height: 18px;
+	height: 22px;
+	padding: 0 8px;
+	border: 1px solid var(--line-strong);
+	color: var(--zp-label);
+	font-size: 11px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
 	white-space: nowrap;
 }
 
-.badge--sm {
-	height: 24px;
-	padding: 0 10px;
-	font-size: 12px;
-}
-
 .badge--mock {
-	color: var(--zec);
-	border-color: var(--zec-line);
-	background: var(--zec-soft);
+	border-color: var(--zp-lime);
+	color: var(--zp-lime);
 }
 
-.badge--yes {
-	color: var(--yes);
-	border-color: rgba(143, 227, 168, 0.35);
+.badge--yes,
+.badge--you {
+	border-color: var(--zp-lime);
+	background: var(--zp-lime);
+	color: var(--zp-ink);
 }
 
 .badge--no {
-	color: var(--no);
-	border-color: rgba(255, 155, 143, 0.35);
+	color: var(--zp-text);
 }
 
-.badge--you {
-	color: var(--ink);
-	background: var(--zec);
-	border-color: var(--zec);
-	font-family: var(--font-mono);
-	letter-spacing: 0;
-}
-
-.badge--live::before {
+.badge--live::before,
+.dot {
 	content: "";
+	flex: none;
 	width: 6px;
 	height: 6px;
-	border-radius: 50%;
-	background: var(--yes);
-	box-shadow: 0 0 8px var(--yes);
-}
-
-.card {
-	border: 1px solid var(--hairline);
-	border-radius: var(--r-card);
-	background: var(--surface-card);
-	padding: 20px;
-}
-
-.pane {
-	position: relative;
-	border-radius: var(--r-pane);
-	overflow: hidden;
-	min-width: 0;
-}
-
-.pane--surface {
-	background: var(--surface-pane);
-}
-
-.pane--media {
-	background: #070707;
+	background: var(--zp-lime);
 }
 
 .dot {
 	width: 8px;
 	height: 8px;
-	border-radius: 50%;
 	background: #555;
-	flex: none;
 }
 
 .dot.is-up {
-	background: var(--yes);
-	box-shadow: 0 0 10px rgba(143, 227, 168, 0.6);
+	background: var(--zp-lime);
+}
+
+.card {
+	border: 1px solid var(--line);
+	background: var(--zp-bg);
+	padding: 20px;
+}
+
+.pane {
+	position: relative;
+	min-width: 0;
+}
+
+.pane--dark {
+	background: var(--zp-bg);
+}
+
+.pane--lime {
+	background: var(--zp-lime);
+	color: var(--zp-ink);
+}
+
+.pane--paper {
+	background: var(--zp-paper);
+	color: var(--zp-ink);
+}
+
+/* Scramble headings: only the text is the hover target. */
+.scr {
+	width: fit-content;
+	max-width: 100%;
+}
+
+.scr__line {
+	display: block;
+	width: fit-content;
 }
