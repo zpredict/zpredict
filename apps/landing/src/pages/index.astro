@@ -11,6 +11,8 @@ import Base from "../layouts/Base.astro";
 ---
 
 <Base>
+	<!-- Hero poster: the LCP image on every screen size. -->
+	<link slot="head" rel="preload" href="/media/hero-poster.webp" as="image" fetchpriority="high" />
 	<main>
 		<Hero />
 		<TrendingMarkets />
