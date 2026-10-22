@@ -33,13 +33,18 @@ pub use deposit::{Deposit, Flag, Flagged, NoteId};
 pub use dkg::dkg_local;
 pub use error::{Error, Result};
 pub use frost::{SignRequest, sign_all, verify_then_sign};
-pub use keys::{EscrowKeys, decode_fvk, escrow_keys};
+pub use keys::{EscrowKeys, Params, decode_fvk, escrow_keys};
 pub use memo::{MemoKey, Tag};
 pub use payout::Payout;
 pub use scan::{Scanned, Scanner};
 pub use share::KeyShare;
 pub use sign::{Pool, Randomizer, SpendSig, apply, randomizers, sighash};
 pub use verify::verify;
+
+/// Types the relayer names when it carries FROST rounds and PCZTs between hosts.
+pub use orchard::keys::FullViewingKey;
+pub use pczt::Pczt;
+pub use reddsa::frost::redpallas;
 
 /// Relayers in the escrow committee (FROST 2-of-3, MPC 3-of-3).
 pub const RELAYERS: usize = 3;
