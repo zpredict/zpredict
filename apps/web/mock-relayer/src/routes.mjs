@@ -77,20 +77,24 @@ function judgeClaim(res) {
 	send(res, 200, { tag: hex(tag) });
 }
 
+/** [method, path pattern, handler(i, ctx)]; ctx = { req, res, url, m: regex match }. */
+const ROUTES = [
+	["GET", /^\/health$/, (i, { res }) => send(res, 200, health(i))],
+	["GET", /^\/markets$/, (_, { res }) => send(res, 200, markets)],
+	["GET", /^\/view$/, (i, { url, res }) => getView(i, url, res)],
+	["POST", /^\/orders$/, (i, { req, res }) => postOrder(i, req, res)],
+	["POST", /^\/judge\/claim$/, (_, { res }) => judgeClaim(res)],
+	["GET", /^\/orders\/([0-9a-f]{32})$/, (i, { m, res }) => getOrder(i, m[1], res)],
+	["GET", /^\/accounts\/([0-9a-f]{32})$/, (i, { m, res }) => getAccount(i, m[1], res)],
+];
+
 /** Request handler for relayer `i`. */
-export const handler = (i) => async (req, res) => {
-	const url = new URL(req.url, "http://relayer");
-	const p = url.pathname;
-	const get = req.method === "GET";
-	const order = p.match(/^\/orders\/([0-9a-f]{32})$/);
-	const acct = p.match(/^\/accounts\/([0-9a-f]{32})$/);
+export const handler = (i) => (req, res) => {
 	if (req.method === "OPTIONS") return send(res, 204);
-	if (get && p === "/health") return send(res, 200, health(i));
-	if (get && p === "/markets") return send(res, 200, markets);
-	if (get && p === "/view") return getView(i, url, res);
-	if (req.method === "POST" && p === "/orders") return postOrder(i, req, res);
-	if (req.method === "POST" && p === "/judge/claim") return judgeClaim(res);
-	if (get && order) return getOrder(i, order[1], res);
-	if (get && acct) return getAccount(i, acct[1], res);
+	const url = new URL(req.url, "http://relayer");
+	for (const [method, re, fn] of ROUTES) {
+		const m = req.method === method && url.pathname.match(re);
+		if (m) return fn(i, { req, res, url, m });
+	}
 	send(res, 404, { error: "not found" });
 };

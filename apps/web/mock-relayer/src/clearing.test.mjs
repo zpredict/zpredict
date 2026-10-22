@@ -34,10 +34,7 @@ test("best price first, partial fills, dummies", () => {
 test("matches core test vectors", () => {
 	const v = JSON.parse(
 		readFileSync(
-			new URL(
-				"../../../../packages/core/testdata/vectors.json",
-				import.meta.url,
-			),
+			new URL("../../../../packages/core/testdata/vectors.json", import.meta.url),
 			"utf8",
 		),
 	);

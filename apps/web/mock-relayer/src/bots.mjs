@@ -13,8 +13,7 @@ for (const b of bots) account(b).bal = 10n ** 12n;
 /** Drifting fair YES price per market, in cents. */
 const fair = new Map(markets.map((m) => [m.id, rnd(40, 64)]));
 
-export function botOrder() {
-	const m = markets[rnd(0, markets.length - 1)];
+function order(m) {
 	const f = clamp(fair.get(m.id) + rnd(-1, 1), 15, 85);
 	fair.set(m.id, f);
 	const side = rnd(0, 1);
@@ -30,4 +29,9 @@ export function botOrder() {
 	split(bytes).forEach((s, i) => {
 		accept(i, id, s);
 	});
+}
+
+/** One order per market per tick, so every batch has counterparties on both sides. */
+export function botOrders() {
+	for (const m of markets) order(m);
 }

@@ -1,9 +1,7 @@
 // Mock relayer settings; override with env vars.
-export const PORTS = (process.env.MOCK_PORTS ?? "4101,4102,4103")
-	.split(",")
-	.map(Number);
+export const PORTS = (process.env.MOCK_PORTS ?? "4101,4102,4103").split(",").map(Number);
 export const BATCH_MS = Number(process.env.MOCK_BATCH_MS ?? 5000);
-export const BOT_MS = Number(process.env.MOCK_BOT_MS ?? 900);
+export const BOT_MS = Number(process.env.MOCK_BOT_MS ?? 1500);
 /** Judge mode credit: 25 units in half-ticks (1 unit = 200). */
 export const JUDGE_CREDIT = 25n * 200n;
 /** View items kept per relayer. */
@@ -21,8 +19,7 @@ export const MARKETS = [
 	},
 	{
 		id: 2,
-		question:
-			"Will the Ironwood pool hold more than 500,000 ZEC at height 3,140,000?",
+		question: "Will the Ironwood pool hold more than 500,000 ZEC at height 3,140,000?",
 		plugin: "ironwood-pool",
 		params: { thresholdZec: 500_000, atHeight: 3_140_000 },
 	},

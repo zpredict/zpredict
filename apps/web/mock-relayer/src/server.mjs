@@ -5,7 +5,7 @@
 // Everything a client can observe over HTTP matches the contract.
 import { createServer } from "node:http";
 import { runBatch } from "./batch.mjs";
-import { botOrder } from "./bots.mjs";
+import { botOrders } from "./bots.mjs";
 import { BATCH_MS, BOT_MS, PORTS } from "./config.mjs";
 import { handler } from "./routes.mjs";
 
@@ -15,4 +15,4 @@ PORTS.forEach((port, i) => {
 	});
 });
 setInterval(runBatch, BATCH_MS);
-setInterval(botOrder, BOT_MS);
+setInterval(botOrders, BOT_MS);
