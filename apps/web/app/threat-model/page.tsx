@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: "Threat model — zPredict" };
 
 export default function ThreatModelPage() {
 	return (
-		<main className="panel">
+		<main>
 			<ThreatModel />
 		</main>
 	);
