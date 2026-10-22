@@ -1,0 +1,31 @@
+/* zPredict design tokens: MotionSites "ASCII Studio" language. One source for landing and app. */
+:root {
+	--zp-bg: #050505;
+	--zp-lime: #d2fc52;
+	--zp-ink: #080a04;
+	--zp-ink-2: #3e4436;
+	--zp-text: #deded6;
+	--zp-muted: #a4a69e;
+	--zp-paper: #eef0e8;
+	--zp-panel: #30312e;
+	--zp-panel-text: #f3f3ed;
+	--zp-label: #bbbdb4;
+	--zp-glyph: #8f8f8f;
+	--zp-marquee-bg: #000;
+	--zp-marquee-text: #a3a3a3;
+	--zp-rule-on-lime: #080a0424;
+
+	--zp-ease: cubic-bezier(0.83, 0, 0.17, 1);
+	--zp-radius: 0;
+	--zp-font: "JetBrains Mono", ui-monospace, monospace;
+	--zp-weight: 500;
+	--zp-gutter: 48px;
+	--zp-control-h: 56px;
+}
+
+@media (max-width: 900px) {
+	:root {
+		--zp-gutter: 20px;
+		--zp-control-h: 44px;
+	}
+}
