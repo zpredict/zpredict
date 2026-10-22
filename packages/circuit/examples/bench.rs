@@ -2,17 +2,17 @@
 //!
 //! `cargo run --release -p zpredict-circuit --example bench [runs]` spawns parties
 //! 0, 1, 2 as child processes (`bench party <p> <seed>`), checks that their shares
-//! combine to `clear`'s fill records, and prints per-party timings.
+//! combine to `clear_with_balances`' result, and prints per-party timings.
 
 use std::{
     process::{Command, Stdio},
     time::Instant,
 };
 
-use zpredict_core::FILL_LEN;
+use zpredict_core::{BALANCE_LEN, FILL_LEN};
 
 use zpredict_circuit::{
-    FillShares, N, and_gates,
+    ACCOUNTS, N, Outcome, and_gates,
     harness::{Rng, combine, expected, localhost, random_batch},
     net::TcpChannel,
     program, run_party_on,
@@ -32,7 +32,7 @@ async fn main() {
     let t = Instant::now();
     program();
     println!(
-        "N = {N}, {} AND gates, compiled in {:.1?}",
+        "N = {N}, {ACCOUNTS} accounts, {} AND gates, compiled in {:.1?}",
         and_gates(),
         t.elapsed()
     );
@@ -51,14 +51,13 @@ async fn main() {
             .into_iter()
             .map(|k| String::from_utf8(k.wait_with_output().unwrap().stdout).unwrap())
             .collect();
-        let mut shares = [[[0u8; FILL_LEN]; N]; 3];
-        for (p, out) in outs.iter().enumerate() {
-            let (time, hex) = out.trim().split_once(' ').unwrap();
-            shares[p] = parse(hex);
+        let shares: [Outcome; 3] = std::array::from_fn(|p| {
+            let (time, hex) = outs[p].trim().split_once(' ').unwrap();
             print!("party {p}: {time}  ");
-        }
+            parse(hex)
+        });
         let batch = random_batch(&mut Rng(seed));
-        let ok = combine(&shares) == expected(&batch.orders);
+        let ok = combine(&shares) == expected(&batch);
         println!(
             "| seed {seed}: {}",
             if ok { "matches clear" } else { "MISMATCH" }
@@ -72,15 +71,33 @@ async fn party(p: usize, seed: u64) {
     let batch = random_batch(&mut Rng(seed));
     let channel = TcpChannel::connect(p, &localhost(PORT)).await.unwrap();
     let t = Instant::now(); // MPC only: excludes compile and waiting for peers
-    let fills = run_party_on(&channel, p, &batch.shares[p]).await.unwrap();
-    let hex: String = fills.iter().flatten().map(|b| format!("{b:02x}")).collect();
+    let out = run_party_on(
+        &channel,
+        p,
+        &batch.order_shares[p],
+        &batch.account_shares[p],
+    )
+    .await
+    .unwrap();
+    let bytes = out
+        .fills
+        .iter()
+        .flatten()
+        .chain(out.balances.iter().flatten());
+    let hex: String = bytes.map(|b| format!("{b:02x}")).collect();
     println!("{:.2?} {hex}", t.elapsed());
 }
 
-fn parse(hex: &str) -> FillShares {
+fn parse(hex: &str) -> Outcome {
     let b: Vec<u8> = (0..hex.len())
         .step_by(2)
         .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
         .collect();
-    std::array::from_fn(|i| b[i * FILL_LEN..(i + 1) * FILL_LEN].try_into().unwrap())
+    let (f, bal) = b.split_at(N * FILL_LEN);
+    Outcome {
+        fills: std::array::from_fn(|i| f[i * FILL_LEN..][..FILL_LEN].try_into().unwrap()),
+        balances: std::array::from_fn(|m| {
+            bal[m * BALANCE_LEN..][..BALANCE_LEN].try_into().unwrap()
+        }),
+    }
 }

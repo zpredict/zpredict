@@ -8,6 +8,12 @@ use crate::{Error, io};
 
 /// Orders per batch; the Garble source hard-codes the same number.
 pub const N: usize = 16;
+/// Rows in the balance table; also hard-coded in the Garble source.
+///
+/// ponytail: the table holds every funded account, so 16 accounts is the system's
+/// ceiling; raise it (~9k AND gates per row) or rotate rows across batches when
+/// more traders show up.
+pub const ACCOUNTS: usize = 16;
 
 const SOURCE: &str = include_str!("clear.garble.rs");
 
@@ -34,11 +40,17 @@ pub fn and_gates() -> usize {
 }
 
 /// Runs the circuit in the clear on all three parties' shares, with zero output masks.
-/// For tests and debugging only: whoever calls this sees every order.
-pub fn eval_in_clear(shares: &[io::OrderShares; 3]) -> Result<io::FillShares, Error> {
-    let zero = [[0u8; zpredict_core::FILL_LEN]; N];
+/// For tests and debugging only: whoever calls this sees every order and balance.
+pub fn eval_in_clear(
+    orders: &[io::OrderShares; 3],
+    accounts: &[io::AccountShares; 3],
+) -> Result<io::Outcome, Error> {
+    let zero = io::Outcome {
+        fills: [[0; zpredict_core::FILL_LEN]; N],
+        balances: [[0; zpredict_core::BALANCE_LEN]; ACCOUNTS],
+    };
     let inputs = (0..3)
-        .map(|p| io::input_bits(p, &shares[p], &zero))
+        .map(|p| io::input_bits(p, &orders[p], &accounts[p], &zero))
         .collect::<Result<Vec<_>, _>>()?;
     io::decode_output(&circuit().eval(&inputs))
 }

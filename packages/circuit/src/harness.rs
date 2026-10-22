@@ -3,9 +3,11 @@
 
 use std::net::{Ipv4Addr, SocketAddr};
 
-use zpredict_core::{FILL_LEN, MAX_SIZE, ORDER_LEN, Order, Side, clear, fill_records, split};
+use zpredict_core::{
+    ACCOUNT_LEN, Account, MAX_SIZE, ORDER_LEN, Order, Side, clear_with_balances, fill_records,
+};
 
-use crate::{Error, FillShares, N, OrderShares, run_party};
+use crate::{ACCOUNTS, AccountShares, Error, N, OrderShares, Outcome, run_party};
 
 /// SplitMix64: deterministic, so a failing seed reproduces. Not a CSPRNG.
 pub struct Rng(pub u64);
@@ -28,15 +30,29 @@ impl Rng {
     }
 }
 
-/// A batch of encoded orders and its three relayers' shares.
+/// A batch of encoded orders, the balance table, and the three relayers' shares of both.
 pub struct Batch {
     pub orders: [[u8; ORDER_LEN]; N],
-    pub shares: [OrderShares; 3],
+    pub accounts: [Account; ACCOUNTS],
+    pub order_shares: [OrderShares; 3],
+    pub account_shares: [AccountShares; 3],
 }
 
-/// Random batch with dummies, malformed slots, price ties, partial fills and the odd
-/// `MAX_SIZE` order, so every branch of `clear` gets exercised.
+/// Random batch with dummies, malformed slots, price ties, partial fills, the odd
+/// `MAX_SIZE` order, short and unknown accounts, accounts with several orders, a
+/// duplicated row id and zero padding rows, so every branch gets exercised.
 pub fn random_batch(rng: &mut Rng) -> Batch {
+    let used = 4 + rng.below(ACCOUNTS as u64 - 4) as usize; // the rest is zero padding
+    let mut accounts = [Account { id: 0, balance: 0 }; ACCOUNTS];
+    for a in accounts.iter_mut().take(used) {
+        a.id = 1 + rng.below(1 << 40);
+        a.balance = match rng.below(8) {
+            0 => 0,
+            1 => 1 << 40, // covers even MAX_SIZE orders
+            _ => rng.below(6000),
+        };
+    }
+    accounts[used - 1].id = accounts[0].id; // duplicate: the first row must win
     let orders: [[u8; ORDER_LEN]; N] = std::array::from_fn(|_| {
         let side = if rng.below(2) == 0 {
             Side::Yes
@@ -52,12 +68,16 @@ pub fn random_batch(rng: &mut Rng) -> Batch {
             1 => MAX_SIZE - rng.below(3) as u32,
             _ => 1 + rng.below(20) as u32,
         };
+        let account = match rng.below(8) {
+            0 => rng.next_u64(), // no such account
+            _ => accounts[rng.below(used as u64) as usize].id,
+        };
         let mut b = Order {
             market: 7,
             side,
             price,
             size,
-            account: rng.next_u64(),
+            account,
         }
         .encode();
         match rng.below(16) {
@@ -68,19 +88,30 @@ pub fn random_batch(rng: &mut Rng) -> Batch {
         }
         b
     });
-    let mut shares = [[[0u8; ORDER_LEN]; N]; 3];
-    for (i, o) in orders.iter().enumerate() {
-        let s = split(o, rng.bytes(), rng.bytes());
-        for p in 0..3 {
-            shares[p][i] = s[p];
-        }
+    let rows: [[u8; ACCOUNT_LEN]; ACCOUNTS] = std::array::from_fn(|m| accounts[m].encode());
+    Batch {
+        orders,
+        accounts,
+        order_shares: split3(rng, &orders),
+        account_shares: split3(rng, &rows),
     }
-    Batch { orders, shares }
 }
 
-/// What the circuit must output: `fill_records(batch, &clear(batch))`, with every slot
-/// that fails `Order::decode` treated as a size-0 dummy.
-pub fn expected(orders: &[[u8; ORDER_LEN]; N]) -> FillShares {
+/// XOR-split every row three ways: `[r0, r1, row ^ r0 ^ r1]`.
+fn split3<const L: usize, const R: usize>(rng: &mut Rng, rows: &[[u8; L]; R]) -> [[[u8; L]; R]; 3] {
+    let mut out = [[[0u8; L]; R]; 3];
+    for (i, row) in rows.iter().enumerate() {
+        let (r0, r1): ([u8; L], [u8; L]) = (rng.bytes(), rng.bytes());
+        out[0][i] = r0;
+        out[1][i] = r1;
+        out[2][i] = std::array::from_fn(|k| row[k] ^ r0[k] ^ r1[k]);
+    }
+    out
+}
+
+/// What the circuit must output: `clear_with_balances` as fill records and LE balances,
+/// with every slot that fails `Order::decode` treated as a size-0 dummy.
+pub fn expected(b: &Batch) -> Outcome {
     let dummy = Order {
         market: 0,
         side: Side::Yes,
@@ -88,20 +119,22 @@ pub fn expected(orders: &[[u8; ORDER_LEN]; N]) -> FillShares {
         size: 0,
         account: 0,
     };
-    let batch: Vec<Order> = orders
+    let batch: Vec<Order> = b
+        .orders
         .iter()
-        .map(|b| Order::decode(b).unwrap_or(dummy))
+        .map(|o| Order::decode(o).unwrap_or(dummy))
         .collect();
-    let mut out = [[0u8; FILL_LEN]; N];
-    out.copy_from_slice(&fill_records(&batch, &clear(&batch)));
-    out
+    let (fills, balances) = clear_with_balances(&batch, &b.accounts);
+    let records = fill_records(&batch, &fills);
+    Outcome {
+        fills: std::array::from_fn(|i| records[i]),
+        balances: std::array::from_fn(|m| balances[m].to_le_bytes()),
+    }
 }
 
-/// XOR the three relayers' fill shares back into records.
-pub fn combine(shares: &[FillShares; 3]) -> FillShares {
-    std::array::from_fn(|i| {
-        std::array::from_fn(|k| shares[0][i][k] ^ shares[1][i][k] ^ shares[2][i][k])
-    })
+/// XOR the three relayers' shares back together.
+pub fn combine(shares: &[Outcome; 3]) -> Outcome {
+    shares[0].xor(&shares[1]).xor(&shares[2])
 }
 
 /// `127.0.0.1:base`, `base + 1`, `base + 2`.
@@ -110,15 +143,9 @@ pub fn localhost(base: u16) -> [SocketAddr; 3] {
 }
 
 /// Runs all three parties concurrently in this task over localhost TCP.
-pub async fn run_local(
-    shares: &[OrderShares; 3],
-    base_port: u16,
-) -> Result<[FillShares; 3], Error> {
+pub async fn run_local(batch: &Batch, base_port: u16) -> Result<[Outcome; 3], Error> {
     let peers = localhost(base_port);
-    let (a, b, c) = tokio::join!(
-        run_party(0, &peers, &shares[0]),
-        run_party(1, &peers, &shares[1]),
-        run_party(2, &peers, &shares[2]),
-    );
+    let party = |p: usize| run_party(p, &peers, &batch.order_shares[p], &batch.account_shares[p]);
+    let (a, b, c) = tokio::join!(party(0), party(1), party(2));
     Ok([a?, b?, c?])
 }
