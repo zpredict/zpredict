@@ -1,0 +1,29 @@
+---
+/** Rounded page panel; every top-level section sits in one. */
+interface Props {
+	id?: string;
+	class?: string;
+}
+
+const { id, class: className } = Astro.props;
+---
+
+<section id={id} class:list={["panel", className]}>
+	<slot />
+</section>
+
+<style>
+	@layer ui {
+		.panel {
+			position: relative;
+			border-radius: var(--r-panel);
+			background: var(--panel-bg);
+			padding: clamp(56px, 8vw, 120px) var(--pad);
+			scroll-margin-top: 10px;
+		}
+		/* `~`, not `+`: Astro renders component <script> tags between sections. */
+		.panel ~ .panel {
+			margin-top: var(--gap);
+		}
+	}
+</style>

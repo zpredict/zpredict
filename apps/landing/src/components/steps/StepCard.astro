@@ -1,0 +1,97 @@
+---
+/**
+ * One "How it works" card from the template: artwork band on top (passed as the
+ * default slot), then number, uppercase title and description.
+ */
+import type { Step } from "../../data/steps";
+import Tag from "../ui/Tag.astro";
+
+interface Props {
+	step: Step;
+	/** Grain overlay over the whole card (template's staking card). */
+	noise?: boolean;
+	class?: string;
+}
+
+const { step, noise = false, class: className } = Astro.props;
+---
+
+<article class:list={["card", { "card--noise": noise }, className]}>
+	<div class="art" aria-hidden="true">
+		<slot />
+		<Tag class="tag">{step.tag}</Tag>
+	</div>
+	<span class="n">{step.n}</span>
+	<h3 class="title">{step.title[0]}<br />{step.title[1]}</h3>
+	<p class="desc">{step.desc}</p>
+</article>
+
+<style>
+	/* Art pieces are centred in the band by default; each art component sets its own top/size. */
+	@layer ui {
+		.art > :global(*) {
+			position: absolute;
+			left: 50%;
+			transform: translateX(-50%);
+		}
+		.art > :global(.ring) {
+			top: 30px;
+			width: 420px;
+		}
+	}
+
+	.card {
+		position: relative;
+		overflow: hidden;
+		isolation: isolate;
+		padding: 0 24px 44px;
+		border-radius: var(--r-pane);
+		background:
+			radial-gradient(
+				368px 368px at 50% -26px,
+				rgba(102, 102, 102, 0.5) 0%,
+				rgba(102, 102, 102, 0) 100%
+			),
+			var(--surface-card);
+		text-align: center;
+	}
+	.card--noise::after {
+		content: "";
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		background-image: url(/media/noise.png);
+		pointer-events: none;
+	}
+	.art {
+		position: relative;
+		height: 300px;
+		margin: 0 -24px 8px;
+	}
+	.tag {
+		top: 40px;
+	}
+	.n {
+		display: block;
+		margin-bottom: 10px;
+		font-family: var(--font-mono);
+		font-size: 13px;
+		opacity: 0.4;
+	}
+	.title {
+		font-family: var(--font-display);
+		font-weight: 500;
+		font-size: 32px;
+		line-height: 29px;
+		letter-spacing: -0.05em;
+		text-transform: uppercase;
+	}
+	.desc {
+		margin: 22px auto 0;
+		max-width: 30ch;
+		font-size: 18px;
+		line-height: 23px;
+		opacity: 0.8;
+		text-wrap: balance;
+	}
+</style>

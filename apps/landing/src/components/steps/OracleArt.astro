@@ -1,0 +1,31 @@
+---
+/** A strip of blocks; the lit one resolves the market. */
+import Ring from "../ui/Ring.astro";
+---
+
+<Ring size={481} class="ring" />
+<div class="blocks">
+	<span></span>
+	<span></span>
+	<span class="hit"></span>
+	<span></span>
+</div>
+
+<style>
+	.blocks {
+		top: 130px;
+		display: flex;
+		gap: 12px;
+	}
+	span {
+		width: 58px;
+		height: 58px;
+		border: 1px solid var(--glass-line);
+		border-radius: 14px;
+		background: var(--glass-fill);
+	}
+	.hit {
+		background: #fff;
+		box-shadow: 0 0 30px rgba(255, 255, 255, 0.35);
+	}
+</style>

@@ -1,0 +1,43 @@
+---
+import { navLinks, site } from "../data/site";
+import Button from "./ui/Button.astro";
+import Logo from "./ui/Logo.astro";
+---
+
+<header class="topbar">
+	<Logo />
+	<nav class="links" aria-label="Primary">
+		{navLinks.map((link) => <Button variant="pill" href={link.href}>{link.label}</Button>)}
+	</nav>
+	<Button class="open" href={site.appUrl}>Open the app</Button>
+</header>
+
+<style>
+	.topbar {
+		position: absolute;
+		inset: 37px 40px auto 39px;
+		z-index: 10;
+		display: flex;
+		align-items: center;
+		gap: 11px;
+	}
+	.links {
+		display: flex;
+		gap: 8px;
+	}
+	.open {
+		margin-left: auto;
+	}
+
+	/* ponytail: no burger menu; below 1200px the section links are dropped. */
+	@media (max-width: 1199.98px) {
+		.links {
+			display: none;
+		}
+	}
+	@media (max-width: 799.98px) {
+		.topbar {
+			inset: 22px 22px auto 22px;
+		}
+	}
+</style>

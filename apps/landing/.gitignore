@@ -1,0 +1,5 @@
+dist/
+.astro/
+# brand files are copied from packages/brand at build time
+public/*
+!public/media/

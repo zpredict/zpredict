@@ -1,0 +1,30 @@
+---
+/**
+ * Muted looping background video. It has no autoplay: motion-video.ts plays it
+ * only while it is on screen and the visitor allows motion; otherwise the poster shows.
+ */
+interface Props {
+	src: string;
+	poster: string;
+	preload?: "none" | "metadata";
+	class?: string;
+}
+
+const { src, poster, preload = "metadata", class: className } = Astro.props;
+---
+
+<video
+	class:list={["js-motion", className]}
+	muted
+	loop
+	playsinline
+	preload={preload}
+	poster={poster}
+	aria-hidden="true"
+>
+	<source src={src} type="video/mp4" />
+</video>
+
+<script>
+	import "../../scripts/motion-video";
+</script>

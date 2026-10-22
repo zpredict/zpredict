@@ -1,0 +1,68 @@
+---
+import "@fontsource/figtree/500.css";
+import "@fontsource/instrument-sans/400.css";
+import "../styles/global.css";
+import { site } from "../data/site";
+
+interface Props {
+	title?: string;
+	description?: string;
+}
+
+const { title = site.title, description = site.description } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = new URL(site.ogImage, Astro.site);
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<!-- Cascade layer order must be declared before any bundled CSS; see styles/global.css. -->
+		<style is:inline>
+			@layer reset, base, ui;
+		</style>
+		<title>{title}</title>
+		<meta name="description" content={description} />
+		<meta name="referrer" content="no-referrer" />
+		<meta name="theme-color" content="#020202" />
+		<link rel="canonical" href={canonical} />
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content="zPredict" />
+		<meta property="og:title" content={title} />
+		<meta property="og:description" content={description} />
+		<meta property="og:url" content={canonical} />
+		<meta property="og:image" content={ogImage} />
+		<meta name="twitter:card" content="summary_large_image" />
+		<!-- Theme-aware favicon, per packages/brand/README.md -->
+		<link rel="icon" href="/favicon.ico" sizes="48x48" />
+		<link rel="icon" href="/favicon-32x32.png" media="(prefers-color-scheme: light)" />
+		<link rel="icon" href="/white/favicon-32x32.png" media="(prefers-color-scheme: dark)" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<link rel="manifest" href="/site.webmanifest" />
+	</head>
+	<body>
+		<!-- Gradients shared by every <Ring /> -->
+		<svg class="svg-defs" aria-hidden="true" width="0" height="0">
+			<linearGradient id="ringDown" x1="0" y1="0" x2="0" y2="1">
+				<stop offset=".5436" stop-color="#999" stop-opacity="0"></stop>
+				<stop offset="1" stop-color="#fff" stop-opacity=".14"></stop>
+			</linearGradient>
+			<linearGradient id="ringUp" x1="0" y1="1" x2="0" y2="0">
+				<stop offset=".5436" stop-color="#999" stop-opacity="0"></stop>
+				<stop offset="1" stop-color="#fff" stop-opacity=".14"></stop>
+			</linearGradient>
+		</svg>
+		<slot />
+	</body>
+</html>
+
+<style>
+	.svg-defs {
+		position: absolute;
+		width: 0;
+		height: 0;
+		overflow: hidden;
+	}
+</style>
