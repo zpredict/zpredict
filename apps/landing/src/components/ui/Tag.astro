@@ -1,0 +1,31 @@
+---
+/** Small frosted label ("FROST 2-of-3", "Testnet"). */
+interface Props {
+	class?: string;
+}
+
+const { class: className } = Astro.props;
+---
+
+<span class:list={["tag", className]}><slot /></span>
+
+<style>
+	@layer ui {
+		.tag {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			height: 34px;
+			padding: 0 14px;
+			border: 1px solid var(--hairline);
+			border-radius: var(--r-tag);
+			background: var(--tag-fill);
+			color: rgba(255, 255, 255, 0.8);
+			font-size: 14px;
+			line-height: 18px;
+			white-space: nowrap;
+			-webkit-backdrop-filter: blur(18px);
+			backdrop-filter: blur(18px);
+		}
+	}
+</style>

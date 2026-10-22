@@ -1,0 +1,104 @@
+---
+/**
+ * Link styled as one of the template's buttons:
+ * - `white`: small solid button (top bar)
+ * - `pill`:  transparent nav pill
+ * - `cta`:   large label with the detached arrow square
+ */
+interface Props {
+	href: string;
+	variant?: "white" | "pill" | "cta";
+	class?: string;
+}
+
+const { href, variant = "white", class: className } = Astro.props;
+---
+
+{
+	variant === "cta" ? (
+		<a class:list={["cta", className]} href={href}>
+			<span class="cta__label">
+				<slot />
+			</span>
+			<span class="cta__arrow">
+				<img src="/media/arrow.svg" alt="" />
+			</span>
+		</a>
+	) : (
+		<a class:list={[variant, className]} href={href}>
+			<slot />
+		</a>
+	)
+}
+
+<style>
+	@layer ui {
+		.white,
+		.pill {
+			display: inline-flex;
+			align-items: center;
+			height: 46px;
+			padding: 16px;
+			border-radius: var(--r-pill);
+			font-family: var(--font-display);
+			font-weight: 500;
+			font-size: 16px;
+			line-height: 14px;
+			letter-spacing: -0.02em;
+			white-space: nowrap;
+		}
+		.white {
+			justify-content: center;
+			background: #fff;
+			color: #000;
+		}
+		.pill {
+			transition: background-color 0.18s ease;
+		}
+		.pill:hover {
+			background: rgba(255, 255, 255, 0.1);
+		}
+
+		.cta {
+			position: relative;
+			display: inline-flex;
+			height: 63px;
+			padding-right: 55px;
+		}
+		.cta__label {
+			display: flex;
+			align-items: center;
+			height: 63px;
+			padding: 10px 24px;
+			border-radius: var(--r-cta);
+			background: #fff;
+			color: #000;
+			font-family: var(--font-display);
+			font-weight: 500;
+			font-size: 19px;
+			line-height: 19px;
+			letter-spacing: -0.02em;
+		}
+		.cta__arrow {
+			position: absolute;
+			right: 0;
+			top: 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 63px;
+			height: 63px;
+			border-radius: var(--r-cta);
+			background: #fff;
+			transition: transform 0.25s var(--ease);
+		}
+		.cta__arrow img {
+			width: 21.21px;
+			height: 21.21px;
+			transform: rotate(90deg);
+		}
+		.cta:hover .cta__arrow {
+			transform: translateX(4px);
+		}
+	}
+</style>
