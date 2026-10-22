@@ -14,7 +14,7 @@ const { class: className } = Astro.props;
 	{
 		heroMarkets.map((market, i) => (
 			<div class={`slot slot--${i}`} inert={i < heroMarkets.length - 1}>
-				<MarketCard class="card" market={market} />
+				<MarketCard class="card" level={2} market={market} />
 			</div>
 		))
 	}
