@@ -11,14 +11,18 @@
 //! row's new balance (8 bytes), plus one public clearing price per market. Unfilled and
 //! dummy slots are all-zero records, so a relayer cannot tell them from filled ones.
 //!
-//! # Markets, credits, prices
+//! # Markets, credits, withdrawals, prices
 //!
-//! Orders only cross within their own market (same-market queues and pairs), and orders
-//! for a market not in the list are dummies. The list is every open market, so the same
-//! circuit runs whichever markets have orders. Credits (deposits, judge credits: amounts every relayer already sees) are added to
-//! their rows before clearing, so a top-up lands in the account's existing row. If the
-//! parties disagree on markets or credits, nothing clears and [`run_party_on`] returns
-//! [`Error::Disagreement`]. Each market's price is [`zpredict_core::clearing_price`]: the
+//! The public inputs are a [`Public`]. Orders only cross within their own market
+//! (same-market queues and pairs), and orders for a market not in the list are dummies.
+//! The list is every open market, so the same circuit runs whichever markets have
+//! orders. Credits (deposits, judge credits: amounts every relayer already sees) are
+//! added to their rows before clearing, so a top-up lands in the account's existing
+//! row. Then each withdrawal (a public debit per row) is taken only if its row covers
+//! it, before any order reserves funds, and the public `withdrawn` output says which
+//! went through: relayers need the amount to pay it out, and learn only that the
+//! account held at least that much. If the parties disagree on any public input,
+//! nothing moves and [`run_party_on`] returns [`Error::Disagreement`]. Each market's price is [`zpredict_core::clearing_price`]: the
 //! volume-weighted YES cost of its fills, revealed to all three; sizes and counts stay
 //! hidden.
 //!
@@ -30,6 +34,13 @@
 //! rows without that link leaking. In batch order, each order reserves its worst case
 //! (`size × 2 × price` half-ticks) from its row; one that doesn't fit what's left, or
 //! has no row, becomes a dummy. Rows are then debited what their orders actually paid.
+//!
+//! # Resolution payouts
+//!
+//! A second, small program ([`resolve`]) runs when a market resolves: over every
+//! position (an order share and its fill share; no relayer knows whose, in which market
+//! or whether it filled), it pays one unit per winning contract into the account's row,
+//! as shares. Reference: [`zpredict_core::resolve`].
 //!
 //! # How the circuit matches `clear` without sorting
 //!
@@ -58,13 +69,16 @@
 //! | slots | rows | AND gates | MPC per batch | compile | peak RSS     |
 //! |-------|------|-----------|---------------|---------|--------------|
 //! | 8     | 16   | 167,949   | 3.6 s         | 2.5 s   | 0.36 GB      |
-//! | 8     | 32   | 236,229   | 5.2 s         | 5.6 s   | 0.63 GB      |
+//! | 8     | 32   | 266,533   | 5.8 s         | 5.7 s   | 0.63 GB      |
 //! | 16    | 16   | 490,829   | 10.5 s        | 14 s    | 0.7–1.0 GB   |
 //! | 16    | 32   | 622,597   | 13.5 s        | 21 s    | 1.0–1.4 GB   |
 //!
 //! Crossing costs ~N² AND gates and each table row ~8k; four market slots cost ~24k
 //! together, so one run replaces one run per market. Each party uses about one core.
 //! Traffic scales with AND gates (16 slots, one market sent 0.5–0.6 GB per party).
+//! The 8-slot rows predate withdrawals except 8 × 32, measured with them (+30k gates).
+//! A resolution run of [`DEFAULT_POSITIONS`] = 16 positions over 32 rows is 125,087 AND
+//! gates (~2.8 s by the same rate).
 //!
 //! # Trust
 //!
@@ -79,10 +93,13 @@ mod io;
 pub mod net;
 mod party;
 mod program;
+pub mod resolve;
 
 pub use error::Error;
-pub use io::Outcome;
+pub use io::{Outcome, Public};
 pub use party::{run_party, run_party_on};
 pub use program::{
     DEFAULT_MARKETS, DEFAULT_ROWS, DEFAULT_SLOTS, MAX_SLOTS, and_gates, eval_in_clear, program,
+    resolve_program,
 };
+pub use resolve::{DEFAULT_POSITIONS, Position, resolve_in_clear, run_resolution_on};

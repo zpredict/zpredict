@@ -1,4 +1,5 @@
-// Batch clearing for zPredict; mirrors `zpredict_core::clear_with_balances`. See the crate docs.
+// Batch clearing for zPredict; mirrors `zpredict_core::apply_flows` then
+// `zpredict_core::clear_with_balances`. See the crate docs.
 // `{n}` order slots, `{rows}` balance-table rows and `{markets}` market slots, substituted by
 // program.rs before compiling (Garble ranges and array sizes must be literals, hence no consts).
 
@@ -7,6 +8,7 @@ struct Party {
     accounts: [[u8; 16]; {rows}],
     balance_mask: [[u8; 8]; {rows}],
     credits: [u64; {rows}],
+    debits: [u64; {rows}],
     fill_mask: [[u8; 10]; {n}],
     markets: [u32; {markets}],
     orders: [[u8; 18]; {n}],
@@ -16,15 +18,19 @@ pub fn main(
     p0: Party,
     p1: Party,
     p2: Party,
-) -> ([[u8; 10]; {n}], [[u8; 8]; {rows}], [u16; {markets}], bool) {
-    // The batch's markets (0 = unused slot) and credits are public. If the parties disagree
-    // on either, nothing fills, nothing is credited, and `agreed` (public) says so.
+) -> ([[u8; 10]; {n}], [[u8; 8]; {rows}], [u16; {markets}], [bool; {rows}], bool) {
+    // The batch's markets (0 = unused slot), credits and debits (withdrawals) are public.
+    // If the parties disagree on any, nothing fills, nothing moves, and `agreed` (public)
+    // says so.
     let markets = p0.markets;
     let credits = p0.credits;
+    let debits = p0.debits;
     let agreed = (p1.markets == markets)
         & (p2.markets == markets)
         & (p1.credits == credits)
-        & (p2.credits == credits);
+        & (p2.credits == credits)
+        & (p1.debits == debits)
+        & (p2.debits == debits);
 
     // Rebuild and decode. Malformed orders (side > 1, price outside 1..=99, size > MAX_SIZE)
     // and orders for a market not in this batch become dummies.
@@ -65,10 +71,12 @@ pub fn main(
         }
     }
 
-    // Rebuild the balance table (id u64 | balance u64 per row), then add this batch's
-    // credits (deposits, judge credits) so they are spendable right away.
+    // Rebuild the balance table (id u64 | balance u64 per row), add this batch's credits
+    // (deposits, judge credits) so they are spendable right away, then take each
+    // withdrawal only if its row covers it; `withdrawn` (public) says which went through.
     let mut id = [0u64; {rows}];
     let mut balance = [0u64; {rows}];
+    let mut withdrawn = [false; {rows}];
     for m in 0usize..{rows}usize {
         let mut r = [0u8; 16];
         for k in 0usize..16usize {
@@ -79,6 +87,8 @@ pub fn main(
             balance[m] = balance[m] | ((r[8usize + k] as u64) << ((8usize * k) as u8));
         }
         balance[m] = balance[m] + if agreed { credits[m] } else { 0u64 };
+        withdrawn[m] = agreed & (debits[m] > 0u64) & (balance[m] >= debits[m]);
+        balance[m] = balance[m] - if withdrawn[m] { debits[m] } else { 0u64 };
     }
 
     // Each order's account row: the first row whose id matches.
@@ -229,5 +239,5 @@ pub fn main(
         let divisor = if volume > 0u32 { volume } else { 1u32 };
         prices[j] = (yes_paid / divisor) as u16;
     }
-    (fills, balances, prices, agreed)
+    (fills, balances, prices, withdrawn, agreed)
 }
