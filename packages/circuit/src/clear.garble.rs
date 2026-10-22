@@ -1,6 +1,8 @@
-// Batch clearing for zPredict; mirrors `zpredict_core::clear_with_balances`. See the crate docs.
-// `{n}` order slots, `{rows}` balance-table rows and `{markets}` market slots, substituted by
-// program.rs before compiling (Garble ranges and array sizes must be literals, hence no consts).
+// Batch clearing for zPredict; mirrors `zpredict_core::apply_flows` then
+// `zpredict_core::clear_with_balances`. See the crate docs.
+// `{n}` order slots, `{rows}` balance-table rows, `{markets}` market slots and `{w}` withdrawal
+// slots, substituted by program.rs before compiling (Garble ranges and array sizes must be
+// literals, hence no consts).
 
 // Fields in alphabetical order: that is how Garble lays out struct inputs (io.rs too).
 struct Party {
@@ -10,21 +12,28 @@ struct Party {
     fill_mask: [[u8; 10]; {n}],
     markets: [u32; {markets}],
     orders: [[u8; 18]; {n}],
+    withdraw_accounts: [[u8; 8]; {w}],
+    withdrawals: [u64; {w}],
 }
 
 pub fn main(
     p0: Party,
     p1: Party,
     p2: Party,
-) -> ([[u8; 10]; {n}], [[u8; 8]; {rows}], [u16; {markets}], bool) {
-    // The batch's markets (0 = unused slot) and credits are public. If the parties disagree
-    // on either, nothing fills, nothing is credited, and `agreed` (public) says so.
+) -> ([[u8; 10]; {n}], [[u8; 8]; {rows}], [u16; {markets}], [bool; {w}], bool) {
+    // The batch's markets (0 = unused slot), credits and withdrawal amounts (0 = unused
+    // slot) are public; whose withdrawals they are is secret-shared like an order's
+    // account. If the parties disagree on a public input, nothing fills, nothing moves,
+    // and `agreed` (public) says so.
     let markets = p0.markets;
     let credits = p0.credits;
+    let withdrawals = p0.withdrawals;
     let agreed = (p1.markets == markets)
         & (p2.markets == markets)
         & (p1.credits == credits)
-        & (p2.credits == credits);
+        & (p2.credits == credits)
+        & (p1.withdrawals == withdrawals)
+        & (p2.withdrawals == withdrawals);
 
     // Rebuild and decode. Malformed orders (side > 1, price outside 1..=99, size > MAX_SIZE)
     // and orders for a market not in this batch become dummies.
@@ -65,7 +74,7 @@ pub fn main(
         }
     }
 
-    // Rebuild the balance table (id u64 | balance u64 per row), then add this batch's
+    // Rebuild the balance table (id u64 | balance u64 per row) and add this batch's
     // credits (deposits, judge credits) so they are spendable right away.
     let mut id = [0u64; {rows}];
     let mut balance = [0u64; {rows}];
@@ -79,6 +88,32 @@ pub fn main(
             balance[m] = balance[m] | ((r[8usize + k] as u64) << ((8usize * k) as u8));
         }
         balance[m] = balance[m] + if agreed { credits[m] } else { 0u64 };
+    }
+
+    // Withdrawals, in slot order and before any order reserves funds: each is taken from
+    // its account's first row only if that row covers it. `withdrawn` (public) says which
+    // went through, never whose they were.
+    let mut withdrawn = [false; {w}];
+    for s in 0usize..{w}usize {
+        let mut acct = 0u64;
+        for k in 0usize..8usize {
+            let b = p0.withdraw_accounts[s][k] ^ p1.withdraw_accounts[s][k] ^ p2.withdraw_accounts[s][k];
+            acct = acct | ((b as u64) << ((8usize * k) as u8));
+        }
+        let amount = withdrawals[s];
+        let mut row = [false; {rows}];
+        let mut found = false;
+        let mut have = 0u64;
+        for m in 0usize..{rows}usize {
+            row[m] = !found & (acct == id[m]);
+            found = found | row[m];
+            have = have | if row[m] { balance[m] } else { 0u64 };
+        }
+        let ok = agreed & found & (amount > 0u64) & (have >= amount);
+        withdrawn[s] = ok;
+        for m in 0usize..{rows}usize {
+            balance[m] = balance[m] - if ok & row[m] { amount } else { 0u64 };
+        }
     }
 
     // Each order's account row: the first row whose id matches.
@@ -229,5 +264,5 @@ pub fn main(
         let divisor = if volume > 0u32 { volume } else { 1u32 };
         prices[j] = (yes_paid / divisor) as u16;
     }
-    (fills, balances, prices, agreed)
+    (fills, balances, prices, withdrawn, agreed)
 }

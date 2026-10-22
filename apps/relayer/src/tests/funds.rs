@@ -30,7 +30,8 @@ async fn unfunded_orders_never_fill_and_top_ups_land_in_the_same_row() {
 #[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn three_relayers_real_mpc() {
-    let _ = zpredict_circuit::program(8, 16, zpredict_circuit::DEFAULT_MARKETS);
+    let w = zpredict_circuit::DEFAULT_WITHDRAWALS;
+    let _ = zpredict_circuit::program(8, 16, zpredict_circuit::DEFAULT_MARKETS, w);
     let r = relayers("mpc", 8, || Polytune, false);
     let ((ta, a), (tb, b)) = (funded(&r).await, funded(&r).await);
     let (yes, no) = (order(1, Side::Yes, 60, 3, a), order(1, Side::No, 45, 2, b));
