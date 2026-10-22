@@ -44,7 +44,7 @@ export default function ShowcasePane({ featured }: { featured?: Market }) {
 			<div className="showcase__shade" />
 			<p className="showcase__eyebrow">Featured · resolves from Zcash chain data</p>
 			<div className="showcase__card">
-				{featured && <MarketCard market={featured} variant="glass" />}
+				{featured && <MarketCard level={2} market={featured} variant="glass" />}
 			</div>
 		</Pane>
 	);
