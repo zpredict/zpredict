@@ -38,6 +38,8 @@ impl Rng {
 pub struct Batch {
     pub orders: Vec<[u8; ORDER_LEN]>,
     pub accounts: Vec<Account>,
+    /// Public credits per row, applied before clearing.
+    pub credits: Vec<u64>,
     pub order_shares: [Vec<[u8; ORDER_LEN]>; 3],
     pub account_shares: [Vec<[u8; ACCOUNT_LEN]>; 3],
 }
@@ -110,8 +112,16 @@ pub fn random_batch(rng: &mut Rng, rows: usize) -> Batch {
             b
         })
         .collect();
+    let credits = accounts
+        .iter()
+        .map(|a| match (a.id, rng.below(4)) {
+            (0, _) | (_, 1..) => 0,
+            _ => rng.below(3000), // a deposit: may fund an order that couldn't afford it
+        })
+        .collect();
     let rows: Vec<[u8; ACCOUNT_LEN]> = accounts.iter().map(Account::encode).collect();
     Batch {
+        credits,
         order_shares: split3(rng, &orders),
         account_shares: split3(rng, &rows),
         orders,
@@ -131,9 +141,9 @@ fn split3<const L: usize>(rng: &mut Rng, rows: &[[u8; L]]) -> [Vec<[u8; L]>; 3] 
     out
 }
 
-/// What the circuit must output for a [`MARKET`] batch: `clear_with_balances` as fill
-/// records, LE balances and the price, with every slot that fails `Order::decode`
-/// treated as a size-0 dummy.
+/// What the circuit must output for a [`MARKET`] batch: `clear_with_balances` on the
+/// credited table, as fill records, LE balances and the price, with every slot that
+/// fails `Order::decode` treated as a size-0 dummy.
 pub fn expected(b: &Batch) -> Outcome {
     let dummy = Order {
         market: MARKET,
@@ -147,7 +157,13 @@ pub fn expected(b: &Batch) -> Outcome {
         .iter()
         .map(|o| Order::decode(o).unwrap_or(dummy))
         .collect();
-    let c = clear_with_balances(MARKET, &batch, &b.accounts);
+    let credited: Vec<Account> = (b.accounts.iter().zip(&b.credits))
+        .map(|(a, c)| Account {
+            balance: a.balance + c,
+            ..*a
+        })
+        .collect();
+    let c = clear_with_balances(MARKET, &batch, &credited);
     Outcome {
         fills: fill_records(&batch, &c.fills),
         balances: c.balances.iter().map(|v| v.to_le_bytes()).collect(),
@@ -170,7 +186,7 @@ pub async fn run_local(batch: &Batch, base_port: u16) -> Result<[Outcome; 3], Er
     let peers = localhost(base_port);
     let party = |p: usize| {
         let (orders, accounts) = (&batch.order_shares[p], &batch.account_shares[p]);
-        run_party(p, &peers, MARKET, orders, accounts)
+        run_party(p, &peers, MARKET, &batch.credits, orders, accounts)
     };
     let (a, b, c) = tokio::join!(party(0), party(1), party(2));
     Ok([a?, b?, c?])

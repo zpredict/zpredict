@@ -1,7 +1,7 @@
 //! The circuit against `zpredict_core::clear_with_balances` on seeded random batches.
 
 use zpredict_circuit::{
-    Outcome, eval_in_clear,
+    Error, Outcome, eval_in_clear,
     harness::{Batch, MARKET, Rng, combine, expected, random_batch, run_local},
 };
 use zpredict_core::{Order, Side, clear, fill_records};
@@ -22,32 +22,44 @@ fn unchecked(orders: &[[u8; 18]]) -> Vec<[u8; 10]> {
     fill_records(&batch, &clear(&batch))
 }
 
-fn eval(b: &Batch, markets: [u32; 3]) -> Outcome {
+fn eval(b: &Batch, markets: [u32; 3], credits: [&[u64]; 3]) -> Result<Outcome, Error> {
     let orders = [0, 1, 2].map(|p| b.order_shares[p].as_slice());
     let accounts = [0, 1, 2].map(|p| b.account_shares[p].as_slice());
-    eval_in_clear(markets, orders, accounts).unwrap()
+    eval_in_clear(markets, credits, orders, accounts)
+}
+
+fn agreed(b: &Batch) -> Outcome {
+    eval(b, [MARKET; 3], [b.credits.as_slice(); 3]).unwrap()
 }
 
 /// The circuit's logic, evaluated in the clear: many batches, fast.
 #[test]
 fn circuit_matches_clear_with_balances() {
     let mut rng = Rng(0x2026_1028);
-    let (mut filled, mut debited, mut refused, mut priced) = (0, 0, 0, 0);
+    let (mut filled, mut debited, mut refused, mut priced, mut credited) = (0, 0, 0, 0, 0);
     for round in 0..300 {
-        let batch = random_batch(&mut rng, 16);
+        let mut batch = random_batch(&mut rng, 16);
         let want = expected(&batch);
-        assert_eq!(eval(&batch, [MARKET; 3]), want, "round {round}");
+        assert_eq!(agreed(&batch), want, "round {round}");
         filled += want.fills.iter().filter(|r| r[9] == 1).count();
         debited += (0..batch.accounts.len())
-            .filter(|&m| u64::from_le_bytes(want.balances[m]) != batch.accounts[m].balance)
+            .filter(|&m| {
+                let before = batch.accounts[m].balance + batch.credits[m];
+                u64::from_le_bytes(want.balances[m]) != before
+            })
             .count();
         refused += usize::from(unchecked(&batch.orders) != want.fills);
         priced += usize::from(want.price.is_some());
+        let credits = std::mem::replace(&mut batch.credits, vec![0; 16]);
+        credited += usize::from(expected(&batch).fills != want.fills);
+        batch.credits = credits;
     }
-    // The generator must exercise crossing, debits, refusals and both price cases.
+    // The generator must exercise crossing, debits, refusals, credits that fund orders,
+    // and both price cases.
     assert!(filled > 300 * 2, "too few fills: {filled}");
     assert!(debited > 300, "too few debits: {debited}");
     assert!(refused > 100, "checks changed too few batches: {refused}");
+    assert!(credited > 20, "credits changed too few batches: {credited}");
     assert!(
         (50..250).contains(&priced),
         "price present in {priced} of 300"
@@ -60,23 +72,26 @@ fn other_table_sizes_match() {
     let mut rng = Rng(5);
     for _ in 0..30 {
         let batch = random_batch(&mut rng, 5);
-        assert_eq!(eval(&batch, [MARKET; 3]), expected(&batch));
+        assert_eq!(agreed(&batch), expected(&batch));
     }
 }
 
-/// Parties that disagree on the market get an empty batch: nothing fills or moves.
+/// Parties that disagree on the market or the credits clear nothing and are told so.
 #[test]
-fn market_disagreement_clears_nothing() {
+fn disagreement_is_an_error() {
     let batch = random_batch(&mut Rng(3), 16);
-    let got = eval(&batch, [MARKET, MARKET, MARKET + 1]);
-    assert!(got.fills.iter().all(|r| *r == [0; 10]));
-    assert_eq!(got.price, None);
-    let before: Vec<_> = batch
-        .accounts
-        .iter()
-        .map(|a| a.balance.to_le_bytes())
-        .collect();
-    assert_eq!(got.balances, before);
+    let c = batch.credits.as_slice();
+    let markets = [MARKET, MARKET, MARKET + 1];
+    assert!(matches!(
+        eval(&batch, markets, [c; 3]),
+        Err(Error::Disagreement)
+    ));
+    let other = vec![1; 16];
+    let credits = [c, c, other.as_slice()];
+    assert!(matches!(
+        eval(&batch, [MARKET; 3], credits),
+        Err(Error::Disagreement)
+    ));
 }
 
 /// The full 3-party MPC over localhost TCP: shares combine to the reference, and all

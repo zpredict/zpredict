@@ -58,12 +58,14 @@ fn rows<const L: usize>(rows: &[[u8; L]]) -> Literal {
     )
 }
 
-/// Party `party`'s input: its shares, the batch market, and the mask it puts on every
-/// masked output.
+/// Party `party`'s input: its shares, the public market and credits, and the mask it
+/// puts on every masked output.
+#[allow(clippy::too_many_arguments)] // one per circuit input; a struct would just rename them
 pub(crate) fn input_bits(
     prg: &GarbleProgram,
     party: usize,
     market: u32,
+    credits: &[u64],
     orders: &[[u8; ORDER_LEN]],
     accounts: &[[u8; ACCOUNT_LEN]],
     mask: &Outcome,
@@ -72,6 +74,15 @@ pub(crate) fn input_bits(
     let fields = [
         ("accounts", rows(accounts)),
         ("balance_mask", rows(&mask.balances)),
+        (
+            "credits",
+            Literal::Array(
+                credits
+                    .iter()
+                    .map(|c| Literal::NumUnsigned(*c, UnsignedNumType::U64))
+                    .collect(),
+            ),
+        ),
         ("fill_mask", rows(&mask.fills)),
         (
             "market",
@@ -113,15 +124,19 @@ fn bytes<const L: usize>(lit: Literal) -> Result<Vec<[u8; L]>, Error> {
 }
 
 /// Turns the output bits back into an [`Outcome`] (shares still masked, if under MPC).
+/// Errors if the parties disagreed on the public inputs.
 pub(crate) fn decode_output(prg: &GarbleProgram, bits: &[bool]) -> Result<Outcome, Error> {
     let out = prg
         .parse_output(bits)
         .map_err(|e| Error::Circuit(format!("{e:?}")))?;
-    let bad = || Error::Circuit("output is not (fills, balances, price)".into());
+    let bad = || Error::Circuit("output is not (fills, balances, price, agreed)".into());
     let Literal::Tuple(parts) = out else {
         return Err(bad());
     };
-    let [fills, balances, price] = <[Literal; 3]>::try_from(parts).map_err(|_| bad())?;
+    let [fills, balances, price, agreed] = <[Literal; 4]>::try_from(parts).map_err(|_| bad())?;
+    if agreed != Literal::True {
+        return Err(Error::Disagreement);
+    }
     let Literal::NumUnsigned(price, _) = price else {
         return Err(bad());
     };

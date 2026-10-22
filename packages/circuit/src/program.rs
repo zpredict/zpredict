@@ -53,6 +53,7 @@ pub fn and_gates(rows: usize) -> usize {
 /// For tests and debugging only: whoever calls this sees every order and balance.
 pub fn eval_in_clear(
     markets: [u32; 3],
+    credits: [&[u64]; 3],
     orders: [&[[u8; ORDER_LEN]]; 3],
     accounts: [&[[u8; ACCOUNT_LEN]]; 3],
 ) -> Result<io::Outcome, Error> {
@@ -63,7 +64,17 @@ pub fn eval_in_clear(
         price: None,
     };
     let inputs = (0..3)
-        .map(|p| io::input_bits(prg, p, markets[p], orders[p], accounts[p], &zero))
+        .map(|p| {
+            io::input_bits(
+                prg,
+                p,
+                markets[p],
+                credits[p],
+                orders[p],
+                accounts[p],
+                &zero,
+            )
+        })
         .collect::<Result<Vec<_>, _>>()?;
     io::decode_output(prg, &circuit(prg).eval(&inputs))
 }

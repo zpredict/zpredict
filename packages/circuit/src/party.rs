@@ -21,19 +21,25 @@ pub async fn run_party(
     party: usize,
     peers: &[SocketAddr; 3],
     market: u32,
+    credits: &[u64],
     orders: &[[u8; ORDER_LEN]],
     accounts: &[[u8; ACCOUNT_LEN]],
 ) -> Result<Outcome, Error> {
     let channel = TcpChannel::connect(party, peers).await?;
-    run_party_on(&channel, party, market, orders, accounts).await
+    run_party_on(&channel, party, market, credits, orders, accounts).await
 }
 
 /// Same as [`run_party`] over any polytune channel (e.g. one carried over HTTPS).
 ///
 /// - `market`: the batch's market id, public; all three must pass the same one.
+/// - `credits`: half-ticks to add to each table row before clearing (deposits, judge
+///   credits), public; one per row, the same at all three.
 /// - `orders`: this relayer's share of each of the [`N`] slots; pad with zero shares.
 /// - `accounts`: this relayer's share of every balance-table row (`Account::encode`),
 ///   in the same order at all three; its length picks the table size.
+///
+/// Returns [`Error::Disagreement`] if the parties' markets or credits differ: then
+/// nothing was cleared or credited.
 ///
 /// Each party feeds a fresh random mask `m_p` into the circuit, which reveals
 /// `shares ^ m_0 ^ m_1 ^ m_2` and the price to all three. Party 0's share is that output
@@ -43,15 +49,18 @@ pub async fn run_party_on(
     channel: &impl Channel,
     party: usize,
     market: u32,
+    credits: &[u64],
     orders: &[[u8; ORDER_LEN]],
     accounts: &[[u8; ACCOUNT_LEN]],
 ) -> Result<Outcome, Error> {
-    if orders.len() != N {
-        return Err(Error::Circuit(format!("batch must have {N} slots")));
+    if orders.len() != N || credits.len() != accounts.len() {
+        return Err(Error::Circuit(format!(
+            "need {N} order slots and one credit per table row"
+        )));
     }
     let prg = program(accounts.len());
     let mask = Outcome::random(accounts.len());
-    let input = io::input_bits(prg, party, market, orders, accounts, &mask)?;
+    let input = io::input_bits(prg, party, market, credits, orders, accounts, &mask)?;
     let out = polytune::mpc(channel, circuit(prg), &input, EVALUATOR, party, &ALL, None).await?;
     let out = io::decode_output(prg, &out)?;
     if party == EVALUATOR {

@@ -75,7 +75,7 @@ async fn party(p: usize, seed: u64, rows: usize) {
     let channel = TcpChannel::connect(p, &localhost(PORT)).await.unwrap();
     let t = Instant::now(); // MPC only: excludes compile and waiting for peers
     let (orders, accounts) = (&batch.order_shares[p], &batch.account_shares[p]);
-    let out = run_party_on(&channel, p, MARKET, orders, accounts)
+    let out = run_party_on(&channel, p, MARKET, &batch.credits, orders, accounts)
         .await
         .unwrap();
     let bytes = out

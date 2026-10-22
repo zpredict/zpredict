@@ -6,15 +6,21 @@
 struct Party {
     accounts: [[u8; 16]; {rows}],
     balance_mask: [[u8; 8]; {rows}],
+    credits: [u64; {rows}],
     fill_mask: [[u8; 10]; 16],
     market: u32,
     orders: [[u8; 18]; 16],
 }
 
-pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; {rows}], u16) {
-    // The batch's market is public; if the parties disagree, nothing fills.
+pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; {rows}], u16, bool) {
+    // The batch's market and credits are public. If the parties disagree on either,
+    // nothing fills, nothing is credited, and `agreed` (public) says so.
     let market = p0.market;
-    let agreed = (p1.market == market) & (p2.market == market);
+    let credits = p0.credits;
+    let agreed = (p1.market == market)
+        & (p2.market == market)
+        & (p1.credits == credits)
+        & (p2.credits == credits);
 
     // Rebuild and decode. Malformed orders (side > 1, price outside 1..=99, size > MAX_SIZE)
     // and orders for another market become dummies.
@@ -49,7 +55,8 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; {rows
         }
     }
 
-    // Rebuild the balance table: id u64 | balance u64 per row.
+    // Rebuild the balance table (id u64 | balance u64 per row), then add this batch's
+    // credits (deposits, judge credits) so they are spendable right away.
     let mut id = [0u64; {rows}];
     let mut balance = [0u64; {rows}];
     for m in 0usize..{rows}usize {
@@ -61,6 +68,7 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; {rows
             id[m] = id[m] | ((r[k] as u64) << ((8usize * k) as u8));
             balance[m] = balance[m] | ((r[8usize + k] as u64) << ((8usize * k) as u8));
         }
+        balance[m] = balance[m] + if agreed { credits[m] } else { 0u64 };
     }
 
     // Each order's account row: the first row whose id matches.
@@ -195,5 +203,5 @@ pub fn main(p0: Party, p1: Party, p2: Party) -> ([[u8; 10]; 16], [[u8; 8]; {rows
     // Divisor never 0: a 0 divisor would raise Garble's panic flag even in a dead branch.
     let divisor = if volume > 0u32 { volume } else { 1u32 };
     let price = (yes_paid / divisor) as u16; // 0 when nothing crossed
-    (fills, balances, price)
+    (fills, balances, price, agreed)
 }
