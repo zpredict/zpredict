@@ -33,7 +33,10 @@ pub async fn run(c: Config) -> Result<()> {
 }
 
 pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result<()> {
-    if matcher.slots().is_some_and(|n| n != c.batch_size) {
+    let (slots, rows) = matcher
+        .shape()
+        .unwrap_or((c.batch_size, zpredict_circuit::ACCOUNTS));
+    if slots != c.batch_size {
         return Err(Error::Config(format!(
             "batch_size must be {} for this matcher",
             zpredict_circuit::N
@@ -57,7 +60,8 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
         state: state.clone(),
         peering,
         matcher,
-        slots: c.batch_size,
+        slots,
+        rows,
         window: Duration::from_secs(c.window_secs),
         expire: c.expire_batches,
     };

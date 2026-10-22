@@ -1,0 +1,132 @@
+//! INSECURE: parties 1 and 2 send their shares to party 0, which rebuilds every order
+//! and table row, clears one market with `zpredict_core::clear_with_balances` and hands
+//! back fresh shares. It mirrors what the circuit will do once it filters by market
+//! (#49), so the per-market batch loop is exercised today. Only for tests and local dev;
+//! the binary refuses it unless both the `dev-insecure` feature and
+//! `insecure_matcher = true` are set.
+
+use serde::{Deserialize, Serialize};
+use zpredict_core::{
+    ACCOUNT_LEN, Account, BALANCE_LEN, FILL_LEN, ORDER_LEN, Order, Side, clear_with_balances,
+    fill_records,
+};
+
+use super::{Cleared, Matcher};
+use crate::error::Result;
+use crate::peers::Links;
+
+pub struct InsecureLocalMatcher;
+
+#[derive(Serialize, Deserialize)]
+struct Shares {
+    orders: Vec<[u8; ORDER_LEN]>,
+    accounts: Vec<[u8; ACCOUNT_LEN]>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Reply {
+    fills: Vec<[u8; FILL_LEN]>,
+    balances: Vec<[u8; BALANCE_LEN]>,
+    price: Option<u16>,
+}
+
+impl Matcher for InsecureLocalMatcher {
+    fn shape(&self) -> Option<(usize, usize)> {
+        None
+    }
+
+    fn per_market(&self) -> bool {
+        true
+    }
+
+    async fn clear(
+        &self,
+        links: &Links,
+        market: u32,
+        orders: &[[u8; ORDER_LEN]],
+        accounts: &[[u8; ACCOUNT_LEN]],
+    ) -> Result<Cleared> {
+        let mine = Shares {
+            orders: orders.to_vec(),
+            accounts: accounts.to_vec(),
+        };
+        if links.party != 0 {
+            links.send(0, &serde_json::to_vec(&mine)?).await?;
+            let r: Reply = serde_json::from_slice(&links.recv(0).await?)?;
+            return Ok(Cleared {
+                fills: r.fills,
+                balances: r.balances,
+                price: r.price,
+            });
+        }
+        let mut all = mine;
+        for p in 1..3 {
+            let theirs: Shares = serde_json::from_slice(&links.recv(p).await?)?;
+            xor_into(&mut all.orders, &theirs.orders);
+            xor_into(&mut all.accounts, &theirs.accounts);
+        }
+        let (mut fills, mut balances, price) = clear_market(market, &all);
+        for p in 1..3 {
+            let r = Reply {
+                fills: reshare(&mut fills),
+                balances: reshare(&mut balances),
+                price,
+            };
+            links.send(p, &serde_json::to_vec(&r)?).await?;
+        }
+        Ok(Cleared {
+            fills,
+            balances,
+            price,
+        })
+    }
+}
+
+/// Plaintext reference: orders outside `market` or malformed are dummies; the price is
+/// the YES cost of the last (marginal) cross.
+fn clear_market(
+    market: u32,
+    s: &Shares,
+) -> (Vec<[u8; FILL_LEN]>, Vec<[u8; BALANCE_LEN]>, Option<u16>) {
+    let dummy = Order {
+        market,
+        side: Side::Yes,
+        price: 1,
+        size: 0,
+        account: 0,
+    };
+    let orders: Vec<Order> = (s.orders.iter())
+        .map(|b| {
+            Order::decode(b)
+                .filter(|o| o.market == market)
+                .unwrap_or(dummy)
+        })
+        .collect();
+    let u64_at = |b: &[u8], i: usize| u64::from_le_bytes(b[i..i + 8].try_into().expect("8 bytes"));
+    let accounts: Vec<Account> = (s.accounts.iter())
+        .map(|b| Account {
+            id: u64_at(b, 0),
+            balance: u64_at(b, 8),
+        })
+        .collect();
+    let (fills, balances) = clear_with_balances(&orders, &accounts);
+    let price = fills.last().map(|f| f.yes_cost);
+    let balances = balances.iter().map(|b| b.to_le_bytes()).collect();
+    (fill_records(&orders, &fills), balances, price)
+}
+
+fn xor_into<const L: usize>(acc: &mut [[u8; L]], other: &[[u8; L]]) {
+    for (a, b) in acc.iter_mut().zip(other) {
+        a.iter_mut().zip(b).for_each(|(x, y)| *x ^= y);
+    }
+}
+
+/// A fresh random share for a peer; `mine` keeps the rest.
+fn reshare<const L: usize>(mine: &mut [[u8; L]]) -> Vec<[u8; L]> {
+    let mut theirs = vec![[0u8; L]; mine.len()];
+    theirs
+        .iter_mut()
+        .for_each(|s| getrandom::fill(s).expect("os rng"));
+    xor_into(mine, &theirs);
+    theirs
+}

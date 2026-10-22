@@ -1,0 +1,114 @@
+//! Batch membership, cross-market isolation, expiry, restart, padding, peer keys.
+
+use serde_json::Value;
+use zpredict_core::{clear, fill_records};
+
+use super::*;
+use crate::mpc::InsecureLocalMatcher;
+use crate::state::{Shared, State, Status};
+
+#[tokio::test(flavor = "multi_thread")]
+async fn three_relayers_clear_expire_and_restart() {
+    let r = relayers("e2e", 4, || InsecureLocalMatcher, false);
+    let ((ta, a), (tb, b)) = (funded(&r).await, funded(&r).await);
+    let (yes, no) = (order(1, Side::Yes, 60, 3, a), order(1, Side::No, 45, 3, b));
+    let other = order(2, Side::No, 99, 3, b); // other market: must not cross
+    submit(&r, &id(1), yes, &[0, 1, 2]).await;
+    submit(&r, &id(2), no, &[0, 1, 2]).await;
+    submit(&r, &id(3), other, &[0, 1, 2]).await;
+    submit(&r, &id(4), yes, &[0, 2]).await; // relayer 1 never got its share
+
+    let ids = batch_all(&r).await;
+    assert!(
+        ids.iter().all(|x| *x == [id(1), id(2), id(3)]),
+        "intersection, sorted"
+    );
+    let want = fill_records(&[yes, no], &clear(&[yes, no]));
+    assert_eq!(fill(&r, &id(1)).await, Some(want[0]));
+    assert_eq!(fill(&r, &id(2)).await, Some(want[1]));
+    assert_eq!(
+        fill(&r, &id(3)).await,
+        Some([0; FILL_LEN]),
+        "no cross-market fill"
+    );
+    // Each account paid its fill's actual cost; relayers 1 and 2 adopted both rows.
+    assert_eq!(
+        (balance(&r, &ta).await, balance(&r, &tb).await),
+        (5000 - 345, 5000 - 255)
+    );
+    for x in &r {
+        assert_eq!(x.batcher.state.lock().unwrap().table.ids(), vec![a, b]);
+        let (_, m) = call(&x.http, "GET", "/markets", None).await;
+        assert_eq!(
+            (m[0]["lastPrice"].clone(), m[1].get("lastPrice")),
+            (json!(57.5), None)
+        );
+        let (_, h) = call(&x.http, "GET", "/health", None).await;
+        assert_eq!(
+            (h["batch"].clone(), h["peers"].clone()),
+            (json!(2), json!([true, true, true]))
+        );
+    }
+    let (_, s) = call(&r[0].http, "GET", &format!("/orders/{}", id(4)), None).await;
+    assert_eq!(s, json!({"status": "pending"}));
+
+    // Next batch: order 4 is a batch old and still missing a share, so it expires.
+    batch_all(&r).await;
+    for i in [0, 2] {
+        let (_, s) = call(&r[i].http, "GET", &format!("/orders/{}", id(4)), None).await;
+        assert_eq!(s, json!({"status": "unfilled"}));
+    }
+
+    // Restart relayers 0 and 1 from their event logs: same shares, statuses, table, view.
+    for i in [0, 1] {
+        let before = snapshot(&r[i].batcher.state, &ta);
+        let dir = std::env::temp_dir().join(format!("zpredict-e2e-{i}-{}", std::process::id()));
+        let markets = r[i].batcher.state.lock().unwrap().markets.clone();
+        let reopened = State::open(i, markets, &dir).unwrap().shared();
+        assert_eq!(snapshot(&reopened, &ta), before);
+    }
+}
+
+fn snapshot(s: &Shared, tag: &str) -> Value {
+    let s = s.lock().unwrap();
+    let status = |n| match s.order(&id(n)).map(|o| o.status) {
+        Some(Status::Filled(f)) => hex::encode(f),
+        other => format!("{other:?}"),
+    };
+    let view = serde_json::to_value(s.view_after(0, 1000)).unwrap();
+    // No `batch`: an idle window bumps it only in memory; peers resync it via the max.
+    json!({"orders":[status(1), status(2), status(3), status(4)],
+        "balance": s.balance_share(tag), "rows": s.table.ids(), "view": view,
+        "positions": s.positions().len()})
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn batches_cap_at_slots_and_pad() {
+    let r = relayers("cap", 2, || InsecureLocalMatcher, false);
+    for n in 1..=3 {
+        submit(&r, &id(n), order(1, Side::Yes, 50, 1, 7), &[0, 1, 2]).await;
+    }
+    assert_eq!(batch_all(&r).await[0], [id(1), id(2)]);
+    assert_eq!(
+        batch_all(&r).await[0],
+        [id(3)],
+        "overflow waits, never expires"
+    );
+    assert_eq!(
+        fill(&r, &id(3)).await,
+        Some([0; FILL_LEN]),
+        "padding never crosses"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn wrong_peer_key_never_links() {
+    let r = relayers("badkey", 4, || InsecureLocalMatcher, true);
+    let (a, _, c) = tokio::join!(
+        r[0].batcher.once(),
+        r[1].batcher.once(),
+        r[2].batcher.once()
+    );
+    assert!(a.is_err() && c.is_err());
+    assert!(!r[0].batcher.state.lock().unwrap().peers[2]);
+}
