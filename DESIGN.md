@@ -133,6 +133,7 @@ A dishonest relayer could still try to *choose* the other relayers' shares for a
 **Not quantum-recoverable (ZIP 2005).** The escrow's spend authority `ak` is the FROST group key, so its viewing key cannot be derived from a seed. Its `nk` and `rivk` are random, generated once at the DKG (the same construction as `zcash-sign generate`). Escrow notes therefore don't use the ZIP 2005 derivation, which would let a key holder recover them after a quantum break of discrete log. For a hackathon escrow that holds collateral for days, this is acceptable. A production escrow would need a FROST-compatible ZIP 2005 derivation, or would have to sweep to a recoverable key before such a break.
 
 ### Leak checklist (from the research)
+Status and evidence for each item, plus the #15 audit findings: [PRIVACY.md](PRIVACY.md#leak-checklist).
 - [ ] No transparent address in any product path (deposits, payouts, refunds, change).
 - [ ] Deposits only in fixed denominations; never reveal order size.
 - [ ] Payouts batched per epoch to fresh diversified, shielded-only addresses: no deposit→payout timing or amount link.
