@@ -1,4 +1,4 @@
-//! Balance table: collateral checks, top-up rows, and the real MPC end to end.
+//! Balance table: collateral checks, top-ups, and the real MPC end to end.
 
 use zpredict_core::{clear, fill_records};
 
@@ -6,7 +6,7 @@ use super::*;
 use crate::mpc::{InsecureLocalMatcher, Polytune};
 
 #[tokio::test(flavor = "multi_thread")]
-async fn unfunded_orders_never_fill_and_top_ups_get_new_rows() {
+async fn unfunded_orders_never_fill_and_top_ups_land_in_the_same_row() {
     let r = relayers("funds", 4, || InsecureLocalMatcher, false);
     let ((ta, a), (_, b)) = (funded(&r).await, funded(&r).await);
     // YES 99 × 26 needs 5148 > 5000: a dummy, so NO finds no counterparty.
@@ -15,17 +15,14 @@ async fn unfunded_orders_never_fill_and_top_ups_get_new_rows() {
     batch_all(&r).await;
     assert_eq!(fill(&r, &id(1)).await, Some([0; FILL_LEN]));
     assert_eq!(balance(&r, &ta).await, 5000);
-    // Account a's row went through MPC, so a credit to it starts a new row.
+    // Account a's row went through MPC, so its top-up is a public credit for the next
+    // batch, which runs even with no orders. No second row.
     r[0].batcher.state.lock().unwrap().credit(&ta, 100).unwrap();
-    assert_eq!(
-        r[0].batcher.state.lock().unwrap().table.ids(),
-        vec![a, b, a]
-    );
     batch_all(&r).await;
-    assert_eq!(
-        r[2].batcher.state.lock().unwrap().table.ids(),
-        vec![a, b, a]
-    );
+    assert_eq!(balance(&r, &ta).await, 5100);
+    for x in &r {
+        assert_eq!(x.batcher.state.lock().unwrap().table.ids(), vec![a, b]);
+    }
 }
 
 /// The real polytune MPC (with balance checks) over our Noise channel. ~1 min even
@@ -33,7 +30,7 @@ async fn unfunded_orders_never_fill_and_top_ups_get_new_rows() {
 #[tokio::test(flavor = "multi_thread")]
 #[ignore]
 async fn three_relayers_real_mpc() {
-    let _ = zpredict_circuit::program();
+    let _ = zpredict_circuit::program(16);
     let r = relayers("mpc", zpredict_circuit::N, || Polytune, false);
     let ((ta, a), (tb, b)) = (funded(&r).await, funded(&r).await);
     let (yes, no) = (order(1, Side::Yes, 60, 3, a), order(1, Side::No, 45, 2, b));
@@ -47,4 +44,9 @@ async fn three_relayers_real_mpc() {
         (balance(&r, &ta).await, balance(&r, &tb).await),
         (5000 - 230, 5000 - 170)
     );
+    // The circuit's public price reaches every relayer's lastPrice: 115 half-ticks.
+    for x in &r {
+        let (_, m) = call(&x.http, "GET", "/markets", None).await;
+        assert_eq!(m[0]["lastPrice"], json!(57.5));
+    }
 }

@@ -44,6 +44,10 @@ pub struct Config {
     pub escrow_lightwalletd: String,
     /// Slots per MPC batch (N); must equal `zpredict_circuit::N` for the real matcher.
     pub batch_size: usize,
+    /// Balance-table rows per batch, i.e. funded accounts the deployment can hold. Each
+    /// row costs ~8k AND gates: 32 ≈ 15 s, 64 ≈ 23 s per market per window (#48).
+    #[serde(default = "default_table_rows")]
+    pub table_rows: usize,
     pub window_secs: u64,
     /// A pending order not in any batch for this many batches becomes `unfilled`.
     pub expire_batches: u64,
@@ -71,6 +75,10 @@ const NOT_CONFIG: [&str; 1] = ["store_key"];
 
 fn default_oracle_lightwalletd() -> String {
     "https://zec.rocks:443".into()
+}
+
+fn default_table_rows() -> usize {
+    zpredict_circuit::DEFAULT_ROWS
 }
 
 fn default_escrow_lightwalletd() -> String {

@@ -58,9 +58,10 @@ Judges see four things — the description (read first), the repo, a demo they c
 - In the browser: `order = {market, side, price, size, account, salt}` → split into three XOR shares → each share POSTed **directly to its own relayer** over TLS (onion service optional). No backend ever holds two shares.
 
 ### 3. Crossing (MPC, polytune, 3 parties)
-- Every batch window, each relayer feeds its shares of a fixed-size batch (**N = 16**, padded with dummy orders) into a Garble circuit.
-- Inside the circuit: rebuild orders (`s0 ^ s1 ^ s2`), check balances, cross YES `p` with NO `q` when `p + q ≥ 1`, at the midpoint `p* = (p + 1 − q) / 2`. YES pays `p*`, NO pays `1 − p*`.
-- Output: updated XOR-shared balances and positions. **Only fills are revealed to their owners; unfilled orders are never opened.**
+- Every batch window, for each open market, each relayer feeds its shares of a fixed-size batch (**N = 16**, padded with dummy orders) and of the whole balance table into a Garble circuit, with two public inputs: the market id and a credit per table row (deposits and judge credits, which every relayer already sees).
+- Inside the circuit: rebuild orders (`s0 ^ s1 ^ s2`) and the table, add the credits, drop orders for other markets, reserve each order's worst case from its account's row (unfunded → dummy), cross YES `p` with NO `q` when `p + q ≥ 1`, at the midpoint `p* = (p + 1 − q) / 2`. YES pays `p*`, NO pays `1 − p*`. Reference: `zpredict_core::clear_with_balances`.
+- Output: XOR-shared fill records and updated balances, plus one public number, the batch's **clearing price** (volume-weighted YES cost, rounded down; none if nothing crossed) for `lastPrice`/history. **Only fills are revealed to their owners; unfilled orders are never opened.**
+- **Balance table limit.** The whole table enters every batch (picking only the accounts that traded would leak them), so its size is fixed per deployment: 32 rows by default (`zpredict_circuit::DEFAULT_ROWS`), i.e. 32 funded accounts. Per market and window on one machine: 16 rows ≈ 12 s, 32 ≈ 15 s, 64 ≈ 23 s (budget 30 s), each row ~8k AND gates. A row is freed only when the relayers know it holds nothing: never-used rows, and in future rows whose owner withdrew everything after their markets settled (the withdrawal makes the zero public anyway). The circuit never reveals a balance, so it cannot spot empty rows on its own.
 - Security: polytune protects an honest party's input even if the other two cheat; a cheater can only abort → timeout and re-run.
 
 ### 4. Resolution

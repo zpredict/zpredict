@@ -127,6 +127,7 @@ async fn orders_contract() {
         fills,
         prices: vec![(1, 115)],
         expired: vec![],
+        credits: vec![],
     };
     state.lock().unwrap().record(ev).unwrap();
     let want = json!({"status": "filled", "fillShare": fill});

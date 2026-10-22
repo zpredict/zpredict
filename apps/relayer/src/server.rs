@@ -27,15 +27,13 @@ pub async fn run(c: Config) -> Result<()> {
             "insecure_matcher needs a build with --features dev-insecure".into(),
         ));
     }
-    // Compile the Garble program now, not inside the first batch (~10 s).
-    let _ = zpredict_circuit::program();
+    // Compile the Garble program now, not inside the first batch (~25 s at 32 rows).
+    let _ = zpredict_circuit::program(c.table_rows);
     serve(c, Polytune).await
 }
 
 pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result<()> {
-    let (slots, rows) = matcher
-        .shape()
-        .unwrap_or((c.batch_size, zpredict_circuit::ACCOUNTS));
+    let (slots, rows) = (matcher.slots().unwrap_or(c.batch_size), c.table_rows);
     if slots != c.batch_size {
         return Err(Error::Config(format!(
             "batch_size must be {} for this matcher",

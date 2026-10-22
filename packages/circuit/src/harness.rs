@@ -7,7 +7,11 @@ use zpredict_core::{
     ACCOUNT_LEN, Account, MAX_SIZE, ORDER_LEN, Order, Side, clear_with_balances, fill_records,
 };
 
-use crate::{ACCOUNTS, AccountShares, Error, N, OrderShares, Outcome, run_party};
+use crate::{Error, N, Outcome, run_party};
+
+/// The market every generated batch clears; a few orders are for [`OTHER_MARKET`].
+pub const MARKET: u32 = 7;
+pub const OTHER_MARKET: u32 = 8;
 
 /// SplitMix64: deterministic, so a failing seed reproduces. Not a CSPRNG.
 pub struct Rng(pub u64);
@@ -32,18 +36,21 @@ impl Rng {
 
 /// A batch of encoded orders, the balance table, and the three relayers' shares of both.
 pub struct Batch {
-    pub orders: [[u8; ORDER_LEN]; N],
-    pub accounts: [Account; ACCOUNTS],
-    pub order_shares: [OrderShares; 3],
-    pub account_shares: [AccountShares; 3],
+    pub orders: Vec<[u8; ORDER_LEN]>,
+    pub accounts: Vec<Account>,
+    /// Public credits per row, applied before clearing.
+    pub credits: Vec<u64>,
+    pub order_shares: [Vec<[u8; ORDER_LEN]>; 3],
+    pub account_shares: [Vec<[u8; ACCOUNT_LEN]>; 3],
 }
 
-/// Random batch with dummies, malformed slots, price ties, partial fills, the odd
-/// `MAX_SIZE` order, short and unknown accounts, accounts with several orders, a
-/// duplicated row id and zero padding rows, so every branch gets exercised.
-pub fn random_batch(rng: &mut Rng) -> Batch {
-    let used = 4 + rng.below(ACCOUNTS as u64 - 4) as usize; // the rest is zero padding
-    let mut accounts = [Account { id: 0, balance: 0 }; ACCOUNTS];
+/// Random [`MARKET`] batch over a `rows`-row table (at least 4), with dummies, malformed
+/// slots, other-market orders, price ties, partial fills, the odd `MAX_SIZE` order,
+/// short and unknown accounts, accounts with several orders, a duplicated row id and
+/// zero padding rows, so every branch gets exercised.
+pub fn random_batch(rng: &mut Rng, rows: usize) -> Batch {
+    let used = 4 + rng.below(rows.min(16) as u64 - 3) as usize; // the rest is padding
+    let mut accounts = vec![Account { id: 0, balance: 0 }; rows];
     for a in accounts.iter_mut().take(used) {
         a.id = 1 + rng.below(1 << 40);
         a.balance = match rng.below(8) {
@@ -53,67 +60,93 @@ pub fn random_batch(rng: &mut Rng) -> Batch {
         };
     }
     accounts[used - 1].id = accounts[0].id; // duplicate: the first row must win
-    let orders: [[u8; ORDER_LEN]; N] = std::array::from_fn(|_| {
-        let side = if rng.below(2) == 0 {
-            Side::Yes
-        } else {
-            Side::No
-        };
-        let price = match rng.below(3) {
-            0 => 40 + rng.below(21) as u8, // tight band: many ties and crosses
-            _ => 1 + rng.below(99) as u8,
-        };
-        let size = match rng.below(10) {
-            0 => 0,
-            1 => MAX_SIZE - rng.below(3) as u32,
-            _ => 1 + rng.below(20) as u32,
-        };
-        let account = match rng.below(8) {
-            0 => rng.next_u64(), // no such account
-            _ => accounts[rng.below(used as u64) as usize].id,
-        };
-        let mut b = Order {
-            market: 7,
-            side,
-            price,
-            size,
-            account,
-        }
-        .encode();
-        match rng.below(16) {
-            0 => b[4] = 2 + rng.below(254) as u8,             // bad side
-            1 => b[5] = [0, 100, 255][rng.below(3) as usize], // bad price
-            2 => b[6..10].copy_from_slice(&(MAX_SIZE + 1).to_le_bytes()), // too big
-            _ => {}
-        }
-        b
-    });
-    let rows: [[u8; ACCOUNT_LEN]; ACCOUNTS] = std::array::from_fn(|m| accounts[m].encode());
+    // Spread the live rows over the table so high row indices get exercised too.
+    for k in 0..used {
+        let j = rng.below(rows as u64) as usize;
+        accounts.swap(k, j);
+    }
+    let live: Vec<u64> = accounts
+        .iter()
+        .filter(|a| a.id != 0)
+        .map(|a| a.id)
+        .collect();
+    let orders: Vec<[u8; ORDER_LEN]> = (0..N)
+        .map(|_| {
+            let side = if rng.below(2) == 0 {
+                Side::Yes
+            } else {
+                Side::No
+            };
+            let price = match rng.below(3) {
+                0 => 40 + rng.below(21) as u8, // tight band: many ties and crosses
+                _ => 1 + rng.below(99) as u8,
+            };
+            let size = match rng.below(10) {
+                0 => 0,
+                1 => MAX_SIZE - rng.below(3) as u32,
+                _ => 1 + rng.below(20) as u32,
+            };
+            let account = match rng.below(8) {
+                0 => rng.next_u64(), // no such account
+                _ => live[rng.below(live.len() as u64) as usize],
+            };
+            let market = if rng.below(10) == 0 {
+                OTHER_MARKET
+            } else {
+                MARKET
+            };
+            let mut b = Order {
+                market,
+                side,
+                price,
+                size,
+                account,
+            }
+            .encode();
+            match rng.below(16) {
+                0 => b[4] = 2 + rng.below(254) as u8,             // bad side
+                1 => b[5] = [0, 100, 255][rng.below(3) as usize], // bad price
+                2 => b[6..10].copy_from_slice(&(MAX_SIZE + 1).to_le_bytes()), // too big
+                _ => {}
+            }
+            b
+        })
+        .collect();
+    let credits = accounts
+        .iter()
+        .map(|a| match (a.id, rng.below(4)) {
+            (0, _) | (_, 1..) => 0,
+            _ => rng.below(3000), // a deposit: may fund an order that couldn't afford it
+        })
+        .collect();
+    let rows: Vec<[u8; ACCOUNT_LEN]> = accounts.iter().map(Account::encode).collect();
     Batch {
-        orders,
-        accounts,
+        credits,
         order_shares: split3(rng, &orders),
         account_shares: split3(rng, &rows),
+        orders,
+        accounts,
     }
 }
 
 /// XOR-split every row three ways: `[r0, r1, row ^ r0 ^ r1]`.
-fn split3<const L: usize, const R: usize>(rng: &mut Rng, rows: &[[u8; L]; R]) -> [[[u8; L]; R]; 3] {
-    let mut out = [[[0u8; L]; R]; 3];
-    for (i, row) in rows.iter().enumerate() {
+fn split3<const L: usize>(rng: &mut Rng, rows: &[[u8; L]]) -> [Vec<[u8; L]>; 3] {
+    let mut out = [vec![], vec![], vec![]];
+    for row in rows {
         let (r0, r1): ([u8; L], [u8; L]) = (rng.bytes(), rng.bytes());
-        out[0][i] = r0;
-        out[1][i] = r1;
-        out[2][i] = std::array::from_fn(|k| row[k] ^ r0[k] ^ r1[k]);
+        out[0].push(r0);
+        out[1].push(r1);
+        out[2].push(std::array::from_fn(|k| row[k] ^ r0[k] ^ r1[k]));
     }
     out
 }
 
-/// What the circuit must output: `clear_with_balances` as fill records and LE balances,
-/// with every slot that fails `Order::decode` treated as a size-0 dummy.
+/// What the circuit must output for a [`MARKET`] batch: `clear_with_balances` on the
+/// credited table, as fill records, LE balances and the price, with every slot that
+/// fails `Order::decode` treated as a size-0 dummy.
 pub fn expected(b: &Batch) -> Outcome {
     let dummy = Order {
-        market: 0,
+        market: MARKET,
         side: Side::Yes,
         price: 1,
         size: 0,
@@ -124,11 +157,17 @@ pub fn expected(b: &Batch) -> Outcome {
         .iter()
         .map(|o| Order::decode(o).unwrap_or(dummy))
         .collect();
-    let (fills, balances) = clear_with_balances(&batch, &b.accounts);
-    let records = fill_records(&batch, &fills);
+    let credited: Vec<Account> = (b.accounts.iter().zip(&b.credits))
+        .map(|(a, c)| Account {
+            balance: a.balance + c,
+            ..*a
+        })
+        .collect();
+    let c = clear_with_balances(MARKET, &batch, &credited);
     Outcome {
-        fills: std::array::from_fn(|i| records[i]),
-        balances: std::array::from_fn(|m| balances[m].to_le_bytes()),
+        fills: fill_records(&batch, &c.fills),
+        balances: c.balances.iter().map(|v| v.to_le_bytes()).collect(),
+        price: c.price,
     }
 }
 
@@ -145,7 +184,10 @@ pub fn localhost(base: u16) -> [SocketAddr; 3] {
 /// Runs all three parties concurrently in this task over localhost TCP.
 pub async fn run_local(batch: &Batch, base_port: u16) -> Result<[Outcome; 3], Error> {
     let peers = localhost(base_port);
-    let party = |p: usize| run_party(p, &peers, &batch.order_shares[p], &batch.account_shares[p]);
+    let party = |p: usize| {
+        let (orders, accounts) = (&batch.order_shares[p], &batch.account_shares[p]);
+        run_party(p, &peers, MARKET, &batch.credits, orders, accounts)
+    };
     let (a, b, c) = tokio::join!(party(0), party(1), party(2));
     Ok([a?, b?, c?])
 }

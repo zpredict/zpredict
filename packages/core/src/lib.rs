@@ -10,8 +10,8 @@ mod fill;
 mod order;
 mod shares;
 
-pub use balance::{Account, clear_with_balances, worst_case_cost};
-pub use clearing::{Fill, clear};
+pub use balance::{Account, Cleared, clear_with_balances, worst_case_cost};
+pub use clearing::{Fill, clear, clearing_price};
 pub use fill::fill_records;
 pub use order::{Order, Side};
 pub use shares::{combine, split};

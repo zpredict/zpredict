@@ -8,7 +8,9 @@
 //!
 //! A row is *fresh* until it first enters a batch. While fresh, its shares are still
 //! `(row, 0, 0)`, so relayer 0 can credit it by adding to its own balance share. After
-//! that the shares are random, so a top-up becomes a new fresh row with the same id.
+//! that the shares are random, so relayer 0 queues the top-up as a *pending credit* for
+//! the row; the next batch passes it to the circuit as a public input, which adds it
+//! inside the MPC (#57). Every relayer sees deposit amounts anyway.
 
 use zpredict_core::{ACCOUNT_LEN, Account, BALANCE_LEN};
 
@@ -24,14 +26,22 @@ pub struct Row {
 #[derive(Default)]
 pub struct Table {
     rows: Vec<Row>,
+    /// Relayer 0: half-ticks waiting to be credited to each sealed row by the circuit.
+    pending: Vec<u64>,
 }
 
 impl Table {
     /// Relayer 0 only: credit `amount` half-ticks to account `id`.
     pub fn credit(&mut self, id: u64, amount: u64) {
-        if let Some(r) = self.rows.iter_mut().rev().find(|r| r.id == id && r.fresh) {
-            let bal = u64::from_le_bytes(r.share[8..].try_into().expect("8 bytes"));
-            r.share[8..].copy_from_slice(&bal.saturating_add(amount).to_le_bytes());
+        if let Some(k) = self.rows.iter().position(|r| r.id == id) {
+            let r = &mut self.rows[k];
+            if r.fresh {
+                let bal = u64::from_le_bytes(r.share[8..].try_into().expect("8 bytes"));
+                r.share[8..].copy_from_slice(&bal.saturating_add(amount).to_le_bytes());
+            } else {
+                self.pending.resize(self.rows.len(), 0);
+                self.pending[k] = self.pending[k].saturating_add(amount);
+            }
             return;
         }
         let share = Account {
@@ -79,6 +89,20 @@ impl Table {
         self.rows.iter_mut().take(n).for_each(|r| r.fresh = false);
     }
 
+    /// Relayer 0: pending credits of the first `n` rows, padded with zeros to `len`.
+    pub fn credits(&self, n: usize, len: usize) -> Vec<u64> {
+        let mut out: Vec<u64> = self.pending.iter().take(n).copied().collect();
+        out.resize(len.max(out.len()), 0);
+        out
+    }
+
+    /// A batch applied `credits` (row by row): they are no longer pending.
+    pub fn applied(&mut self, credits: &[u64]) {
+        for (p, c) in self.pending.iter_mut().zip(credits) {
+            *p = p.saturating_sub(*c);
+        }
+    }
+
     /// Shares of the first `n` rows, padded with all-zero rows to `len`.
     pub fn shares(&self, n: usize, len: usize) -> Vec<[u8; ACCOUNT_LEN]> {
         let mut out: Vec<_> = self.rows.iter().take(n).map(|r| r.share).collect();
@@ -94,10 +118,8 @@ impl Table {
         }
     }
 
-    /// The balance share of the account's first row, the one orders spend from.
-    /// Unknown accounts hold a zero share.
-    // ponytail: top-up rows (same id, added after the first row was batched) are neither
-    // spent nor shown until the circuit merges duplicate ids; see README "Known gaps".
+    /// The balance share of the account's row. Unknown accounts hold a zero share.
+    /// Pending credits show up once the next batch applies them.
     pub fn balance_share(&self, id: u64) -> [u8; BALANCE_LEN] {
         let row = self.rows.iter().find(|r| r.id == id);
         row.map_or([0; BALANCE_LEN], |r| {
@@ -119,17 +141,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn fresh_rows_take_credits_then_top_ups_get_new_rows() {
+    fn fresh_rows_take_credits_then_top_ups_wait_for_the_circuit() {
         let mut t = Table::default();
         t.credit(7, 100);
         t.credit(7, 50);
         assert_eq!(t.balance_share(7), 150u64.to_le_bytes());
         t.seal(1);
         t.credit(7, 25);
-        assert_eq!(
-            (t.ids(), t.balance_share(7)),
-            (vec![7, 7], 150u64.to_le_bytes())
-        );
+        t.credit(7, 5);
+        assert_eq!(t.ids(), vec![7], "no duplicate row");
+        assert_eq!(t.balance_share(7), 150u64.to_le_bytes());
+        assert_eq!(t.credits(1, 3), vec![30, 0, 0]);
+        t.applied(&[30, 0, 0]);
+        assert_eq!(t.credits(1, 1), vec![0]);
         assert_eq!(
             t.shares(1, 3)[0],
             Account {

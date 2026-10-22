@@ -26,8 +26,9 @@ pub struct Cleared {
 }
 
 pub trait Matcher {
-    /// `(order slots, table rows)` the circuit is built for; `None` = any.
-    fn shape(&self) -> Option<(usize, usize)>;
+    /// Order slots the circuit is built for; `None` = any. Table rows are configurable
+    /// (`table_rows`).
+    fn slots(&self) -> Option<usize>;
 
     /// True when a run clears only `market` (other markets' slots come back as zero
     /// records), so the batch loop runs once per open market and XORs the fill shares.
@@ -36,48 +37,48 @@ pub trait Matcher {
 
     /// Clears one batch. `orders[k]` / `accounts[r]` are this relayer's shares of slot
     /// `k` / table row `r`. Padding is all-zero shares: price 0 orders (dummies) and
-    /// rows with balance 0.
+    /// rows with balance 0. `credits[r]` (public, the same at all three relayers) is
+    /// added to row `r` before clearing.
     #[allow(async_fn_in_trait)] // runs on the batch thread via block_on; no Send needed
     async fn clear(
         &self,
         links: &Links,
         market: u32,
+        credits: &[u64],
         orders: &[[u8; ORDER_LEN]],
         accounts: &[[u8; ACCOUNT_LEN]],
     ) -> Result<Cleared>;
 }
 
-/// The real matcher, with balance checks (#46). It ignores the market and publishes no
-/// price until the circuit gains both (#49); then `per_market` turns true and `price`
-/// comes from the circuit's public output.
+/// The real matcher: one circuit run per market, with balance checks, credits and the
+/// public clearing price.
 pub struct Polytune;
 
 impl Matcher for Polytune {
-    fn shape(&self) -> Option<(usize, usize)> {
-        Some((zpredict_circuit::N, zpredict_circuit::ACCOUNTS))
+    fn slots(&self) -> Option<usize> {
+        Some(zpredict_circuit::N)
     }
 
     fn per_market(&self) -> bool {
-        false
+        true
     }
 
     async fn clear(
         &self,
         links: &Links,
-        _market: u32,
+        market: u32,
+        credits: &[u64],
         orders: &[[u8; ORDER_LEN]],
         accounts: &[[u8; ACCOUNT_LEN]],
     ) -> Result<Cleared> {
-        let bad = || Error::Mpc("batch does not match the circuit's shape".into());
-        let orders: zpredict_circuit::OrderShares = orders.try_into().map_err(|_| bad())?;
-        let accounts: zpredict_circuit::AccountShares = accounts.try_into().map_err(|_| bad())?;
-        let out = zpredict_circuit::run_party_on(links, links.party, &orders, &accounts)
-            .await
-            .map_err(|e| Error::Mpc(e.to_string()))?;
+        let out =
+            zpredict_circuit::run_party_on(links, links.party, market, credits, orders, accounts)
+                .await
+                .map_err(|e| Error::Mpc(e.to_string()))?;
         Ok(Cleared {
-            fills: out.fills.to_vec(),
-            balances: out.balances.to_vec(),
-            price: None,
+            fills: out.fills,
+            balances: out.balances,
+            price: out.price,
         })
     }
 }
