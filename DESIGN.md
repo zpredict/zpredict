@@ -71,6 +71,35 @@ Judges see four things — the description (read first), the repo, a demo they c
 - The relayers build one PCZT (v6, Ironwood bundle) paying every winner and every withdrawal to a **fresh diversified address**, with change back to escrow; ZIP 317 default fee; padded arity.
 - Signing: FROST 2-of-3 via the frost-zcash-demo chain (`zcash-devtool` PCZT → `zcash-sign` → `frost-client`/`frostd`), pinned to its `Cargo.lock`.
 
+## Relayer API
+
+Each relayer is its own origin: `https://r0.zpredict.site`, `https://r1.zpredict.site`, `https://r2.zpredict.site`. The browser (`https://app.zpredict.site`) talks to each one directly; `@zpredict/sdk` exports these types and refuses to run unless the three URLs are three distinct origins, so no host ever receives two shares of anything.
+
+- JSON in and out. CORS allows only the web origin. No cookies or auth headers (`credentials: "omit"`, `no-referrer`). No IP logging, no access logs with client addresses.
+- Hex is lowercase; `hexN` means N hex characters. Share i of an order goes only to relayer i.
+- Costs and balances are in **half-ticks**: 1 unit of collateral = 200 half-ticks.
+
+| Call | Reply |
+|---|---|
+| `GET /health` | `{relayer: 0\|1\|2, height: number, batch: number, peers: boolean[]}` |
+| `GET /markets` | `Market[]` (below) |
+| `POST /orders` body `{orderId: hex32, share: hex36}` | `202 {batch}`: the batch the share joins |
+| `GET /orders/:orderId` | `{status: "pending"\|"filled"\|"unfilled", fillShare?: hex16}` |
+| `GET /accounts/:tag` | `{balanceShare: hex16}` |
+| `GET /view?after=<seq>` | `{items: [{seq, kind: "order"\|"fill", orderId, share}]}`: exactly what this relayer sees; powers the Relayer View |
+| `POST /judge/claim` | `{tag}`: **mock**, testnet only (see below) |
+
+`Market = {id, question, plugin, params, closeHeight, resolveHeight, status: "open"|"closed"|"resolved", outcome?: "yes"|"no", outcomeSig?: string}`; `outcomeSig` is the FROST signature over the outcome and block hash.
+
+Encodings (all little-endian, identical in `zpredict-core` and `@zpredict/sdk`; `packages/core/testdata/vectors.json` pins them):
+- **Order share** (18 bytes): `market u32 | side u8 (0 yes, 1 no) | price u8 (1..=99) | size u32 | account u64`, XOR-split as `[r0, r1, order ^ r0 ^ r1]`.
+- **Fill share** (8 bytes): `size u32 | cost u16 (half-ticks per contract paid by this order's side) | side u8 | flags u8 (bit0 = filled)`. Only the order's owner learns it, by combining all three shares.
+- **Balance share** (8 bytes): `u64` half-ticks.
+- **Account tag**: 16 random bytes chosen by the browser; the order's `account` field is the tag's first 8 bytes read as `u64`. The tag is the only credential, so it stays in the browser.
+- **orderId**: 16 random bytes from the browser; it links the three shares of one order and nothing else.
+
+`POST /judge/claim` is a testnet-only demo shortcut: it credits a fresh tag with prefunded test balance so judges can trade without a faucet. It is labelled "Mock" in the UI and in `SUBMISSION.md`, and does not exist on mainnet builds.
+
 ## Threat model
 
 | Observer | Learns | Doesn't learn |
@@ -140,7 +169,7 @@ zpredict/
 │   │   ├── nu7-activation/
 │   │   ├── ironwood-pool/
 │   │   └── shielded-actions/
-│   └── sdk/                   # TS: order encoding + browser XOR sharing, mirrors core      (Oct 24)
+│   └── sdk/                   # TS: order encoding + browser XOR sharing, mirrors core      ← exists
 ├── deploy/                    # 3 relayers + Zebra regtest (docker compose)                 (Oct 23)
 ├── Cargo.toml                 # Rust workspace
 ├── package.json · pnpm-workspace.yaml · biome.json · .husky/

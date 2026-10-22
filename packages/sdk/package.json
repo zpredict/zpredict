@@ -1,0 +1,21 @@
+{
+	"name": "@zpredict/sdk",
+	"version": "0.1.0",
+	"description": "Order encoding, browser XOR sharing and the relayer client for zPredict",
+	"license": "MIT",
+	"type": "module",
+	"exports": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist/index.js",
+		"dist/index.d.ts"
+	],
+	"scripts": {
+		"build": "tsc",
+		"test": "tsc && node --test dist/*.test.js"
+	},
+	"devDependencies": {
+		"@types/node": "^24.19.2",
+		"typescript": "^7.0.2"
+	}
+}
