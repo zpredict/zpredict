@@ -1,11 +1,11 @@
 // The relayer HTTP API (DESIGN.md "Relayer API"), served once per relayer index.
 // Nothing is logged: no IPs, no bodies.
-import { generateKeyPairSync, randomBytes } from "node:crypto";
+import { generateKeyPairSync } from "node:crypto";
 import { ORDER_LEN } from "@zpredict/sdk";
 import { JUDGE_CREDIT, PORTS } from "./config.mjs";
 import { GROUP_KEY } from "./rolling.mjs";
 import { hex, u64le, xor } from "./shares.mjs";
-import { accept, account, chain, markets, orders, views } from "./state.mjs";
+import { accept, account, chain, keys, markets, orders, views } from "./state.mjs";
 import { getWithdrawal, postWithdrawal } from "./withdrawals.mjs";
 
 const HEX = (n) => new RegExp(`^[0-9a-f]{${n}}$`);
@@ -61,8 +61,13 @@ function getOrder(i, id, res) {
 	send(res, 200, { status: o.status, fillShare: hex(o.fillShares[i]) });
 }
 
-function getAccount(i, tag, res) {
-	const a = account(Buffer.from(tag, "hex").readBigUInt64LE(0));
+function getAccount(i, id, url, res) {
+	const key = url.searchParams.get("key") ?? "";
+	if (!HEX(32).test(key)) return send(res, 404, { error: "bad account" });
+	const k = keys.get(id);
+	if (k?.[i] && hex(k[i]) !== key) return send(res, 403, { error: "wrong key" });
+	const zero = { bal: 0n, mask: [u64le(0n), u64le(0n)] };
+	const a = k?.every(Boolean) ? account(hex(xor(...k))) : zero;
 	const share = i < 2 ? a.mask[i] : xor(u64le(a.bal), ...a.mask);
 	send(res, 200, { balanceShare: hex(share) });
 }
@@ -79,10 +84,18 @@ const memoKeys = PORTS.map(() =>
 	Buffer.from(generateKeyPairSync("x25519").publicKey.export({ format: "jwk" }).x, "base64url"),
 );
 
-function judgeClaim(res) {
-	const tag = randomBytes(16);
-	account(tag.readBigUInt64LE(0)).bal += JUDGE_CREDIT;
-	send(res, 200, { tag: hex(tag) });
+// Relayer i registers its share of a new account's tag; once all three hold one, the mock
+// (which sees everything) credits the combined tag. A real relayer never sees the tag.
+async function judgeClaim(i, req, res) {
+	const b = await readJson(req);
+	if (!b || !HEX(16).test(b.account) || !HEX(32).test(b.keyShare))
+		return send(res, 400, { error: "bad claim" });
+	const k = keys.get(b.account) ?? [null, null, null];
+	if (k[i]) return send(res, 409, { error: "account exists" });
+	k[i] = Buffer.from(b.keyShare, "hex");
+	keys.set(b.account, k);
+	if (k.every(Boolean)) account(hex(xor(...k))).bal += JUDGE_CREDIT;
+	send(res, 200, {});
 }
 
 /** [method, path pattern, handler(i, ctx)]; ctx = { req, res, url, m: regex match }. */
@@ -101,9 +114,9 @@ const ROUTES = [
 	],
 	["GET", /^\/view$/, (i, { url, res }) => getView(i, url, res)],
 	["POST", /^\/orders$/, (i, { req, res }) => postOrder(i, req, res)],
-	["POST", /^\/judge\/claim$/, (_, { res }) => judgeClaim(res)],
+	["POST", /^\/judge\/claim$/, (i, { req, res }) => judgeClaim(i, req, res)],
 	["GET", /^\/orders\/([0-9a-f]{32})$/, (i, { m, res }) => getOrder(i, m[1], res)],
-	["GET", /^\/accounts\/([0-9a-f]{32})$/, (i, { m, res }) => getAccount(i, m[1], res)],
+	["GET", /^\/accounts\/([0-9a-f]{16})$/, (i, { m, url, res }) => getAccount(i, m[1], url, res)],
 	["POST", /^\/withdrawals$/, (i, { req, res }) => postWithdrawal(i, req, res, send, readJson)],
 	["GET", /^\/withdrawals\/([0-9a-f]{32})$/, (_, { m, res }) => getWithdrawal(m[1], res, send)],
 ];

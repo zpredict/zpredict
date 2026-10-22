@@ -26,11 +26,11 @@ Relayer URLs are baked in at build time from `NEXT_PUBLIC_RELAYERS="url0,url1,ur
 **Deposits** (trade page, "Deposit") work like this:
 1. Pick 1, 5 or 25 units.
 2. Create an account tag in the browser, or keep the judge tag.
-3. Copy or open the ZIP 321 payment request: the escrow UA, the exact amount, and a memo holding the tag encrypted to each relayer's `GET /memo-key`. Every view builds a fresh memo.
+3. Copy or open the ZIP 321 payment request: the escrow UA, the exact amount, and a memo giving each relayer (encrypted to its `GET /memo-key`) the account id and its own share of the tag, never the tag. Every view builds a fresh memo.
 
 The escrow address is baked in from `NEXT_PUBLIC_ESCROW_UA` (published by the DKG). Without it, the flow says it isn't live yet and points to judge mode. Try it locally with `NEXT_PUBLIC_ESCROW_UA=utest1… pnpm --filter @zpredict/web dev:mock`: the mock relayers serve memo keys, but they don't scan deposits.
 
-**Withdrawals** (trade page, "Withdraw", once the account has a tag): an amount in units and a fresh unified address with an Ironwood (Orchard) receiver. Each relayer receives only its XOR share of the account id with the public amount and address (`submitWithdrawal`), so no relayer learns whose withdrawal it is; the status (`pending → debited → paying → paid`, or `refused` if the balance doesn't cover it) comes from relayer 0, with the txid once broadcast. The mock relayers combine the shares, debit and report a made-up txid.
+**Withdrawals** (trade page, "Withdraw", once the account has a tag): an amount in units and a fresh unified address with an Ironwood (Orchard) receiver. Each relayer receives only a fresh XOR share of the tag with the public amount and address (`submitWithdrawal`), so no relayer learns whose withdrawal it is or can forge one; the status (`pending → debited → paying → paid`, or `refused` if the balance doesn't cover it) comes from relayer 0, with the txid once broadcast. The mock relayers combine the shares, debit and report a made-up txid.
 
 ## Privacy gate
 
@@ -42,7 +42,7 @@ The escrow address is baked in from `NEXT_PUBLIC_ESCROW_UA` (published by the DK
 
 Rolling markets follow the relayers' scheme (a window every 48 mock blocks, one block per batch) and resolve unsigned, as the hosted relayers do before the key ceremony. Two past windows are replayed from `packages/settle/testdata/outcome-vectors.json` with their real FROST 2-of-3 test signatures, and `/group-key` serves that test group key, so "Signed by 2-of-3 relayers ✓" is checked in the browser against real data.
 
-**Mock:** the three relayers share one process and combine shares in the clear; the real ones run the batch inside 3-party MPC and never see each other's shares. Judge mode credits balance directly instead of a testnet deposit.
+**Mock:** the three relayers share one process and combine shares in the clear; the real ones run the batch inside 3-party MPC and never see each other's shares. Judge mode credits balance directly instead of a testnet deposit; the tag is still made in the browser, and each relayer gets only its share (`claimJudge`).
 
 ## Layout
 

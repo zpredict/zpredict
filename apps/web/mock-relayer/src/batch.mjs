@@ -31,9 +31,9 @@ function fund(ready) {
 	return ready.map(({ order: d }) => {
 		if (!d || !isOpen(d.market)) return null;
 		const max = BigInt(d.size) * BigInt(d.price) * 2n;
-		const r = (reserved.get(d.account) ?? 0n) + max;
-		if (account(d.account).bal < r) return { ...d, size: 0 };
-		reserved.set(d.account, r);
+		const r = (reserved.get(d.key) ?? 0n) + max;
+		if (account(d.key).bal < r) return { ...d, size: 0 };
+		reserved.set(d.key, r);
 		return d;
 	});
 }
@@ -67,7 +67,7 @@ export function runBatch() {
 	ready.forEach(({ id, o, order }, k) => {
 		const fill = Buffer.from(recs[k]);
 		const filled = fill[9] === 1;
-		if (filled) account(order.account).bal -= BigInt(fill.readUInt32LE(4));
+		if (filled) account(order.key).bal -= BigInt(fill.readUInt32LE(4));
 		o.status = filled ? "filled" : "unfilled";
 		o.fillShares = split(fill);
 		// Every order in the batch gets a fill share, filled or not: same shape either way.

@@ -1,6 +1,7 @@
 // Thin wrapper over @zpredict/sdk bound to the configured relayers.
 // Each relayer only ever receives its own share; requests carry no cookies and no referrer.
 import {
+	claimJudge as claim,
 	getBalance,
 	getFill,
 	getGroupKey,
@@ -8,12 +9,10 @@ import {
 	getView,
 	getWithdrawal,
 	type Health,
-	type JudgeClaim,
 	type Market,
 	type Side,
 	submitOrder,
 	submitWithdrawal,
-	tagAccount,
 } from "@zpredict/sdk";
 import { relayers } from "./config";
 
@@ -33,9 +32,8 @@ export const fetchHealth = (i: number) => json<Health>(at(relayers[i], "/health"
 
 export const fetchMarkets = () => json<Market[]>(at(relayers[0], "/markets"));
 
-/** Mock, testnet only: a fresh tag credited with demo balance. */
-export const claimJudge = () =>
-	json<JudgeClaim>(at(relayers[0], "/judge/claim"), { method: "POST" });
+/** Mock, testnet only: opens account `tag` with demo balance; relayer i gets only its share. */
+export const claimJudge = (tag: string) => claim(relayers, tag);
 
 export const fetchBalance = (tag: string) => getBalance(relayers, tag);
 
@@ -56,11 +54,10 @@ export interface OrderInput {
 	size: number;
 }
 
-/** Encodes, splits and sends share i to relayer i only. */
-export const placeOrder = (o: OrderInput, tag: string) =>
-	submitOrder(relayers, { ...o, account: tagAccount(tag) });
+/** Encodes (the tag is the order's key), splits and sends share i to relayer i only. */
+export const placeOrder = (o: OrderInput, tag: string) => submitOrder(relayers, { ...o, key: tag });
 
-/** Sends relayer i only its share of the account; amount (half-ticks) and address are public. */
+/** Sends relayer i only a fresh share of the tag; amount (half-ticks) and address are public. */
 export const withdraw = (tag: string, halfTicks: bigint, address: string) =>
 	submitWithdrawal(relayers, tag, halfTicks, address);
 

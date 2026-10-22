@@ -9,7 +9,7 @@ import { accept, account, markets } from "./state.mjs";
 const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 
-const bots = Array.from({ length: 6 }, () => randomBytes(8).readBigUInt64LE());
+const bots = Array.from({ length: 6 }, () => hex(randomBytes(16)));
 for (const b of bots) account(b).bal = 10n ** 12n;
 /** Drifting fair YES price per market, in cents. */
 const fair = new Map(MARKET_DEFS.map((m) => [m.id, m.fair]));
@@ -22,7 +22,7 @@ function order(m, side) {
 		side,
 		price,
 		size: rnd(1, 12),
-		account: bots[rnd(0, bots.length - 1)],
+		key: bots[rnd(0, bots.length - 1)],
 	});
 	const id = hex(randomBytes(16));
 	split(bytes).forEach((s, i) => {

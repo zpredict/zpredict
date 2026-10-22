@@ -1,4 +1,4 @@
-// Withdrawals, MOCK: once all three relayers hold their share of the account, the mock
+// Withdrawals, MOCK: once all three relayers hold their share of the tag, the mock
 // combines them in the clear, debits the balance if it covers the amount, and "pays" with
 // a made-up txid. The real relayers debit inside MPC and pay with a FROST-signed tx.
 import { randomBytes } from "node:crypto";
@@ -12,7 +12,7 @@ const withdrawals = new Map();
 
 export async function postWithdrawal(i, req, res, send, readJson) {
 	const b = await readJson(req);
-	const ok = b && HEX(32).test(b.withdrawalId) && HEX(16).test(b.share);
+	const ok = b && HEX(32).test(b.withdrawalId) && HEX(32).test(b.share);
 	if (!ok || !Number.isSafeInteger(b.amount) || BigInt(b.amount) <= FEE || !b.address)
 		return send(res, 400, { error: "bad withdrawal" });
 	let w = withdrawals.get(b.withdrawalId);
@@ -24,7 +24,7 @@ export async function postWithdrawal(i, req, res, send, readJson) {
 	if (w.shares[i]) return send(res, 409, { error: "duplicate" });
 	w.shares[i] = Buffer.from(b.share, "hex");
 	if (w.shares.every(Boolean)) {
-		const a = account(xor(...w.shares).readBigUInt64LE(0));
+		const a = account(hex(xor(...w.shares)));
 		w.status = a.bal >= w.amount ? "paid" : "refused";
 		if (w.status === "paid") {
 			a.bal -= w.amount;

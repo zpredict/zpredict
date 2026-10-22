@@ -9,7 +9,7 @@ export const THREATS = [
 	{
 		observer: "Any single relayer",
 		learns: "“A 5-unit deposit arrived” (shared viewing key)",
-		not: "Orders, sides, prices, positions, which deposit belongs to which payout",
+		not: "Orders, sides, prices, positions, which deposit belongs to which payout, your account tag (so it can't spend or read your balance)",
 	},
 	{
 		observer: "2 colluding relayers",
@@ -37,7 +37,7 @@ export const LEAK_CHECKLIST = [
 	"Deposits only in fixed denominations; never reveal order size.",
 	"Payouts batched per epoch to fresh diversified, shielded-only addresses.",
 	"Wallet-default fee (ZIP 317) and expiry (ZIP 315); padded actions.",
-	"Memos carry no order data and no plaintext tags.",
+	"Memos carry no order data and never the account tag: each relayer gets one share of it.",
 	"The browser shares orders; each share goes straight to its own relayer on its own host.",
 	"Frontend is static and self-hosted: no CDN, no third-party fonts, no analytics. Relayers log no IPs.",
 	"Viewing keys never leave the relayers; never shown in the UI or logs.",
