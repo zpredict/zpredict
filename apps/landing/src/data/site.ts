@@ -13,8 +13,8 @@ export interface NavLink {
 }
 
 export const navLinks: NavLink[] = [
-	{ label: "How it works", href: "#how" },
-	{ label: "Relayer View", href: "#relayer-view" },
-	{ label: "Threat model", href: "#threat-model" },
 	{ label: "Markets", href: "#markets" },
+	{ label: "Why private", href: "#why" },
+	{ label: "How it works", href: "#how" },
+	{ label: "Threat model", href: "#threat-model" },
 ];

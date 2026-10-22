@@ -11,11 +11,10 @@ const relayers = ["A", "B", "C"];
 		<Tag class="eyebrow">Relayer View</Tag>
 		<SectionHeading lines={["What a", "relayer sees"]} align="left" />
 		<p class="lede">
-			Your order is <code>{"{market, side, price, size}"}</code>. Before it leaves your browser
-			it becomes three random-looking shares, one per relayer. Each relayer sees only noise.
-			Only all three together, inside MPC, can cross it.
+			Your bet leaves the browser as three random shares, one per relayer. Each one sees noise;
+			only all three together, inside MPC, can match it.
 		</p>
-		<p class="note">Illustration. The app's Relayer View shows the live shares.</p>
+		<p class="note">Illustration. The app shows the live shares.</p>
 	</div>
 
 	<div class="relayers" aria-label="Three relayers, each holding a random share">
@@ -32,7 +31,7 @@ const relayers = ["A", "B", "C"];
 		}
 		<div class="relayer relayer--you">
 			<div class="head"><span>You, after a fill</span></div>
-			<p class="plain">YES · 0.71 · 5 units · filled</p>
+			<p class="plain">YES · 71¢ · 5 units · filled</p>
 		</div>
 	</div>
 </Panel>

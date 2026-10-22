@@ -1,0 +1,205 @@
+---
+import { publicTrades, shieldedTx } from "../data/compare";
+import Panel from "./ui/Panel.astro";
+import SectionHeading from "./ui/SectionHeading.astro";
+import Tag from "./ui/Tag.astro";
+---
+
+<Panel id="why">
+	<SectionHeading lines={["Public", "vs private"]} />
+	<p class="lede lede--center">
+		On a public prediction market every bet is a row in an explorer. One lookup ties the wallet to
+		an exchange account, and the exchange account to you.
+	</p>
+
+	<div class="compare">
+		<section class="side" aria-labelledby="why-public">
+			<header class="head">
+				<h3 id="why-public">Public market explorer</h3>
+				<Tag>Everyone can see this</Tag>
+			</header>
+			<div class="table-wrap">
+				<table>
+					<thead>
+						<tr>
+							<th scope="col">Wallet</th>
+							<th scope="col">Side</th>
+							<th scope="col">Size</th>
+							<th scope="col">Price</th>
+							<th scope="col">Time</th>
+						</tr>
+					</thead>
+					<tbody>
+						{
+							publicTrades.map((t) => (
+								<tr>
+									<td class="mono">{t.wallet}</td>
+									<td>
+										<span class:list={["side-pill", { "side-pill--no": t.side === "NO" }]}>
+											{t.side}
+										</span>
+									</td>
+									<td>{t.size}</td>
+									<td>{t.price}</td>
+									<td class="dim">{t.time}</td>
+								</tr>
+							))
+						}
+					</tbody>
+				</table>
+			</div>
+			<p class="caption">Same wallet, two bets, $20,400 on YES. Anyone can follow it.</p>
+		</section>
+
+		<section class="side side--private" aria-labelledby="why-private">
+			<header class="head">
+				<h3 id="why-private">zPredict on the Zcash chain</h3>
+				<Tag>Everyone can see this too</Tag>
+			</header>
+			<dl class="tx">
+				{
+					shieldedTx.map((f) => (
+						<div class="tx__row">
+							<dt>{f.label}</dt>
+							<dd class="mono">{f.value}</dd>
+						</div>
+					))
+				}
+			</dl>
+			<p class="caption">
+				One batched transaction pays every winner. No wallet, side, size or time per bettor.
+			</p>
+		</section>
+	</div>
+</Panel>
+
+<style>
+	.compare {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: var(--gap);
+		max-width: 1200px;
+		margin: 0 auto;
+	}
+	.side {
+		display: flex;
+		flex-direction: column;
+		padding: 24px;
+		border: 1px solid var(--hairline);
+		border-radius: var(--r-pane);
+		background: var(--surface-card);
+	}
+	.side--private {
+		background:
+			radial-gradient(
+				420px 260px at 100% 0%,
+				rgba(102, 102, 102, 0.35) 0%,
+				rgba(102, 102, 102, 0) 100%
+			),
+			var(--surface-card);
+	}
+	.head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		margin-bottom: 20px;
+	}
+	h3 {
+		font-family: var(--font-display);
+		font-weight: 500;
+		font-size: 22px;
+		letter-spacing: -0.03em;
+	}
+	.mono {
+		font-family: var(--font-mono);
+		font-size: 13px;
+	}
+	.dim {
+		opacity: 0.5;
+	}
+	.table-wrap {
+		overflow-x: auto;
+	}
+	table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 15px;
+	}
+	th,
+	td {
+		padding: 12px 10px;
+		text-align: left;
+		white-space: nowrap;
+		border-bottom: 1px solid var(--hairline);
+	}
+	th {
+		font-weight: 400;
+		font-size: 13px;
+		opacity: 0.5;
+	}
+	tr:last-child td {
+		border-bottom: 0;
+	}
+	.side-pill {
+		padding: 3px 9px;
+		border-radius: var(--r-tag);
+		background: #fff;
+		color: #000;
+		font-size: 12px;
+	}
+	.side-pill--no {
+		background: transparent;
+		color: #fff;
+		border: 1px solid var(--glass-line);
+	}
+	.tx {
+		margin: 0;
+	}
+	.tx__row {
+		display: flex;
+		justify-content: space-between;
+		gap: 16px;
+		padding: 12px 0;
+		border-bottom: 1px solid var(--hairline);
+	}
+	.tx__row:last-child {
+		border-bottom: 0;
+	}
+	dt {
+		font-size: 14px;
+		opacity: 0.5;
+	}
+	dd {
+		margin: 0;
+		color: rgba(255, 255, 255, 0.85);
+	}
+	.caption {
+		margin-top: auto;
+		padding-top: 20px;
+		font-size: 15px;
+		opacity: 0.7;
+	}
+
+	@media (max-width: 999.98px) {
+		.compare {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+	@media (max-width: 599.98px) {
+		.side {
+			padding: 18px;
+		}
+		th,
+		td {
+			padding: 10px 6px;
+			font-size: 13px;
+		}
+		/* Phones: drop the Time column so the row fits without scrolling. */
+		th:last-child,
+		td:last-child {
+			display: none;
+		}
+	}
+</style>

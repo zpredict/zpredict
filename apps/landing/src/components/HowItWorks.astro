@@ -1,8 +1,6 @@
 ---
-import { type StepArt, steps } from "../data/steps";
+import { pipeline, type StepArt, steps } from "../data/steps";
 import EscrowArt from "./steps/EscrowArt.astro";
-import MpcArt from "./steps/MpcArt.astro";
-import OracleArt from "./steps/OracleArt.astro";
 import PayoutArt from "./steps/PayoutArt.astro";
 import SharesArt from "./steps/SharesArt.astro";
 import StepCard from "./steps/StepCard.astro";
@@ -12,8 +10,6 @@ import SectionHeading from "./ui/SectionHeading.astro";
 const arts: Record<StepArt, typeof EscrowArt> = {
 	escrow: EscrowArt,
 	shares: SharesArt,
-	mpc: MpcArt,
-	oracle: OracleArt,
 	payout: PayoutArt,
 };
 ---
@@ -25,48 +21,133 @@ const arts: Record<StepArt, typeof EscrowArt> = {
 			steps.map((step) => {
 				const Art = arts[step.art];
 				return (
-					<StepCard
-						step={step}
-						noise={step.art === "mpc"}
-						class:list={["card", { "card--wide": step.wide }]}
-					>
+					<StepCard step={step}>
 						<Art />
 					</StepCard>
 				);
 			})
 		}
 	</div>
+
+	<!-- Native disclosure: keyboard and screen-reader support come with <details>. -->
+	<details class="details">
+		<summary>Technical details: the five-stage pipeline</summary>
+		<ol class="pipeline">
+			{
+				pipeline.map((stage) => (
+					<li>
+						<h3>{stage.name}</h3>
+						<p>{stage.detail}</p>
+					</li>
+				))
+			}
+		</ol>
+	</details>
 </Panel>
 
 <style>
-	/* 3 + 2 cards on desktop, 2 + 2 + 1 on tablet, one column on phones. */
 	.grid {
 		display: grid;
-		grid-template-columns: repeat(6, minmax(0, 1fr));
+		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: var(--gap);
 	}
-	.card {
-		grid-column: span 2;
+
+	.details {
+		max-width: 1100px;
+		margin: var(--gap) auto 0;
+		border: 1px solid var(--hairline);
+		border-radius: var(--r-pane);
+		background: var(--surface-card);
 	}
-	.card--wide {
-		grid-column: span 3;
+	summary {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16px;
+		padding: 20px 24px;
+		border-radius: var(--r-pane);
+		font-family: var(--font-display);
+		font-weight: 500;
+		font-size: 18px;
+		letter-spacing: -0.02em;
+		cursor: pointer;
+		list-style: none;
+	}
+	summary::-webkit-details-marker {
+		display: none;
+	}
+	/* Plus that turns into a minus when open. */
+	summary::after {
+		content: "+";
+		flex: none;
+		display: grid;
+		place-items: center;
+		width: 34px;
+		height: 34px;
+		border: 1px solid var(--glass-line);
+		border-radius: 50%;
+		font-size: 20px;
+		line-height: 1;
+		transition: transform 0.22s ease;
+	}
+	.details[open] summary::after {
+		content: "−";
+	}
+	summary:hover::after {
+		transform: rotate(90deg);
+	}
+	.pipeline {
+		display: grid;
+		gap: 0;
+		margin: 0;
+		padding: 0 24px 12px;
+		list-style: none;
+		counter-reset: stage;
+	}
+	.pipeline li {
+		display: grid;
+		grid-template-columns: 220px minmax(0, 1fr);
+		gap: 8px 24px;
+		padding: 16px 0;
+		border-top: 1px solid var(--hairline);
+		counter-increment: stage;
+	}
+	.pipeline h3 {
+		font-family: var(--font-display);
+		font-weight: 500;
+		font-size: 16px;
+		letter-spacing: -0.02em;
+	}
+	.pipeline h3::before {
+		content: counter(stage, decimal-leading-zero) "  ";
+		font-family: var(--font-mono);
+		font-size: 12px;
+		opacity: 0.4;
+		white-space: pre;
+	}
+	.pipeline p {
+		font-size: 15px;
+		line-height: 1.4;
+		opacity: 0.75;
 	}
 
 	@media (max-width: 1199.98px) {
-		.card {
-			grid-column: span 3;
-		}
-		.card:last-child {
-			grid-column: 2 / span 4;
+		.grid {
+			grid-template-columns: 1fr;
+			max-width: 560px;
+			margin: 0 auto;
 		}
 	}
 	@media (max-width: 799.98px) {
-		.grid {
+		.pipeline li {
 			grid-template-columns: 1fr;
 		}
-		.card,
-		.card:last-child {
-			grid-column: auto;
+		summary {
+			padding: 18px;
+			font-size: 16px;
+		}
+		.pipeline {
+			padding: 0 18px 8px;
 		}
 	}
 </style>

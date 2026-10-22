@@ -1,0 +1,47 @@
+---
+/** Tiny inline price chart: a line plus a faint area, scaled to the points' own range. */
+interface Props {
+	points: number[];
+	class?: string;
+}
+
+const { points, class: className } = Astro.props;
+const w = 100;
+const h = 32;
+const min = Math.min(...points);
+const span = Math.max(...points) - min || 1;
+const xy = points.map((p, i) => [
+	(i / (points.length - 1)) * w,
+	h - 2 - ((p - min) / span) * (h - 4),
+]);
+const line = xy.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)} ${y.toFixed(1)}`).join(" ");
+const area = `${line} L${w} ${h} L0 ${h} Z`;
+---
+
+<svg
+	class:list={["spark", className]}
+	viewBox={`0 0 ${w} ${h}`}
+	preserveAspectRatio="none"
+	aria-hidden="true"
+>
+	<path class="area" d={area}></path>
+	<path class="line" d={line}></path>
+</svg>
+
+<style>
+	.spark {
+		display: block;
+		overflow: visible;
+	}
+	.area {
+		fill: rgba(255, 255, 255, 0.06);
+	}
+	.line {
+		fill: none;
+		stroke: #fff;
+		stroke-width: 1.5;
+		stroke-linejoin: round;
+		stroke-linecap: round;
+		vector-effect: non-scaling-stroke;
+	}
+</style>

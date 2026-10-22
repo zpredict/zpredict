@@ -1,0 +1,41 @@
+---
+import { markets } from "../data/markets";
+import MarketCard from "./markets/MarketCard.astro";
+import Panel from "./ui/Panel.astro";
+import SectionHeading from "./ui/SectionHeading.astro";
+---
+
+<Panel id="markets">
+	<SectionHeading lines={["Trending", "markets"]} />
+	<p class="lede lede--center">
+		Questions the Zcash community already argues about. Each one resolves from a block anyone can
+		check.
+	</p>
+	<div class="grid">
+		{markets.map((market) => <MarketCard market={market} />)}
+	</div>
+	<p class="note note--center">
+		Illustration: prices and history are samples until the app is live. Each market uses one of
+		the three resolvers in the repo.
+	</p>
+</Panel>
+
+<style>
+	.grid {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: var(--gap);
+		max-width: 1320px;
+		margin: 0 auto;
+	}
+	@media (max-width: 1199.98px) {
+		.grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+	@media (max-width: 799.98px) {
+		.grid {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>

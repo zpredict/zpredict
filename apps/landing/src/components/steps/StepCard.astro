@@ -8,15 +8,13 @@ import Tag from "../ui/Tag.astro";
 
 interface Props {
 	step: Step;
-	/** Grain overlay over the whole card (template's staking card). */
-	noise?: boolean;
 	class?: string;
 }
 
-const { step, noise = false, class: className } = Astro.props;
+const { step, class: className } = Astro.props;
 ---
 
-<article class:list={["card", { "card--noise": noise }, className]}>
+<article class:list={["card", className]}>
 	<div class="art" aria-hidden="true">
 		<slot />
 		<Tag class="tag">{step.tag}</Tag>
@@ -54,14 +52,6 @@ const { step, noise = false, class: className } = Astro.props;
 			),
 			var(--surface-card);
 		text-align: center;
-	}
-	.card--noise::after {
-		content: "";
-		position: absolute;
-		inset: 0;
-		z-index: -1;
-		background-image: url(/media/noise.png);
-		pointer-events: none;
 	}
 	.art {
 		position: relative;
