@@ -10,6 +10,8 @@ members = [
     "packages/plugins/shielded-actions",
     "packages/settle",
 ]
+# Vendored polytune with a preprocess/online split (see its Cargo.toml): its own workspace.
+exclude = ["vendor/polytune"]
 
 [workspace.package]
 version = "0.1.0"
