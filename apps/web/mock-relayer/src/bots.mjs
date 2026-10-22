@@ -32,8 +32,8 @@ function order(m, side) {
 
 /** A YES and a NO quote per market per tick, so every batch has counterparties on both sides. */
 export function botOrders() {
-	for (const m of markets) {
-		fair.set(m.id, clamp(fair.get(m.id) + rnd(-1, 1), 4, 96));
+	for (const m of markets.filter((x) => x.status === "open")) {
+		fair.set(m.id, clamp((fair.get(m.id) ?? 50) + rnd(-1, 1), 4, 96));
 		order(m, 0);
 		order(m, 1);
 	}

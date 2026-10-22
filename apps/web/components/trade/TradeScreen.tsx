@@ -38,7 +38,11 @@ export default function TradeScreen() {
 						{market && (
 							<>
 								<MarketHeader market={market} />
-								<OrderTicket initialSide={side} key={`${market.id}-${side}`} market={market} />
+								{market.status === "open" ? (
+									<OrderTicket initialSide={side} key={`${market.id}-${side}`} market={market} />
+								) : (
+									<p className="note">Trading on this market has closed.</p>
+								)}
 								{latest && <ShareXor order={latest} seen={seen[latest.orderId]} />}
 								<OrderList orders={mine} />
 								<DepositInfo />

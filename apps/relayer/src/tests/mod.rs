@@ -3,6 +3,7 @@
 
 mod batching;
 mod funds;
+mod outcomes;
 
 use std::time::Duration;
 
@@ -67,6 +68,7 @@ pub(super) fn relayers<M: Matcher>(
                 rows: 16,
                 window,
                 expire: 1,
+                frost: None,
             };
             Relayer { http, batcher }
         })

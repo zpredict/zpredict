@@ -1,4 +1,4 @@
-//! `GET /health`, `GET /markets`, `GET /view`, `GET /memo-key`.
+//! `GET /health`, `GET /markets`, `GET /view`, `GET /memo-key`, `GET /group-key`.
 
 use axum::Json;
 use axum::extract::{Query, State};
@@ -61,6 +61,20 @@ pub async fn view(State(api): State<Api>, Query(q): Query<After>) -> Response {
         .expect("state lock")
         .view_after(q.after, VIEW_PAGE);
     Json(json!({ "items": items })).into_response()
+}
+
+/// The FROST group key outcome signatures verify against (`verifyOutcome` in the sdk).
+pub async fn group_key(State(api): State<Api>) -> Response {
+    let Some(key) = api.group_key else {
+        return fail(
+            StatusCode::NOT_FOUND,
+            "no FROST key share: outcomes are unsigned",
+        );
+    };
+    let relayer = api.state.lock().expect("state lock").index;
+    let threshold = zpredict_settle::THRESHOLD;
+    Json(json!({ "relayer": relayer, "groupKey": hex::encode(key), "threshold": threshold }))
+        .into_response()
 }
 
 /// The X25519 key the browser encrypts this relayer's slot of the deposit memo to.

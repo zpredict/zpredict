@@ -6,6 +6,7 @@ import type { MemoKeys } from "./memo.js";
 
 export { fromHex, random, toHex } from "./bytes.js";
 export * from "./memo.js";
+export * from "./outcome.js";
 
 /** Encoded order length in bytes; also the share length. */
 export const ORDER_LEN = 18;
@@ -144,7 +145,13 @@ export interface Market {
 	resolveHeight: number;
 	status: "open" | "closed" | "resolved";
 	outcome?: "yes" | "no";
+	/** FROST 2-of-3 signature (hex128) over the outcome and block; check with `verifyOutcome`. */
 	outcomeSig?: string;
+	/** The block the outcome was computed from: display-order hash (hex64) and height. */
+	blockHash?: string;
+	blockHeight?: number;
+	/** Made by the relayers' hourly rolling-market generator. */
+	rolling?: boolean;
 	/**
 	 * Public price: cents per YES contract at the latest cross (the midpoint, so it can end
 	 * in .5). Absent until the market's first fill. Sizes and counts are never published.
@@ -272,6 +279,22 @@ export const getView = (url: string, after = 0) => call<View>(at(url, `/view?aft
 export interface MemoKeyReply {
 	relayer: 0 | 1 | 2;
 	memoKey: string;
+}
+
+/** `GET /group-key`: the escrow's FROST group key, which also signs outcomes. */
+export interface GroupKeyReply {
+	relayer: 0 | 1 | 2;
+	groupKey: string;
+	threshold: number;
+}
+
+/** The group key (hex64), only if all three relayers serve the same one; else null. */
+export async function getGroupKey(relayers: Relayers): Promise<string | null> {
+	distinct(relayers);
+	const res = await Promise.all(relayers.map((u) => call<GroupKeyReply>(at(u, "/group-key"))));
+	const key = res[0].groupKey;
+	const ok = res.every((r, i) => r.relayer === i && r.groupKey === key);
+	return ok && /^[0-9a-f]{64}$/.test(key) ? key : null;
 }
 
 /** The three memo keys, each fetched from its own relayer and checked to be in order. */

@@ -66,7 +66,10 @@ Judges see four things — the description (read first), the repo, a demo they c
 - Security: polytune protects an honest party's input even if the other two cheat; a cheater can only abort → timeout and re-run.
 
 ### 4. Resolution
-- At the resolve height, each relayer evaluates the rule against **its own node**. Matching results are signed with FROST and published with the block hash, so anyone can recompute them.
+- At the resolve height (+10 confirmations), each relayer evaluates the rule against **its own node**. At the start of the next batch, over the batch's Noise links, the three swap their resolutions; only a resolution all three computed identically (market, outcome, height, block hash) is signed, FROST 2-of-3 with the **escrow's key shares** (`zpredict_settle::outcome`, plain FROST so the result is an ordinary RedPallas signature under the group key). It is published with the block hash and height, so anyone can recompute the outcome and check the signature (`verifyOutcome` in `@zpredict/sdk`, run in the browser).
+- Signed bytes: `"zPredict outcome v1\n"` then the compact JSON `{"market":id,"outcome":"yes"|"no","height":h,"blockHash":"…"}` (`Resolution::message`). The market id fixes the terms (config, or the rolling window). `packages/settle/testdata/outcome-vectors.json` pins it for Rust and TS.
+- Signing is **config-gated**: without a sealed share (`frost_share_file`, after the key ceremony #78) a relayer still resolves, and the app shows "Resolved (unsigned)". Nothing is ever signed with a stand-in key.
+- **Rolling markets** (`apps/relayer/src/markets/rolling.rs`): every hour of nominal block time, "Will mainnet block H contain ≥ N shielded actions?", H one hour ahead (48 blocks at 75 s; 144 blocks at 25 s from NU7, 3,543,405), trading closing 5 minutes before H, N the median of the 24 blocks before the window so YES/NO are about even. Ids are `1,000,000 + window`, derived from heights only, so the three relayers make the same market without talking. **Cap:** a window's market is only made while fewer than 4 markets (`DEFAULT_MARKETS`, one MPC run) are open at its start: 3 headline markets + 1 rolling market. Resolved rolling markets stay 24 h as history (`keep_resolved`).
 
 ### 5. Settlement
 - MPC computes the payout vector from the shared positions.
@@ -89,10 +92,11 @@ Each relayer is its own origin: `https://r0.zpredict.site`, `https://r1.zpredict
 | `GET /orders/:orderId` | `{status: "pending"\|"filled"\|"unfilled", fillShare?: hex20}` |
 | `GET /accounts/:tag` | `{balanceShare: hex16}` |
 | `GET /memo-key` | `{relayer: 0\|1\|2, memoKey: hex64}`: this relayer's X25519 public key for its slot in the deposit memo |
+| `GET /group-key` | `{relayer: 0\|1\|2, groupKey: hex64, threshold: 2}`: the escrow's FROST group key, which outcome signatures verify against; `404` while signing is off. The sdk's `getGroupKey` only accepts it if all three relayers serve the same key |
 | `GET /view?after=<seq>` | `{items: [{seq, kind: "order"\|"fill", orderId, share}]}`: exactly what this relayer sees; powers the Relayer View |
 | `POST /judge/claim` | `{tag}`: **mock**, testnet only (see below) |
 
-`Market = {id, question, plugin, params, closeHeight, resolveHeight, status: "open"|"closed"|"resolved", outcome?: "yes"|"no", outcomeSig?: string, lastPrice?: number, history?: number[]}`; `outcomeSig` is the FROST signature over the outcome and block hash.
+`Market = {id, question, plugin, params, closeHeight, resolveHeight, status: "open"|"closed"|"resolved", outcome?: "yes"|"no", outcomeSig?: hex128, blockHash?: hex64, blockHeight?: number, rolling?: true, lastPrice?: number, history?: number[]}`; `blockHash`/`blockHeight` are the block the outcome was computed from, `outcomeSig` the FROST 2-of-3 signature (R ‖ S) over it (Resolution above), absent until the relayers agree or while signing is off. `rolling` marks the hourly generated markets; resolved ones stay in the list as history.
 - `lastPrice` is the public price: cents per YES contract at the market's latest cross (the clearing midpoint, so it can end in .5). `history` is the last N clearing prices, oldest first, one per batch that crossed. Both are absent until the first fill. They are public by design ("price public, participants private"): the batch reveals that a cross happened and at what price, never who, which orders, how many, or what size.
 
 Encodings (all little-endian, identical in `zpredict-core` and `@zpredict/sdk`; `packages/core/testdata/vectors.json` pins them):

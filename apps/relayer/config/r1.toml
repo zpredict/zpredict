@@ -24,6 +24,16 @@ judge_credit = 5000 # 25 units in half-ticks
 data_dir = "data/r1"
 insecure_matcher = false
 
+# Hourly rolling markets, same as production (deploy/production/relayer.toml).
+[rolling]
+plugin = "shielded-actions"
+interval_secs = 3600
+horizon_secs = 3600
+close_secs = 300
+sample_blocks = 24
+keep_resolved = 24
+fast_from = 3543405
+
 [[markets]]
 id = 1
 question = "Will NU7 activate on mainnet at block 3,543,405?"

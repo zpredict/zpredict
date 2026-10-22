@@ -38,6 +38,8 @@ The escrow address is baked in from `NEXT_PUBLIC_ESCROW_UA` (published by the DK
 
 `mock-relayer/src` implements the relayer API from DESIGN.md with the real clearing rule (`clearing.mjs` is a port of `zpredict_core::clear` and `fill_records`, tested against `packages/core/testdata/vectors.json`). Background bots trade through the same share path, so every batch has counterparties. Markets mirror the landing (`apps/landing/src/data/markets.ts`) at future mainnet heights; each batch that crosses publishes the public `lastPrice` and appends it to `history`, and 24 warm-up batches at startup mean the cards have a price and sparkline on first load.
 
+Rolling markets follow the relayers' scheme (a window every 48 mock blocks, one block per batch) and resolve unsigned, as the hosted relayers do before the key ceremony. Two past windows are replayed from `packages/settle/testdata/outcome-vectors.json` with their real FROST 2-of-3 test signatures, and `/group-key` serves that test group key, so "Signed by 2-of-3 relayers ✓" is checked in the browser against real data.
+
 **Mock:** the three relayers share one process and combine shares in the clear; the real ones run the batch inside 3-party MPC and never see each other's shares. Judge mode credits balance directly instead of a testnet deposit.
 
 ## Layout

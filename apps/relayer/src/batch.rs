@@ -23,6 +23,7 @@ use serde::{Deserialize, Serialize};
 use tokio::time::{Instant, sleep, timeout};
 use zpredict_core::{ACCOUNT_LEN, FILL_LEN, ORDER_LEN};
 use zpredict_oracle::Status;
+use zpredict_settle::KeyShare;
 
 use crate::error::{Error, Result};
 use crate::mpc::{Cleared, Matcher};
@@ -41,6 +42,8 @@ pub struct Batcher<M> {
     pub rows: usize,
     pub window: Duration,
     pub expire: u64,
+    /// This relayer's FROST share for outcome signing (`outcome.rs`); `None` = unsigned.
+    pub frost: Option<Arc<KeyShare>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -86,6 +89,7 @@ impl<M: Matcher> Batcher<M> {
         let (links, up) = self.peering.connect(deadline).await;
         self.state.lock().expect("state lock").peers = up;
         let links = links?;
+        crate::outcome::round(&links, &self.state, self.frost.as_deref()).await?;
 
         let mine = {
             let s = self.state.lock().expect("state lock");

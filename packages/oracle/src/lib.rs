@@ -20,6 +20,6 @@ pub use error::{Error, Result};
 #[cfg(any(test, feature = "fixture"))]
 pub use fixture::FixtureChain;
 pub use market::{Market, Status};
-pub use outcome::{Outcome, Resolution};
+pub use outcome::{MESSAGE_PREFIX, Outcome, Resolution};
 pub use registry::Registry;
 pub use resolver::Resolver;

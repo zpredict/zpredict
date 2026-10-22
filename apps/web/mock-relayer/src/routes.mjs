@@ -3,6 +3,7 @@
 import { generateKeyPairSync, randomBytes } from "node:crypto";
 import { ORDER_LEN } from "@zpredict/sdk";
 import { JUDGE_CREDIT, PORTS } from "./config.mjs";
+import { GROUP_KEY } from "./rolling.mjs";
 import { hex, u64le, xor } from "./shares.mjs";
 import { accept, account, chain, markets, orders, views } from "./state.mjs";
 
@@ -92,6 +93,11 @@ const ROUTES = [
 		(i, { res }) => send(res, 200, { relayer: i, memoKey: hex(memoKeys[i]) }),
 	],
 	["GET", /^\/markets$/, (_, { res }) => send(res, 200, markets)],
+	[
+		"GET",
+		/^\/group-key$/,
+		(i, { res }) => send(res, 200, { relayer: i, groupKey: GROUP_KEY, threshold: 2 }),
+	],
 	["GET", /^\/view$/, (i, { url, res }) => getView(i, url, res)],
 	["POST", /^\/orders$/, (i, { req, res }) => postOrder(i, req, res)],
 	["POST", /^\/judge\/claim$/, (_, { res }) => judgeClaim(res)],

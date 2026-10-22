@@ -2,12 +2,15 @@
 
 use std::time::Duration;
 
+use zpredict_settle::KeyShare;
+
 use crate::api::{self, Api};
 use crate::batch::{self, Batcher};
 use crate::chain;
 use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::keys::read_key;
+use crate::markets;
 use crate::mpc::{Matcher, Polytune};
 use crate::peers::Peering;
 use crate::state::State;
@@ -42,7 +45,21 @@ pub async fn run(c: Config) -> Result<()> {
 
 pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result<()> {
     let (slots, rows) = (c.batch_size, c.table_rows);
-    let state = State::open(c.index, c.markets.clone(), &c.data_dir)?.shared();
+    let markets = markets::load(&c.data_dir, c.markets.clone());
+    let state = State::open(c.index, markets, &c.data_dir)?.shared();
+    let frost = (c.frost_share_file.as_deref())
+        .map(|p| crate::outcome::load_share(p, c.index))
+        .transpose()?;
+    let group_key = frost.as_ref().map(KeyShare::ak).transpose();
+    let group_key = group_key.map_err(|e| Error::Config(format!("frost share: {e}")))?;
+    eprintln!(
+        "outcomes: {}",
+        if frost.is_some() {
+            "FROST-signed 2-of-3"
+        } else {
+            "unsigned (no frost_share_file)"
+        }
+    );
     let public = [
         read_key(&c.peer_keys[0])?,
         read_key(&c.peer_keys[1])?,
@@ -64,6 +81,7 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
         rows,
         window: Duration::from_secs(c.window_secs),
         expire: c.expire_batches,
+        frost: frost.map(std::sync::Arc::new),
     };
     let handle = tokio::runtime::Handle::current();
     tokio::task::spawn_blocking(move || handle.block_on(batch::run(b)));
@@ -71,7 +89,8 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
     // endpoint, `c.escrow_lightwalletd`, is for the settle scanner and payouts.
     if !c.oracle_lightwalletd.is_empty() {
         let (url, s) = (c.oracle_lightwalletd.clone(), state.clone());
-        tokio::task::spawn_blocking(move || chain::poll(&url, s));
+        let (rolling, dir) = (c.rolling.clone(), c.data_dir.clone());
+        tokio::task::spawn_blocking(move || chain::poll(&url, s, rolling, dir));
     }
 
     let judge_credit = c.judge.then_some(c.judge_credit);
@@ -82,6 +101,7 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
         origin,
         judge_credit,
         memo_key,
+        group_key,
     });
     axum::serve(http, app).await?;
     Ok(())

@@ -6,6 +6,7 @@ import "@/styles/layout.css";
 import "@/styles/menu.css";
 import "@/styles/home.css";
 import "@/styles/markets.css";
+import "@/styles/outcomes.css";
 import "@/styles/trade.css";
 import "@/styles/ticket.css";
 import "@/styles/xor.css";

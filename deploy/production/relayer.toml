@@ -20,8 +20,26 @@ judge = true
 judge_credit = 5000 # 25 units in half-ticks
 data_dir = "/data"
 insecure_matcher = false
+# Outcome signing stays off until the key ceremony (#78): then each relayer gets its sealed
+# share in its volume and ZPREDICT_FROST_SHARE_FILE=/data/frost-share.sealed plus
+# ZPREDICT_STORE_KEY. Until then /markets shows outcomes as resolved (unsigned).
 
-# The three demo markets. One MPC run clears up to 4 markets; more would need a second
+# Rolling markets (apps/relayer/src/markets/rolling.rs): every hour of nominal block time, a
+# new "Will mainnet block H contain ≥ N shielded actions?" with H one hour ahead (48 blocks
+# at 75 s; 144 at 25 s from NU7) and N the median of the 24 blocks before, so YES/NO are
+# about even. Ids are 1,000,000 + window number, the same on all three relayers.
+# Cap: one MPC run clears 4 markets (DEFAULT_MARKETS) = the 3 headline markets below + 1
+# rolling market, which interval = horizon guarantees. Resolved ones stay 24 h as history.
+[rolling]
+plugin = "shielded-actions"
+interval_secs = 3600
+horizon_secs = 3600
+close_secs = 300
+sample_blocks = 24
+keep_resolved = 24
+fast_from = 3543405
+
+# The three headline markets. One MPC run clears up to 4 markets; more would need a second
 # run per window and slow judges' fills (see deploy/README.md).
 [[markets]]
 id = 1

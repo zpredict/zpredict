@@ -28,6 +28,7 @@ zpredict-oracle = { path = "../../packages/oracle" }
 zpredict-plugin-ironwood-pool = { path = "../../packages/plugins/ironwood-pool" }
 zpredict-plugin-nu7-activation = { path = "../../packages/plugins/nu7-activation" }
 zpredict-plugin-shielded-actions = { path = "../../packages/plugins/shielded-actions" }
+zpredict-settle = { path = "../../packages/settle" }
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

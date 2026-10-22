@@ -1,0 +1,90 @@
+/* Countdowns, signed outcomes and the resolved-markets history. */
+
+.countdown {
+	color: var(--zp-muted);
+	font-size: 11px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.countdown::before {
+	content: "▸ ";
+	color: var(--zp-lime);
+}
+
+.proof {
+	display: grid;
+	gap: 8px;
+}
+
+.proof__row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 12px;
+}
+
+.proof__sig {
+	color: var(--zp-muted);
+	font-size: 12px;
+	text-transform: uppercase;
+}
+
+.proof__sig.is-signed {
+	color: var(--zp-lime);
+}
+
+.proof__block {
+	color: var(--zp-muted);
+	font-size: 12px;
+	overflow-wrap: anywhere;
+}
+
+.resolved {
+	display: grid;
+	gap: 12px;
+	margin-top: 40px;
+}
+
+.resolved__title {
+	font-size: 22px;
+	letter-spacing: -0.03em;
+}
+
+.resolved__sub {
+	max-width: 70ch;
+	color: var(--zp-muted);
+}
+
+.resolved__list {
+	display: grid;
+	padding: 0;
+	list-style: none;
+	border-top: 1px solid var(--line);
+}
+
+.resolved__item {
+	display: grid;
+	grid-template-columns: minmax(0, 12rem) minmax(0, 1fr) minmax(0, 24rem);
+	align-items: center;
+	gap: 12px 24px;
+	padding: 16px 0;
+	border-bottom: 1px solid var(--line);
+}
+
+.resolved__cat {
+	color: var(--zp-muted);
+	font-size: 11px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.resolved__q:hover {
+	color: var(--zp-lime);
+}
+
+@media (max-width: 899.98px) {
+	.resolved__item {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
