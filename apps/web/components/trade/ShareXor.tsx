@@ -2,25 +2,24 @@
 import Badge from "@/components/ui/Badge";
 import Card from "@/components/ui/Card";
 import type { MyOrder } from "@/hooks/useOrders";
-import type { Seen } from "@/hooks/useRelayerView";
 import { avgCents, sideName } from "@/lib/format";
 import { openFill, openOrder, xorHex } from "@/lib/shares";
 import HexBytes from "./HexBytes";
 
 interface Props {
 	order: MyOrder;
-	seen?: Seen;
 }
 
 /**
- * The trader's side of the split screen: the three shares exactly as the relayers hold
- * them, and the order that only appears when all three are XORed together.
+ * The trader's side of the split screen: the three shares this browser sent, one to each
+ * relayer, and the order that only appears when all three are XORed together. Only this
+ * browser holds all three; the relayers publish digests, never shares.
  */
-export default function ShareXor({ order, seen }: Props) {
-	const shares = seen?.order ?? [];
+export default function ShareXor({ order }: Props) {
+	const shares = order.shares ?? [];
 	const plain = xorHex(shares);
 	const opened = openOrder(shares);
-	const fill = openFill(seen?.fill ?? []);
+	const fill = openFill(order.fillShares ?? []);
 	return (
 		<Card className="xor">
 			<header className="xor__head">

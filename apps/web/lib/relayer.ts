@@ -37,7 +37,9 @@ export const claimJudge = (tag: string) => claim(relayers, tag);
 
 export const fetchBalance = (tag: string) => getBalance(relayers, tag);
 
-export const fetchFill = (orderId: string) => getFill(relayers, orderId);
+/** Relayer i answers only to `tokens[i]`, the read token this browser gave it with the order. */
+export const fetchFill = (orderId: string, tokens: readonly string[]) =>
+	getFill(relayers, orderId, tokens);
 
 export const fetchView = (i: number, after: number) => getView(relayers[i], after);
 

@@ -20,6 +20,7 @@ import {
 	submitOrder,
 	submitWithdrawal,
 	toHex,
+	viewDigest,
 } from "./index.js";
 
 // Written by `cargo test -p zpredict-core --test vectors`.
@@ -137,16 +138,22 @@ test("judge claims send relayer i only share i of the tag", async (t) => {
 });
 
 test("submitOrder sends exactly one share to each relayer", async (t) => {
-	const posts: [string, { orderId: string; share: string }][] = [];
+	const posts: [string, { orderId: string; share: string; token: string }][] = [];
 	t.mock.method(globalThis, "fetch", async (url: string, init: RequestInit) => {
 		assert.equal(init.credentials, "omit");
 		posts.push([url, JSON.parse(init.body as string)]);
 		return Response.json({ batch: 3 + posts.length }, { status: 202 });
 	});
 	const o = order(v.orders[0]);
-	const { orderId, batch } = await submitOrder(RELAYERS, o);
+	const { orderId, batch, shares: sent, tokens } = await submitOrder(RELAYERS, o);
 	assert.match(orderId, /^[0-9a-f]{32}$/);
 	assert.equal(batch, 6);
+	assert.deepEqual(
+		posts.map(([, b]) => [b.share, b.token]),
+		sent.map((s, i) => [s, tokens[i]]),
+	);
+	assert.equal(new Set(tokens).size, 3);
+	assert.ok(tokens.every((k) => /^[0-9a-f]{32}$/.test(k)));
 	assert.deepEqual(
 		posts.map(([u]) => u),
 		RELAYERS.map((r) => `${r}/orders`),
@@ -181,20 +188,27 @@ test("refuses two relayers on one origin", async (t) => {
 	});
 	const same = [RELAYERS[0], RELAYERS[1], `${RELAYERS[0]}/x`] as const;
 	await assert.rejects(submitOrder(same, order(v.orders[0])), /distinct/);
-	await assert.rejects(getFill(same, "00"), /distinct/);
+	await assert.rejects(getFill(same, "00", []), /distinct/);
 	assert.equal(fetch.mock.callCount(), 0);
 });
 
 test("getFill combines the three fill shares", async (t) => {
 	const shares = split(fromHex(v.records[2]));
-	t.mock.method(globalThis, "fetch", async (url: string) =>
-		Response.json({
-			status: "filled",
-			fillShare: toHex(shares[RELAYERS.findIndex((r) => url.startsWith(r))]),
-		}),
-	);
-	assert.deepEqual(await getFill(RELAYERS, "ab".repeat(16)), {
+	const tokens = ["01", "02", "03"].map((b) => b.repeat(16));
+	t.mock.method(globalThis, "fetch", async (url: string) => {
+		const i = RELAYERS.findIndex((r) => url.startsWith(r));
+		// Each relayer is asked with its own token only.
+		assert.ok(url.endsWith(`?token=${tokens[i]}`));
+		return Response.json({ status: "filled", fillShare: toHex(shares[i]) });
+	});
+	assert.deepEqual(await getFill(RELAYERS, "ab".repeat(16), tokens), {
 		status: "filled",
 		fill: { size: 5, totalCost: 445, side: 1, filled: true },
+		fillShares: shares.map(toHex),
 	});
+});
+
+test("viewDigest matches the relayer's pinned vector", () => {
+	// apps/relayer/src/api/tests.rs `orders_contract`: share 1 of the split vector.
+	assert.equal(viewDigest(fromHex(v.split.shares[1])), "11fde0156c756157bd540f66eab111fc");
 });

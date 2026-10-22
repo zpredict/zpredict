@@ -64,7 +64,7 @@ function records(live) {
 export function runBatch() {
 	const ready = collect();
 	const recs = records(fund(ready));
-	ready.forEach(({ id, o, order }, k) => {
+	ready.forEach(({ o, order }, k) => {
 		const fill = Buffer.from(recs[k]);
 		const filled = fill[9] === 1;
 		if (filled) account(order.key).bal -= BigInt(fill.readUInt32LE(4));
@@ -72,7 +72,7 @@ export function runBatch() {
 		o.fillShares = split(fill);
 		// Every order in the batch gets a fill share, filled or not: same shape either way.
 		PORTS.forEach((_, i) => {
-			see(i, "fill", id, o.fillShares[i]);
+			see(i, "fill", o.fillShares[i]);
 		});
 	});
 	chain.batch++;
