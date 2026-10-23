@@ -22,6 +22,8 @@ export interface WithdrawalPost {
 export interface WithdrawalStatus {
 	status: "pending" | "refused" | "debited" | "paying" | "paid";
 	txid?: string;
+	/** On a `debited` request: the escrow payout failed and is retried with backoff. */
+	payout?: "retrying";
 }
 
 /** Zatoshis a withdrawal of `amount` half-ticks pays out. */

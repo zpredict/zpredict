@@ -143,12 +143,13 @@ test("a full table is a TableFullError; seats come from relayer 0", async (t) =>
 	t.mock.method(globalThis, "fetch", async (url: string) =>
 		url.endsWith("/judge/claim")
 			? Response.json({ error: "table full" }, { status: 503 })
-			: Response.json({ balanceShare: "00".repeat(8), seat: "waiting" }),
+			: Response.json({ balanceShare: "00".repeat(8), seat: "waiting", mock: true }),
 	);
 	await assert.rejects(claimJudge(RELAYERS, "11".repeat(16)), TableFullError);
 	assert.deepEqual(await getAccount(RELAYERS, "11".repeat(16)), {
 		balance: 0n,
 		seat: "waiting",
+		mock: true,
 	});
 });
 

@@ -19,6 +19,25 @@ fn state<M: Matcher>(r: &Relayer<M>) -> std::sync::MutexGuard<'_, State> {
     r.batcher.state.lock().unwrap()
 }
 
+/// A depositor's account: its memo slots' key shares and a 25-unit deposit that all three
+/// relayers scanned, credited by one batch.
+async fn deposited<M: Matcher>(r: &[Relayer<M>]) -> Key {
+    let mut tag = [0u8; 16];
+    getrandom::fill(&mut tag).unwrap();
+    let (account, shares) = (account_id(&tag), key_shares(&tag));
+    record(r, &[0, 1, 2], |i| Event::Key {
+        id: account,
+        share: hex::encode(shares[i]),
+    });
+    record(r, &[0, 1, 2], |_| Event::Deposit {
+        note: format!("{}-0", hex::encode(tag)),
+        account,
+        amount: 5000,
+    });
+    batch_all(r).await;
+    tag
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn deposits_all_three_scanned_are_credited_once() {
     let r = relayers("deposits", 4, || InsecureLocalMatcher, false);
@@ -81,7 +100,8 @@ async fn a_resolved_market_pays_its_winners_once() {
 #[tokio::test(flavor = "multi_thread")]
 async fn withdrawals_take_only_what_the_account_holds() {
     let r = relayers("withdraw", 4, || InsecureLocalMatcher, false);
-    let a = funded(&r).await;
+    let a = deposited(&r).await;
+    let judge = funded(&r).await;
     // Account a's key as fresh XOR shares, one per relayer: no relayer learns whose
     // withdrawal it is.
     let request = |id: &str, amount, shares: [Key; 3]| {
@@ -108,9 +128,18 @@ async fn withdrawals_take_only_what_the_account_holds() {
     record(&r, &[0, 1], request(&id(9), 10, fresh_shares(&a))); // relayer 2 never got it
     batch_all(&r).await;
     assert_eq!(balance(&r, &a).await, 2000);
+    // A judge-mode account's own withdrawal, with its real key: mock credit never pays out.
+    record(&r, &[0, 1, 2], request(&id(5), 4000, fresh_shares(&judge)));
+    batch_all(&r).await;
+    assert_eq!(
+        balance(&r, &judge).await,
+        5000,
+        "mock credit is not withdrawable"
+    );
     for x in &r {
         let s = state(x);
         let status = |n| s.ledger.withdrawal(&id(n)).map(|w| w.status);
+        assert_eq!(status(5), Some(WithdrawalStatus::Refused));
         assert_eq!(status(6), Some(WithdrawalStatus::Refused));
         assert_eq!(status(7), Some(WithdrawalStatus::Debited));
         assert_eq!(status(8), Some(WithdrawalStatus::Refused));

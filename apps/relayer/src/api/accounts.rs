@@ -15,8 +15,9 @@ use super::{Api, fail, hex_id, hex_key};
 /// past them (the table is full, so its orders can't fill yet) or `none` (no row yet).
 /// `key` must be this relayer's share of the account's key (hex32), which only the
 /// account's browser and this relayer know, so another relayer cannot collect the shares
-/// and read the balance, nor anyone learn another account's seat. Ids with no key here
-/// hold a zero share.
+/// and read the balance, nor anyone learn another account's seat. `mock`: the account was
+/// opened by a judge claim, so its balance is mock credit that can't be withdrawn (#104).
+/// Ids with no key here hold a zero share.
 pub async fn get(
     State(api): State<Api>,
     Path(id): Path<String>,
@@ -31,5 +32,6 @@ pub async fn get(
     }
     let share = s.table.balance_share(id);
     let seat = s.seat(id, api.table_rows);
-    Json(json!({ "balanceShare": hex::encode(share), "seat": seat })).into_response()
+    let mock = s.table.is_mock(id);
+    Json(json!({ "balanceShare": hex::encode(share), "seat": seat, "mock": mock })).into_response()
 }

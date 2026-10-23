@@ -47,6 +47,10 @@ pub struct Shares<'a> {
     /// Its share of each withdrawal slot's key, one per `Public::withdrawals` entry; zero
     /// shares for unused slots.
     pub withdrawals: &'a [[u8; KEY_LEN]],
+    /// Per row, whether this relayer saw it opened by a judge claim (mock credit). Not a
+    /// share: the circuit refuses withdrawals from a row any relayer flags, so one honest
+    /// relayer that saw the claim is enough.
+    pub mock: &'a [bool],
 }
 
 /// What one relayer gets back from a batch.
@@ -101,6 +105,10 @@ pub(crate) fn rows<const L: usize>(rows: &[[u8; L]]) -> Literal {
     )
 }
 
+fn bool_lit(b: bool) -> Literal {
+    if b { Literal::True } else { Literal::False }
+}
+
 pub(crate) fn nums(values: impl Iterator<Item = u64>, ty: UnsignedNumType) -> Literal {
     Literal::Array(values.map(|v| Literal::NumUnsigned(v, ty)).collect())
 }
@@ -141,6 +149,10 @@ pub(crate) fn input_bits(
         ("fill_mask", rows(&mask.fills)),
         ("keys", rows(shares.keys)),
         ("markets", markets),
+        (
+            "mock",
+            Literal::Array(shares.mock.iter().map(|&b| bool_lit(b)).collect()),
+        ),
         ("orders", rows(shares.orders)),
         ("withdraw_keys", rows(shares.withdrawals)),
         ("withdrawals", u64s(&public.withdrawals)),

@@ -12,6 +12,7 @@ struct Party {
     fill_mask: [[u8; 10]; {n}],
     keys: [[u8; 16]; {rows}],
     markets: [u32; {markets}],
+    mock: [bool; {rows}],
     orders: [[u8; 26]; {n}],
     withdraw_keys: [[u8; 16]; {w}],
     withdrawals: [u64; {w}],
@@ -102,8 +103,9 @@ pub fn main(
     }
 
     // Withdrawals, in slot order and before any order reserves funds: each is taken from
-    // the first row with its key only if that row covers it. `withdrawn` (public) says which
-    // went through, never whose they were.
+    // the first row with its key only if that row covers it and no relayer flagged it as
+    // mock (judge-mode credit, which never pays out on chain). `withdrawn` (public) says
+    // which went through, never whose they were or why not.
     let mut withdrawn = [false; {w}];
     for s in 0usize..{w}usize {
         let mut wlo = 0u64;
@@ -120,12 +122,14 @@ pub fn main(
         let mut row = [false; {rows}];
         let mut found = false;
         let mut have = 0u64;
+        let mut mock = false;
         for m in 0usize..{rows}usize {
             row[m] = !found & (wlo == klo[m]) & (whi == khi[m]);
             found = found | row[m];
             have = have | if row[m] { balance[m] } else { 0u64 };
+            mock = mock | (row[m] & (p0.mock[m] | p1.mock[m] | p2.mock[m]));
         }
-        let ok = agreed & found & (amount > 0u64) & (have >= amount);
+        let ok = agreed & found & !mock & (amount > 0u64) & (have >= amount);
         withdrawn[s] = ok;
         for m in 0usize..{rows}usize {
             balance[m] = balance[m] - if ok & row[m] { amount } else { 0u64 };

@@ -71,6 +71,8 @@ pub struct Batcher<M: Matcher> {
     pub pre: Mutex<Option<(u64, M::Pre)>>,
     /// Relayer 0: table rows in use at the last log line.
     pub logged_rows: AtomicUsize,
+    /// Relayer 0: no payout round before this batch, and the current backoff in batches.
+    pub payout_backoff: Mutex<(u64, u64)>,
 }
 
 /// Runs forever. The matcher's futures need not be `Send`, so call this through
@@ -124,6 +126,10 @@ impl<M: Matcher> Batcher<M> {
                     .expect("pre lock")
                     .as_ref()
                     .map(|(id, _)| *id),
+                payout: links.party == 0
+                    && self.escrow.is_some()
+                    && !s.ledger.debited().is_empty()
+                    && s.batch >= self.payout_backoff.lock().expect("backoff lock").0,
             }
         };
         let a = hello::exchange(&links, mine).await?;
@@ -154,7 +160,7 @@ impl<M: Matcher> Batcher<M> {
         if !run {
             *self.pre.lock().expect("pre lock") = pre.take();
         }
-        let (expired, orders, accounts, keys, withdrawal_shares) = {
+        let (expired, orders, accounts, keys, withdrawal_shares, mock) = {
             let mut s = self.state.lock().expect("state lock");
             if links.party == 0 && run {
                 s.record(Event::Seal { rows: n })?;
@@ -180,6 +186,7 @@ impl<M: Matcher> Batcher<M> {
                 table,
                 s.table.key_shares(n, self.rows),
                 shares,
+                s.table.mock_flags(n, self.rows),
             )
         };
 
@@ -195,6 +202,7 @@ impl<M: Matcher> Batcher<M> {
             accounts: &accounts,
             keys: &keys,
             withdrawals: &withdrawal_shares,
+            mock: &mock,
         };
         let done = if run {
             let pre = pre.map(|(_, p)| p);
@@ -222,8 +230,11 @@ impl<M: Matcher> Batcher<M> {
                 })?;
             }
         }
-        if let Some(escrow) = &self.escrow {
-            crate::escrow::payout::round(escrow, &self.state, &links).await?;
+        if let (Some(escrow), true) = (&self.escrow, a.lead.payout)
+            && !self.payout(escrow, &links, a.batch).await
+        {
+            // The links may hold a stray payout message: preprocess on fresh ones next window.
+            return Ok(ids);
         }
         if self.pre.lock().expect("pre lock").is_none() {
             let pre = self

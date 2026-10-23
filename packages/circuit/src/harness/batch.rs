@@ -25,6 +25,16 @@ pub struct Batch {
     pub account_shares: [Vec<[u8; ACCOUNT_LEN]>; 3],
     pub key_shares: [Vec<Key>; 3],
     pub withdrawal_shares: [Vec<Key>; 3],
+    /// Each relayer's mock (judge-claim) flag per row; a row is mock if any flags it.
+    pub mock_flags: [Vec<bool>; 3],
+}
+
+impl Batch {
+    /// Rows any relayer flagged as mock.
+    pub fn mock(&self) -> Vec<bool> {
+        let [a, b, c] = &self.mock_flags;
+        (0..a.len()).map(|r| a[r] | b[r] | c[r]).collect()
+    }
 }
 
 impl Batch {
@@ -35,6 +45,7 @@ impl Batch {
             accounts: &self.account_shares[p],
             keys: &self.key_shares[p],
             withdrawals: &self.withdrawal_shares[p],
+            mock: &self.mock_flags[p],
         }
     }
 }
@@ -154,7 +165,10 @@ pub fn random_batch(rng: &mut Rng, slots: usize, rows: usize) -> Batch {
         })
         .collect();
     let wkeys: Vec<Key> = withdrawals.iter().map(|w| w.key).collect();
+    // A few judge-mode rows, flagged by one relayer or all three (one is enough).
+    let mock_flags = std::array::from_fn(|_| (0..rows).map(|_| rng.below(8) == 0).collect());
     Batch {
+        mock_flags,
         public: Public {
             markets: MARKETS.to_vec(),
             credits,
@@ -175,7 +189,7 @@ pub fn random_batch(rng: &mut Rng, slots: usize, rows: usize) -> Batch {
 /// went through, with every slot that fails `Order::decode` treated as a size-0 dummy.
 pub fn expected(b: &Batch) -> Outcome {
     let batch = decoded(&b.orders);
-    let (table, withdrawn) = apply_flows(&b.accounts, &b.public.credits, &b.withdrawals);
+    let (table, withdrawn) = apply_flows(&b.accounts, &b.public.credits, &b.withdrawals, &b.mock());
     let c = clear_with_balances(&b.public.markets, &batch, &table);
     Outcome {
         fills: fill_records(&batch, &c.fills),

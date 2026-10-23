@@ -25,6 +25,8 @@ struct Held {
     accounts: Vec<[u8; ACCOUNT_LEN]>,
     keys: Vec<Key>,
     withdrawals: Vec<Key>,
+    /// Each party's own mock flags (not shares): a row is mock if any party flags it.
+    mock: Vec<bool>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -54,6 +56,7 @@ impl Matcher for InsecureLocalMatcher {
             accounts: shares.accounts.to_vec(),
             keys: shares.keys.to_vec(),
             withdrawals: shares.withdrawals.to_vec(),
+            mock: shares.mock.to_vec(),
             ..Held::default()
         };
         let r = round(links, held, |all| clear_all(public, all)).await?;
@@ -111,6 +114,7 @@ async fn round(links: &Links, mine: Held, compute: impl FnOnce(&Held) -> Reply) 
         xor_into(&mut all.accounts, &theirs.accounts);
         xor_into(&mut all.keys, &theirs.keys);
         xor_into(&mut all.withdrawals, &theirs.withdrawals);
+        (all.mock.iter_mut().zip(&theirs.mock)).for_each(|(a, b)| *a |= b);
     }
     let mut r = compute(&all);
     for p in 1..3 {
@@ -131,7 +135,7 @@ fn clear_all(public: &Public, all: &Held) -> Reply {
     let withdrawals: Vec<Withdrawal> = (all.withdrawals.iter().zip(&public.withdrawals))
         .map(|(&key, &amount)| Withdrawal { key, amount })
         .collect();
-    let (table, withdrawn) = apply_flows(&table(all), &public.credits, &withdrawals);
+    let (table, withdrawn) = apply_flows(&table(all), &public.credits, &withdrawals, &all.mock);
     let c = clear_with_balances(&public.markets, &orders, &table);
     Reply {
         fills: fill_records(&orders, &c.fills),

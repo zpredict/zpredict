@@ -34,6 +34,10 @@ pub struct Hello {
     /// Id of the clearing run this relayer has preprocessed and holds (`mod.rs`).
     #[serde(default)]
     pub pre: Option<u64>,
+    /// Relayer 0 only: run the escrow payout round this window (debited withdrawals and
+    /// no backoff after a failed round, #104). Its peers follow it.
+    #[serde(default)]
+    pub payout: bool,
 }
 
 /// What all three relayers offered, and relayer 0's hello.

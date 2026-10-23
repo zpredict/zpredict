@@ -29,14 +29,14 @@ async fn accounts_and_judge_claims() {
     let (_, acct) = get(&id, &share).await;
     assert_eq!(
         acct,
-        json!({"balanceShare": hex::encode(5000u64.to_le_bytes()), "seat": "seated"})
+        json!({"balanceShare": hex::encode(5000u64.to_le_bytes()), "seat": "seated", "mock": true})
     );
     // Without this relayer's key share nobody reads the account's balance share.
     assert_eq!(get(&id, &"5b".repeat(16)).await.0, StatusCode::FORBIDDEN);
     let (_, zero) = get(&"ab".repeat(8), &share).await;
     assert_eq!(
         zero,
-        json!({"balanceShare": "0000000000000000", "seat": "none"})
+        json!({"balanceShare": "0000000000000000", "seat": "none", "mock": false})
     );
     // This test table holds 2 rows: the second claim fills it, a third is refused.
     let second = json!({"account": "08".repeat(8), "keyShare": share});
