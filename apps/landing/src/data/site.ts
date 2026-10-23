@@ -1,5 +1,5 @@
 export const site = {
-	title: "zPredict · Price public. Participants private.",
+	title: "zPredict | Price public. Participants private.",
 	description:
 		"The first shielded prediction market on Zcash. Nobody learns that you bet, which side, or how much.",
 	appUrl: import.meta.env.PUBLIC_APP_URL ?? "https://app.zpredict.site",
