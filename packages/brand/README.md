@@ -6,6 +6,7 @@ zPredict logo, icons and design tokens, shared by `apps/landing` and `apps/web`.
 
 - `black/`: for light backgrounds. Also holds the default `favicon.ico`.
 - `white/`: for dark backgrounds.
+- `zec/zec.svg`: the ZEC token icon (gold circle `#F4B728`, white Ƶ), shown inline beside ZEC amounts with `aria-hidden` next to the word "ZEC". It marks the currency only; zPredict is not affiliated with the Electric Coin Company or the Zcash Foundation. The app's `components/ui/ZecIcon.tsx` draws the same shapes (a test keeps them equal).
 
 Favicon that follows the browser theme:
 
