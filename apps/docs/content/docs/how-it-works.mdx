@@ -1,0 +1,47 @@
+---
+title: How it works
+description: Deposit, order, crossing in MPC, resolution, withdrawal. What happens at each step and who sees what.
+---
+
+Three relayers, run by different operators in the model, share the work. Each one only ever holds one share of anything secret. The full protocol is [DESIGN.md](https://github.com/zpredict/zpredict/blob/main/DESIGN.md).
+
+## 1. Your account
+
+Your browser makes a random 16-byte **tag**. It is the account's only credential and never leaves the browser whole (it lives in `localStorage`). Its public label is `id = BLAKE2b-64(tag)`. Relayer `i` gets only its own share `sᵢ` of the tag: `s₀` and `s₁` are BLAKE2b of the tag, and `s₂ = tag ⊕ s₀ ⊕ s₁`. The circuit rebuilds each balance row's key from the three shares, so a relayer holding only `sᵢ` and the id cannot trade, withdraw or read a balance as you.
+
+## 2. Deposit
+
+You send a fixed-denomination note (1, 5 or 25 units; 1 unit = 0.01 ZEC) to the escrow's Ironwood-only address. The 512-byte memo carries three slots, each encrypted to one relayer and holding `id ‖ sᵢ`. No order data ever goes on chain. A deposit is credited after 10 confirmations, and only once **all three** relayers' own scans found it. See [Your money](/docs/your-money).
+
+## 3. Order
+
+`order = {market, side, price, size, key = tag}` is encoded in 26 bytes and split as `[r₀, r₁, order ⊕ r₀ ⊕ r₁]`. Share `i` goes by its own HTTPS request to relayer `i` only, with a fresh random read token. The SDK refuses to run unless the three relayer URLs are three distinct origins ([`submitOrder`](/docs/sdk#submitorder)).
+
+## 4. Crossing
+
+Every batch window (5 s on the demo) the relayers agree on the orders all three hold, then run the clearing circuit as three MPC parties. Inside it:
+
+- the orders and the whole balance table are rebuilt from shares, and public credits are added;
+- each order reserves its worst case from the row whose key equals its tag (no such row, or not enough funds → it becomes a dummy);
+- YES at `p` crosses NO at `q` when `p + q ≥ 100`, at the midpoint `p* = (p + 100 − q) / 2`.
+
+Out come XOR-shared fill records and new balances, plus **one public clearing price per market**. Only the owner, holding all three shares, learns whether its order filled. Orders don't rest between batches. Details: [Circuits](/docs/circuits).
+
+## 5. Resolution
+
+At the resolve height (+10 confirmations), each relayer evaluates the market's rule against its own node. Only an outcome all three computed identically is signed, FROST 2-of-3, and published with the block hash and height so anyone can recompute and verify it. A second small MPC program then pays one unit per winning contract into the winners' rows, without anyone learning which positions won. See [Markets & resolution](/docs/markets).
+
+## 6. Withdrawal
+
+You ask all three relayers to pay an amount to a **fresh shielded address**, each with a fresh XOR share of your tag. The circuit debits your row only if the shares rebuild its key and it covers the amount. Debited withdrawals are paid in one batched Ironwood transaction that relayers 0 and 1 sign only after re-deriving it themselves. See [Settlement & FROST](/docs/settlement).
+
+## Who sees what
+
+| | Sees |
+|---|---|
+| Chain observer | That shielded Ironwood transactions happen |
+| One relayer | Random-looking shares, deposit and withdrawal amounts and times, the public price |
+| Two relayers | The same for orders; they **can** move escrow funds (2-of-3) |
+| All three | Everything |
+
+The full table, with the demo's caveats, is on [Threat model](/docs/threat-model).

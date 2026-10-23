@@ -1,0 +1,54 @@
+---
+title: Status
+description: What runs for real, what is a labelled mock, and what is still open, as of the main branch.
+---
+
+zPredict is a ZECATHON 2026 testnet demo. Collateral and settlement are on **Zcash testnet**; markets resolve from **mainnet** data. Nothing here is audited by a third party; the privacy audit in [PRIVACY.md](https://github.com/zpredict/zpredict/blob/main/PRIVACY.md) is the team's own adversarial review.
+
+## Real
+
+| Piece | Where it runs |
+|---|---|
+| Browser XOR sharing, one share per relayer | [`@zpredict/sdk`](/docs/sdk), the hosted app |
+| 3-party MPC matching (polytune), balances and 128-bit account credentials checked in-circuit | The hosted relayers; [`packages/circuit`](/docs/circuits) |
+| Resolution payouts in MPC | Hosted relayers; regtest e2e |
+| Chain-data resolution from mainnet blocks, FROST-signed outcomes | Hosted relayers (`[settlement]` on, `GET /group-key`) |
+| FROST 2-of-3 DKG, sealed key shares | One ceremony on 2026-10-23 for the testnet escrow |
+| Fixed-denomination deposits with encrypted memos, scanned by all three | Testnet escrow; `scan-e2e.sh` on regtest |
+| Batched, verify-then-sign Ironwood payouts; forged withdrawals refused | `relayer-e2e.sh` and `settle-e2e.sh` on regtest |
+| Hourly rolling markets | Hosted relayers |
+| Mirrored Polymarket markets (US midterms), resolved per Polymarket | Hosted relayers; oracle trust in [Markets](/docs/markets#mirrored-polymarket-markets) |
+
+## Mock, and labelled as such
+
+| Piece | Why |
+|---|---|
+| **Judge mode** credit | 25 units of mock testnet collateral without a deposit, so judges can trade without a faucet. Flagged by every relayer and never withdrawable ([Your money](/docs/your-money#judge-credits-are-not-money)). Testnet only |
+| **Demo counterparty** ("Take the other side (demo)") | A lone judge has nobody to cross with; this adds the exact opposite order from the same account, a self-trade that nets out. No bot, resting book or relayer-side liquidity exists |
+| `pnpm --filter @zpredict/web dev:mock` | Local mock relayers that combine shares in the clear, for UI work only |
+
+## Demo limits
+
+- **One VM, behind Cloudflare.** All three relayers and the DKG run on one machine, and Cloudflare terminates TLS for all three ([#88](https://github.com/zpredict/zpredict/issues/88)). Either can see everything. The model needs independent operators.
+- **48 accounts** in the balance table; rows are not reclaimed yet ([#64](https://github.com/zpredict/zpredict/issues/64)).
+- **Six open markets** per MPC run.
+- A fill shows about 25 s after the order on the hosted VPS.
+
+## Open
+
+| Issue | What |
+|---|---|
+| [#88](https://github.com/zpredict/zpredict/issues/88), [#89](https://github.com/zpredict/zpredict/issues/89) | Cloudflare TLS termination; injected beacon and NEL headers |
+| [#90](https://github.com/zpredict/zpredict/issues/90), [#91](https://github.com/zpredict/zpredict/issues/91) | Request metadata and withdrawal amount/timing linkage |
+| [#64](https://github.com/zpredict/zpredict/issues/64) | Reclaim balance-table rows after a full withdrawal |
+| [#121](https://github.com/zpredict/zpredict/issues/121) | Relayers serve `historyAt` for price history |
+| [#124](https://github.com/zpredict/zpredict/issues/124) | Deploy robustness after the relayer outage of 2026-10-23 |
+| [#75](https://github.com/zpredict/zpredict/issues/75) | Build the relayer image in CI to avoid deploy downtime |
+
+## Is it up?
+
+```sh
+for i in 0 1 2; do curl -s https://r$i.zpredict.site/health; echo; done
+```
+
+`peers` all `true` means the three relayers reached each other in the last batch.

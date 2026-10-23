@@ -1,0 +1,51 @@
+---
+title: Circuits
+description: The Garble clearing circuit (orders, balances, credentials, withdrawals), the resolution circuit, and what they cost in gates and seconds.
+---
+
+[`packages/circuit`](https://github.com/zpredict/zpredict/tree/main/packages/circuit) holds two programs in the [Garble](https://github.com/sine-fdn/garble-lang) language, run as 3-party MPC with [polytune](https://github.com/sine-fdn/polytune) (vendored at rev `47dc378` in [`vendor/polytune`](https://github.com/zpredict/zpredict/tree/main/vendor/polytune), with preprocessing split from the online phase). Each relayer is one party and feeds in only its own shares. The plaintext references are in [`packages/core`](https://github.com/zpredict/zpredict/tree/main/packages/core); differential tests check the circuits against them.
+
+## Clearing ([`clear.garble.rs`](https://github.com/zpredict/zpredict/blob/main/packages/circuit/src/clear.garble.rs))
+
+**Inputs.** Each party's shares of a fixed-size batch of orders (`DEFAULT_SLOTS` = 8, up to `MAX_SLOTS` = 21, padded with dummies), of the whole balance table (`id | balance | key share`, `DEFAULT_ROWS` = 32, 48 on the demo), of the withdrawal requests (`DEFAULT_WITHDRAWALS` = 2), and its private mock flags. Public: the open market ids (`DEFAULT_MARKETS` = 6 slots) and a credit per row (deposits and judge credits, which every relayer already sees). If the parties disagree on any public input, nothing moves.
+
+**Inside**, with no data-dependent control flow:
+
+1. Rebuild orders (`s0 ^ s1 ^ s2`) and the table; add credits.
+2. **Credentials:** rebuild each row's 128-bit key from the three key shares. An order or withdrawal uses a row only if its rebuilt tag equals that key (~21k AND gates at 8 slots × 32 rows).
+3. **Withdrawals** first: each is taken only if its row covers it and no party flagged the row as mock. A public bit per slot says whether it went through.
+4. **Reserve:** in batch order, each order reserves its worst case (`size × 2 × price` half-ticks) from its row. Unfunded, unknown market or malformed → dummy.
+5. **Cross** within each market: YES `p` against NO `q` when `p + q ≥ 100`, at the midpoint. Instead of sorting, each side's sizes are laid end to end and a YES/NO pair fills by the overlap of their intervals (N×N comparisons); once a pair stops crossing, every later pair does too.
+6. Debit rows what their orders actually paid.
+
+**Outputs.** Each party's XOR share of every slot's 10-byte fill record and every row's new balance, the withdrawal bits, and one public clearing price per market (volume-weighted YES cost, rounded down). Unfilled and dummy slots are all-zero records, indistinguishable from filled ones to a relayer.
+
+## Resolution ([`resolve.garble.rs`](https://github.com/zpredict/zpredict/blob/main/packages/circuit/src/resolve.garble.rs))
+
+When all three nodes agree a market resolved and on its outcome, a second, small program runs over **every** position (each batched order share with its fill share), `DEFAULT_POSITIONS` = 16 per run: one unit per winning contract goes into the row whose key equals the order's tag, as shares. Nobody learns which positions were in that market, filled or won. Reference: `zpredict_core::resolve`.
+
+## Cost
+
+Three processes over localhost on an M4 Pro, release build (`cargo run --release -p zpredict-circuit --example bench <runs> <rows> <slots>`), from [`lib.rs`](https://github.com/zpredict/zpredict/blob/main/packages/circuit/src/lib.rs) and [`deploy/README.md`](https://github.com/zpredict/zpredict/blob/main/deploy/README.md):
+
+| Slots × rows | Markets | AND gates | Preprocessing | Online | Compile |
+|---|---|---|---|---|---|
+| 8 × 32 | 4 | 290,543 | 5.7 s | 0.45–0.53 s | 6.5 s |
+| 8 × 48 | 4 | 385,321 | 8.0 s | 0.61–0.77 s | 17 s |
+| 8 × 48 | 6 | 393,999 | +3% | same | |
+| 8 × 64 | 4 | 480,287 | 10.0 s | 0.78–0.97 s | 28 s |
+| Resolution, 16 positions × 32 rows | | 158,335 | ~3.5 s total | | |
+
+Crossing costs ~N² AND gates; each table row ~8k, each market slot ~4.3k. Each party uses about one core. Peak RSS at 48 rows (Linux): r0 ~1.1 GB, r1/r2 ~0.55 GB.
+
+**Preprocessing ahead.** About 92% of a run is input-independent preprocessing, so the relayers prepare one run ahead and hold it ([#94](https://github.com/zpredict/zpredict/issues/94)); a window with orders runs only the online part. A held run is used only if all three hold the same one. On the hosted VPS (~5.7× slower than the M4 Pro) a fill shows about 25 s after the order, mostly waiting for the window and the run.
+
+## Tests
+
+```sh
+cargo test -p zpredict-circuit                      # differential + resolution tests
+cargo test -p zpredict-circuit a_relayer_cannot_act_as_an_account
+cargo test -p zpredict-circuit mock_rows_never_withdraw
+```
+
+[`tests/differential.rs`](https://github.com/zpredict/zpredict/blob/main/packages/circuit/tests/differential.rs) checks the circuit against `clear_with_balances` (`circuit_matches_clear_with_balances`, `other_shapes_match`), that a relayer can't act as an account, that mock rows never withdraw, and that disagreeing public inputs are an error; [`tests/resolution.rs`](https://github.com/zpredict/zpredict/blob/main/packages/circuit/tests/resolution.rs) does the same for `resolve`.

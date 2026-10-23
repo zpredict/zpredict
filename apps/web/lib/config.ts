@@ -15,6 +15,7 @@ function parseRelayers(raw: string | undefined): Relayers {
 export const relayers = parseRelayers(process.env.NEXT_PUBLIC_RELAYERS);
 
 export const LANDING_URL = "https://zpredict.site";
+export const DOCS_URL = "https://docs.zpredict.site";
 
 /**
  * The escrow's Ironwood-only unified address, published by the FROST DKG and baked in at

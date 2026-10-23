@@ -4,7 +4,7 @@
 
 Shielded prediction market on Zcash. Price public, participants private: nobody learns that you bet, which side, or how much.
 
-**[Try it](https://app.zpredict.site)** (Judge mode) · [Pitch video](https://zpredict.site/pitch/) · [Site](https://zpredict.site) · [Design](DESIGN.md) · [Privacy audit](PRIVACY.md)
+**[Try it](https://app.zpredict.site)** (Judge mode) · [Docs](https://docs.zpredict.site) · [Pitch video](https://zpredict.site/pitch/) · [Site](https://zpredict.site) · [Design](DESIGN.md) · [Privacy audit](PRIVACY.md)
 
 ## How it works
 
@@ -20,7 +20,7 @@ Reading orders needs all three relayers; moving funds needs two. Demo limits (on
 | Path | What |
 |---|---|
 | `apps/relayer` | Relayer: HTTP API, Noise peer links, MPC party, deposits, payouts |
-| `apps/web`, `apps/landing` | Next.js app, Astro site |
+| `apps/web`, `apps/landing`, `apps/docs` | Next.js app, Astro site, docs (Fumadocs) |
 | `packages/core`, `circuit` | Order/balance encodings and the clearing rule; the Garble circuits |
 | `packages/settle`, `oracle`, `plugins` | Escrow scan and FROST payouts; market resolution |
 | `packages/sdk`, `ascii`, `brand` | Browser client, ASCII renderer, design tokens |

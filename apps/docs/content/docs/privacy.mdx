@@ -1,0 +1,79 @@
+---
+title: Privacy
+description: Who can learn what, through which data flow, the open caveats of the hosted demo, and how to check each claim yourself.
+---
+
+This page summarises [PRIVACY.md](https://github.com/zpredict/zpredict/blob/main/PRIVACY.md), the result of an adversarial audit (#15, 2026-10-23) where every claim names its evidence.
+
+**Summary.** Order privacy is 3-of-3 (all three relayers must collude); funds are 2-of-3 (FROST). Nothing transparent touches the product.
+
+<Callout type="warn">
+**Read the hosted demo as "one party can see everything".** Cloudflare terminates TLS for all three relayers, so it sees every share in clear plus client IPs ([#88](https://github.com/zpredict/zpredict/issues/88), open). And all three relayers, and the key ceremony, run on **one VM**, whose operator could read every share. The protocol's guarantees assume three independent operators with TLS ending at each relayer.
+</Callout>
+
+## Who learns what
+
+| Party | Learns | Never learns |
+|---|---|---|
+| Chain observer | That shielded Ironwood transactions happen; ZIP 317 fees | Depositors, bets, sides, sizes, winners, payout recipients |
+| Anyone (public API) | Markets, outcomes and signatures, one clearing price per market per crossing batch; a digest per share received (how many orders arrive, and when); batch number and peer health | Any share, orderId, account id, balance or fill |
+| Network observer | That your IP talks to `*.zpredict.site`; sizes and timing | Contents (TLS); with Tor, your IP |
+| **Cloudflare (as deployed)** | **Everything the relayers receive, in clear, and client IPs** (#88) | — |
+| **Demo VM operator** | **Everything** | — |
+| One relayer | Each deposit's amount, time and account id; each withdrawal's amount, address and time; its own share of everything; the public price | Orders, sides, prices, sizes, positions, balances, any tag, whose withdrawal it is (except via #90 and #91) |
+| Two relayers | As one, **and they can move escrow funds** | Orders and tags |
+| All three relayers | Everything | — |
+| Counterparty | Its own fill at the midpoint; if a single pair crossed, the midpoint and its own limit give yours | Who you are |
+| lightwalletd operators (`zec.rocks`, `testnet.zec.rocks`) | The relayer VM's IP syncing and broadcasting | Users |
+| Polymarket | The relayer VM's IP fetching public records for the mirrored markets, about every 5 min | Users, orders. The browser never contacts Polymarket |
+
+## Leak checklist
+
+| | Item | Evidence |
+|---|---|---|
+| ✅ | No transparent address in any product path | [`payout.rs`](https://github.com/zpredict/zpredict/blob/main/packages/settle/src/payout.rs) re-encodes payees Ironwood-only; `verify.rs` refuses transparent, Sapling or Orchard parts; the e2e scripts assert `transparent in+out 0` |
+| ✅ | Fixed deposit denominations; order size never on chain | `DENOMINATIONS`; orders exist only as XOR shares |
+| ⚠️ | Withdrawals don't link to deposits | Shielded on chain; relayers see amount, address and time (#91) |
+| ✅ | Memos carry no order data and never the tag | [`memo-vectors.json`](https://github.com/zpredict/zpredict/blob/main/packages/settle/testdata/memo-vectors.json) |
+| ✅ | Each order share goes only to its own relayer | `submitOrder` + `distinct()` in [`packages/sdk`](https://github.com/zpredict/zpredict/tree/main/packages/sdk) |
+| ✅ | Public feeds can't be recombined | `/view` publishes BLAKE2b-128 digests, no shares, no orderIds |
+| ✅ | One relayer can't collect fill shares | Per-relayer read token ([`orders.rs`](https://github.com/zpredict/zpredict/blob/main/apps/relayer/src/api/orders.rs)) |
+| ✅ | One relayer can't read balances or act as an account | `?key=sᵢ` gate; the circuit checks the 128-bit key (`a_relayer_cannot_act_as_an_account`) |
+| ⚠️ | TLS ends at each relayer | Cloudflare terminates TLS for all three (#88) |
+| ✅ | No third-party requests from the frontends | Self-only CSP; build gates; these docs too (below) |
+| ⚠️ | No analytics | We ship none; Cloudflare injects a beacon (blocked by CSP) and NEL headers ([#89](https://github.com/zpredict/zpredict/issues/89)) |
+| ✅ | No IP logs | nginx `access_log off`, `error_log /dev/null`, client-IP headers stripped; Caddy and the relayers log no addresses |
+| ⚠️ | Request metadata doesn't link actions to an account | Poll jitter, no balance read on fill; connection-level linkage open ([#90](https://github.com/zpredict/zpredict/issues/90)) |
+| ✅ | Viewing keys and key shares never leave the relayers or appear in logs | Sealed at rest ([Settlement & FROST](/docs/settlement#secrets-at-rest)) |
+| ✅ | No secrets in git | `trufflehog git file://. --no-verification` over all history |
+
+## Accepted limitations
+
+- **Single-VM demo** and **Cloudflare** (above).
+- **Demo counterparty.** "Take the other side (demo)" sends a judge's order and its exact opposite together from the same account, so a relayer can guess they came from one browser. It still can't read either.
+- **Relayers see deposit and withdrawal amounts**, addresses and times, and the account id behind each deposit.
+- **Key-burn DoS.** A dishonest relayer can pre-register shares for an id it learned and burn that row: funds locked, never stolen.
+- **Public price** per market per crossing batch, and order arrival counts through `/view`.
+- **Two relayers can move escrow funds**, while order privacy needs all three.
+- **Not quantum-recoverable** escrow notes (ZIP 2005; see [Threat model](/docs/threat-model)).
+- **Mirrored markets trust Polymarket** ([Markets](/docs/markets#mirrored-polymarket-markets)).
+
+## These docs
+
+docs.zpredict.site makes no third-party requests: the font (JetBrains Mono) and every image are self-hosted, search runs on this server, and there are no analytics or cookies. Each page carries a CSP with a per-request script nonce and `default-src 'none'`, no remote origin anywhere. `pnpm build` fails if the client bundle references a third-party host, and the smoke test fails if a rendered page would fetch one ([`apps/docs`](https://github.com/zpredict/zpredict/tree/main/apps/docs)). Links to GitHub and elsewhere are plain links; nothing loads until you click.
+
+## Verify it yourself
+
+```sh
+# Public views hold digests only: nothing to XOR.
+for i in 0 1 2; do curl -s "https://r$i.zpredict.site/view?after=0" | head -c 300; echo; done
+# Fill shares need the browser's token.
+curl -s https://r0.zpredict.site/orders/00000000000000000000000000000000
+# CSP of the app: self-only, connect-src = the three relayers.
+curl -sI https://app.zpredict.site | grep -i 'content-security-policy\|referrer'
+# Is TLS still at Cloudflare (#88)? "server: cloudflare" means yes.
+curl -sI https://r1.zpredict.site/health | grep -i 'server\|cf-ray'
+# Code: one relayer can't act as an account; the full flow pays to Ironwood only.
+cargo test -p zpredict-circuit a_relayer_cannot_act_as_an_account
+scripts/relayer-e2e.sh
+```

@@ -1,0 +1,26 @@
+{
+	"title": "zPredict",
+	"pages": [
+		"---Start---",
+		"introduction",
+		"how-it-works",
+		"markets",
+		"your-money",
+		"---Privacy---",
+		"privacy",
+		"threat-model",
+		"---Build---",
+		"relayer-api",
+		"sdk",
+		"circuits",
+		"settlement",
+		"run-a-relayer",
+		"---Proof---",
+		"evidence",
+		"status",
+		"---More---",
+		"faq",
+		"contributing",
+		"acknowledgements"
+	]
+}

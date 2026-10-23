@@ -18,14 +18,15 @@
 | https://zpredict.site | app `landing` (`apps/landing/Dockerfile`) | 3170 |
 | https://app.zpredict.site | app `web` (`apps/web/Dockerfile`) | 3171 |
 | https://r0.zpredict.site … r2 | compose `relayers` (`production/compose.yaml`) | 3172–3174 |
+| https://docs.zpredict.site | app `docs` (`apps/docs/Dockerfile`, Next standalone server) | 3175 |
 
 Request path: browser → Cloudflare (proxied) → host nginx on the VPS (TLS, `production/nginx.conf`) → container on `127.0.0.1:<port>`. Coolify builds the images on the VPS from this repo; nothing is pushed to a registry.
 
-**Privacy:** the static sites are Caddy with no `log` directive; host nginx has `access_log off`, `error_log /dev/null` and forwards no client IP. Each image's CSP is self-only: inline scripts and styles are allowed by sha256 hash computed at build (`static/prepare.mjs`), and the web app's `connect-src` adds exactly the three relayer origins from `NEXT_PUBLIC_RELAYERS`. Cloudflare still sees visitor IPs; that is outside this repo.
+**Privacy:** the static sites are Caddy with no `log` directive, and the docs server logs no requests; host nginx has `access_log off`, `error_log /dev/null` and forwards no client IP. Each image's CSP is self-only: inline scripts and styles are allowed by sha256 hash computed at build (`static/prepare.mjs`), and the web app's `connect-src` adds exactly the three relayer origins from `NEXT_PUBLIC_RELAYERS`. The docs server sets its CSP per request with a script nonce (`apps/docs/src/proxy.ts`). Cloudflare still sees visitor IPs; that is outside this repo.
 
 ### DNS (Cloudflare, proxied, all A → VPS)
 
-`zpredict.site`, `app`, `r0`, `r1`, `r2`. Cloudflare SSL mode Full or Full (strict): the origin has a Let's Encrypt cert for all five names.
+`zpredict.site`, `app`, `r0`, `r1`, `r2`, `docs`. Cloudflare SSL mode Full or Full (strict): the origin has a Let's Encrypt cert for all six names.
 
 ### Deploy / redeploy
 

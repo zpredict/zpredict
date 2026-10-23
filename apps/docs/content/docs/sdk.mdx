@@ -1,0 +1,108 @@
+---
+title: SDK
+description: "@zpredict/sdk: order encoding, XOR sharing, deposit memos, withdrawals, outcome verification and the relayer client, as used by the web app."
+---
+
+[`packages/sdk`](https://github.com/zpredict/zpredict/tree/main/packages/sdk) is the browser side of zPredict. It mirrors `zpredict-core` byte for byte and talks to the three relayers, sending each one only its own share. Dependencies: `@noble/hashes` and `@noble/ciphers` (BLAKE2b, ChaCha20-Poly1305); X25519 is WebCrypto. It is a workspace package (`"@zpredict/sdk": "workspace:*"`), not published to npm.
+
+```sh
+pnpm --filter @zpredict/sdk build   # tsc → dist/
+pnpm --filter @zpredict/sdk test    # node --test, incl. the Rust test vectors
+```
+
+Every function that talks to more than one relayer first calls `distinct(relayers)`, which throws unless the three URLs are three different origins, so no host ever receives two shares.
+
+## Setup
+
+```ts
+import { RELAYERS, newTag, type Relayers } from "@zpredict/sdk";
+
+const relayers: Relayers = RELAYERS; // the hosted testnet relayers r0, r1, r2
+const tag = newTag();               // 16 random bytes, hex: the account's credential. Keep it.
+```
+
+`RELAYERS` is `["https://r0.zpredict.site", "https://r1.zpredict.site", "https://r2.zpredict.site"]`.
+
+## Accounts
+
+```ts
+import { accountHex, claimJudge, getAccount, keyShares, TableFullError } from "@zpredict/sdk";
+
+accountHex(tag);   // public id, hex16
+keyShares(tag);    // [s0, s1, s2]: relayer i's share of the tag, deterministic
+
+await claimJudge(relayers, tag);   // Judge mode (testnet): mock credit; safe to retry
+const { balance, seat, mock } = await getAccount(relayers, tag); // balance in half-ticks
+```
+
+`claimJudge` throws `TableFullError` when the balance table has no free row. `getBalance(relayers, tag)` returns only the balance.
+
+## submitOrder
+
+```ts
+import { submitOrder, submitWithCounterparty, getFill } from "@zpredict/sdk";
+
+const order = { market: 1, side: 0, price: 60, size: 10, key: tag } as const; // YES at 60¢ × 10
+const { orderId, batch, shares, tokens } = await submitOrder(relayers, order);
+
+// Poll until the batch ran. Keep `tokens`: relayer i answers only to tokens[i].
+const res = await getFill(relayers, orderId, tokens);
+if (res.status === "filled" && res.fill?.filled) {
+  const avgCents = res.fill.totalCost / res.fill.size / 2;
+}
+```
+
+- `side`: `0` = YES, `1` = NO. `price`: 1..=99. `size` ≤ `MAX_SIZE` (1,000,000).
+- `getFill` returns `pending`, `unfilled` (expired before batching) or `filled` with the decoded record; it throws if the relayers disagree.
+- `submitWithCounterparty(relayers, order)` is the **demo** counterparty: it also sends `counterOrder(order)` (the other side at `100 − price`, same account), so a lone judge sees a self-trade fill that nets out at resolution.
+
+## Deposits
+
+```ts
+import { encodeMemo, depositUri, getMemoKeys } from "@zpredict/sdk";
+
+const keys = await getMemoKeys(relayers);       // each fetched from its own relayer, checked in order
+const memo = await encodeMemo(tag, keys);       // 512 bytes; fresh ephemeral key per memo
+const uri = depositUri(escrowUa, 5, memo);      // ZIP 321: zcash:<ua>?amount=0.05&memo=…
+```
+
+`DENOMINATIONS` is `[1, 5, 25]` units; `depositUri` refuses any other amount. `unitsToZec(5)` is `"0.05"`.
+
+## Withdrawals
+
+```ts
+import { submitWithdrawal, getWithdrawal, payoutZats } from "@zpredict/sdk";
+
+const { withdrawalId } = await submitWithdrawal(relayers, tag, 5000n, freshShieldedUa);
+const { status, txid } = await getWithdrawal(relayers, withdrawalId); // relayer 0 pays, so its view
+payoutZats(5000n); // (5000 − 2) × 5000 zats: 2 half-ticks go toward the fee
+```
+
+`amount` is in half-ticks and must exceed `WITHDRAWAL_FEE` (2). Use a fresh unified address with an Orchard-shaped receiver; payouts go to the Ironwood pool.
+
+## verifyOutcome
+
+```ts
+import { getGroupKey, getMarkets, verifyOutcome } from "@zpredict/sdk";
+
+const groupKey = await getGroupKey(relayers);   // null unless all three serve the same key
+const markets = await getMarkets(relayers[0]);
+for (const m of markets) {
+  if (m.status === "resolved" && groupKey) console.log(m.id, verifyOutcome(m, groupKey));
+}
+```
+
+`verifyOutcome` rebuilds the signed message (`outcomeMessage`: block form or Polymarket form) and checks the RedPallas signature over Pallas in plain BigInt arithmetic; only public data is involved.
+
+## Low level
+
+| Export | What |
+|---|---|
+| `encodeOrder`, `decodeOrder`, `decodeFill`, `decodeBalance` | The byte layouts in [Relayer API](/docs/relayer-api#encodings) |
+| `split(bytes)`, `combine(shares)` | Three XOR shares and back |
+| `viewDigest(share)` | The digest `/view` publishes for a share, to find your own items |
+| `getView(url, after)` | One relayer's `/view` |
+| `ORDER_LEN`, `FILL_LEN`, `BALANCE_LEN`, `HALF_TICKS_PER_UNIT`, `UNIT_ZATS`, `ZATS_PER_HALF_TICK` | Constants |
+| `Market`, `Health`, `OrderStatus`, `WithdrawalStatus`, … | Reply types |
+
+Source: [`index.ts`](https://github.com/zpredict/zpredict/blob/main/packages/sdk/src/index.ts), [`memo.ts`](https://github.com/zpredict/zpredict/blob/main/packages/sdk/src/memo.ts), [`withdraw.ts`](https://github.com/zpredict/zpredict/blob/main/packages/sdk/src/withdraw.ts), [`outcome.ts`](https://github.com/zpredict/zpredict/blob/main/packages/sdk/src/outcome.ts).

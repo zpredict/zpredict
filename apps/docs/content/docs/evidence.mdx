@@ -1,0 +1,63 @@
+---
+title: Evidence
+description: The test suites, the end-to-end runs and their outputs, the testnet transactions, and how to check each claim yourself.
+---
+
+Every claim in these docs should be checkable from the repository. This page lists where.
+
+## Test suites
+
+| Command | Covers |
+|---|---|
+| `cargo test --workspace` | Unit tests next to the code in every crate; [`packages/circuit/tests`](https://github.com/zpredict/zpredict/tree/main/packages/circuit/tests) (circuit vs plaintext reference, credentials, mock rows); [`packages/settle/tests`](https://github.com/zpredict/zpredict/tree/main/packages/settle/tests) (memo and outcome vectors); relayer API contract tests such as `orders_contract`. Slow real-MPC and live-network tests are `#[ignore]` |
+| `pnpm test` | `@zpredict/sdk` against the Rust test vectors ([`core`](https://github.com/zpredict/zpredict/blob/main/packages/core/testdata/vectors.json), [`memo`](https://github.com/zpredict/zpredict/blob/main/packages/settle/testdata/memo-vectors.json), [`outcome`](https://github.com/zpredict/zpredict/blob/main/packages/settle/testdata/outcome-vectors.json)); the web app's chart, markets and mock clearing; these docs (link linter, smoke test) |
+| `pnpm build` | Builds every app, including the privacy gates of the app and these docs (no third-party URLs in what the browser loads) |
+| `pnpm check:ci` | Biome lint and format |
+
+CI ([`ci.yml`](https://github.com/zpredict/zpredict/blob/main/.github/workflows/ci.yml)) runs all of them, plus `cargo fmt --check` and `clippy -D warnings`, on every pull request; `main` requires it to pass.
+
+## End-to-end runs (regtest)
+
+| Script | Proves |
+|---|---|
+| [`scripts/relayer-e2e.sh`](https://github.com/zpredict/zpredict/blob/main/scripts/relayer-e2e.sh) | Deposit → trade → resolution → withdrawal through three real relayers; forged withdrawals by each relayer refused; payout is v6, Ironwood only, `transparent in+out 0`; no unsealed secret left |
+| [`scripts/settle-e2e.sh`](https://github.com/zpredict/zpredict/blob/main/scripts/settle-e2e.sh) | Sealed DKG → two deposits → one batched 2-of-3 payout → mined; a one-zatoshi tampered vector is refused |
+| [`scripts/scan-e2e.sh`](https://github.com/zpredict/zpredict/blob/main/scripts/scan-e2e.sh) | A tagged deposit is found by all three relayers' scanners, each opening only its memo slot (`MEMO_FROM=sdk` builds the request with the SDK) |
+
+Regtest output recorded in [`packages/settle/README.md`](https://github.com/zpredict/zpredict/blob/main/packages/settle/README.md) (each run is a fresh chain, so ids differ):
+
+```
+settle-payout: refused to sign: action 0: 4000000 zats to an address not in the payout vector
+txid 8f5c8135addb23796c87f557ccb01dd1a859363b64a6680d48f01644c7d4cf00  version 6  height 123  ironwood actions 3  orchard actions 0  transparent in+out 0
+```
+
+## Testnet
+
+| What | Value |
+|---|---|
+| Escrow (Ironwood-only UA) | `utest18yg3cneyjgxxknjm0j9020hmx5jp2wm67qn2p3rfmflct9hwlt363gzl50qeu3ms2u044hq8jzuzkl2tq8xa4m0ukzvlpqgtvu96ffyy` |
+| FROST group key (`ak`) | `a0cff44d86411e03d1ae3a76982d38bf0aac73db9568a2496324167486dbc534` |
+| Escrow birthday | testnet block 4,530,716 (key ceremony, 2026-10-23) |
+
+<Callout type="info">
+**Testnet transactions: to be added.** Deposit and payout txids from the hosted demo go here once recorded (deposit txid, payout txid, block height, and the explorer-independent check below). Until then the regtest runs above are the on-chain evidence.
+</Callout>
+
+| Kind | txid | Height |
+|---|---|---|
+| Deposit | _pending_ | |
+| Batched payout | _pending_ | |
+
+Check a txid against your own node: `zcash-cli getrawtransaction <txid> 1` should show version 6, Ironwood actions, and no transparent inputs or outputs.
+
+## Check the live claims
+
+```sh
+curl -s https://r0.zpredict.site/group-key          # the same key on r0, r1, r2
+curl -s https://r0.zpredict.site/markets | jq '.[] | select(.status=="resolved") | {id, outcome, blockHash, outcomeSig}'
+for i in 0 1 2; do curl -s "https://r$i.zpredict.site/view?after=0" | head -c 200; echo; done   # digests only
+curl -sI https://app.zpredict.site | grep -i content-security-policy
+curl -sI https://docs.zpredict.site/docs/introduction | grep -i content-security-policy
+```
+
+The full list of checks, with what to expect, is in [PRIVACY.md "Verify it yourself"](https://github.com/zpredict/zpredict/blob/main/PRIVACY.md#verify-it-yourself).

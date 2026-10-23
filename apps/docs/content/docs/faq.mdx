@@ -1,0 +1,48 @@
+---
+title: FAQ
+description: Short answers to what people ask first.
+---
+
+## Is it live? Is it real money?
+
+It runs on Zcash **testnet**, with markets resolved from mainnet data. Judge mode gives mock credit that can never be withdrawn. See [Status](/docs/status).
+
+## Who holds my money?
+
+A FROST 2-of-3 escrow on the Ironwood pool. Any two relayers can move it together; one alone cannot. On the demo all three run on one VM, so that split is not real there. See [Your money](/docs/your-money).
+
+## What can a relayer see?
+
+Random-looking shares, the amounts and times of deposits and withdrawals, and the public price. Not your orders, side, size, balance, or which withdrawal is yours. See [Privacy](/docs/privacy).
+
+## Why is the price public?
+
+A market needs a price. Each crossing batch reveals one clearing price per market: that a cross happened and at what price, never who, how many or what size.
+
+## Why didn't my order fill?
+
+Orders only cross within the batch they land in and don't rest between batches. On the demo, tick **Take the other side (demo)** to add a counter-order from your own account.
+
+## Why fixed deposit sizes?
+
+1, 5 and 25 units (0.01, 0.05 and 0.25 ZEC). An odd amount would be a fingerprint on chain; other amounts are never credited.
+
+## Can a relayer steal from me or trade as me?
+
+Not alone. Your account's tag never leaves your browser whole, and the circuit only lets a request use your row if its shares rebuild your key. Two colluding relayers could move escrow funds (FROST 2-of-3). See [Threat model](/docs/threat-model).
+
+## Who decides the Polymarket markets?
+
+Polymarket (UMA). The relayers each read Polymarket's public record and sign only an outcome all three read the same. Nobody can recompute it from a block. See [Markets & resolution](/docs/markets#mirrored-polymarket-markets).
+
+## How do I check an outcome?
+
+Resolved markets carry the block hash and height and a FROST signature. `verifyOutcome` in the SDK checks it against the group key all three relayers serve; the app runs it in your browser.
+
+## Do these docs track me?
+
+No. No analytics, no cookies, no third-party requests: fonts, images and search are served from docs.zpredict.site.
+
+## Is this for agents too?
+
+Yes: [/llms.txt](https://docs.zpredict.site/llms.txt) lists every page, [/llms-full.txt](https://docs.zpredict.site/llms-full.txt) has them all in one file, and any page is Markdown with `.md` appended (or `Accept: text/markdown`).
