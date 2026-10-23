@@ -4,6 +4,7 @@ import JudgeButton from "@/components/judge/JudgeButton";
 import Card from "@/components/ui/Card";
 import Cta from "@/components/ui/Cta";
 import { useOrderTicket } from "@/hooks/useOrderTicket";
+import CounterpartyToggle from "./CounterpartyToggle";
 import NumberField from "./NumberField";
 import SideToggle from "./SideToggle";
 
@@ -37,10 +38,18 @@ export default function OrderTicket({ market, initialSide }: Props) {
 					value={t.size}
 				/>
 			</div>
+			{t.canCounter && (
+				<CounterpartyToggle
+					on={t.counterparty}
+					onChange={t.setCounter}
+					otherSide={t.side === 0 ? "NO" : "YES"}
+					sideName={t.side === 0 ? "YES" : "NO"}
+				/>
+			)}
 			<dl className="ticket__sum">
 				<dt>Last {t.side === 0 ? "YES" : "NO"} price</dt>
 				<dd className="num">{t.last === null ? "no trades yet" : `${t.last}¢`}</dd>
-				<dt>Worst-case cost</dt>
+				<dt>Worst-case cost{t.counterparty ? " (pair)" : ""}</dt>
 				<dd className="num">{t.cost} units</dd>
 				<dt>Pays if {t.side === 0 ? "YES" : "NO"}</dt>
 				<dd className="num">{t.payout} units</dd>

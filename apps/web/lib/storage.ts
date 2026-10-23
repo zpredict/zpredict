@@ -25,13 +25,5 @@ export function loadJson<T>(key: string, fallback: T): T {
 	}
 }
 
-/**
- * `claim`: a judge tag whose claim hasn't finished, so a retry reuses it (one row).
- * `own`: set when the tag was made here for a real deposit; any other tag is a judge tag.
- */
-export const KEYS = {
-	tag: "zp.tag",
-	orders: "zp.orders",
-	claim: "zp.claim",
-	own: "zp.own",
-} as const;
+/** `claim`: a judge tag whose claim hasn't finished, so a retry reuses it (one row). */
+export const KEYS = { tag: "zp.tag", orders: "zp.orders", claim: "zp.claim" } as const;

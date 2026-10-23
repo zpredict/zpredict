@@ -170,3 +170,32 @@
 .ticket__err::before {
 	content: "! ";
 }
+
+/* DEMO counterparty (#103): a labelled self-trade toggle. */
+.counter {
+	display: grid;
+	gap: 8px;
+	padding: 12px;
+	border: 1px dashed var(--zp-lime);
+}
+
+.counter__row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 13px;
+	cursor: pointer;
+}
+
+.counter__row input {
+	width: 16px;
+	height: 16px;
+	margin: 0;
+	accent-color: var(--zp-lime);
+}
+
+.counter__help {
+	color: var(--zp-muted);
+	font-size: 11px;
+	line-height: 1.55;
+}

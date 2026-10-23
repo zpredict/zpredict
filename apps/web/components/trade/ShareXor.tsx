@@ -8,6 +8,16 @@ import HexBytes from "./HexBytes";
 
 interface Props {
 	order: MyOrder;
+	/** DEMO (#103): the self-trade counter-order placed with `order`, if any. */
+	counter?: MyOrder;
+}
+
+function unfilledText(o: MyOrder): string {
+	if (o.counterId)
+		return o.retry
+			? "Not filled. Try again."
+			: "Not filled: a batch boundary fell between your order and its counter-order. Retrying the pair once…";
+	return "Not filled: nobody took the other side in this batch, and an unfilled order is dropped unopened. In judge mode, tick “Take the other side (demo)” to see a fill; otherwise someone has to take the other side in the same batch.";
 }
 
 /**
@@ -15,7 +25,7 @@ interface Props {
  * relayer, and the order that only appears when all three are XORed together. Only this
  * browser holds all three; the relayers publish digests, never shares.
  */
-export default function ShareXor({ order }: Props) {
+export default function ShareXor({ order, counter }: Props) {
 	const shares = order.shares ?? [];
 	const plain = xorHex(shares);
 	const opened = openOrder(shares);
@@ -45,9 +55,18 @@ export default function ShareXor({ order }: Props) {
 				{fill?.filled
 					? `Filled ${fill.size} @ ${avgCents(fill).toFixed(1)}¢ average — only you can open this.`
 					: fill
-						? "Not filled: nobody took the other side in this batch, and an unfilled order is dropped unopened. To see a fill, send it again and, right after it, the opposite side at 100 minus your price (or have someone in another browser take it): both land in the same batch and cross."
-						: `Waiting for batch ${order.batch} to clear…`}
+						? unfilledText(order)
+						: order.retry && order.counterId
+							? "Retrying in the next batch…"
+							: `Waiting for batch ${order.batch} to clear…`}
 			</p>
+			{counter && (
+				<p className="xor__counter">
+					<Badge tone="mock">Mock</Badge> Demo counterparty (self-trade): your own{" "}
+					{sideName(counter.side)} {counter.size} × {counter.price}¢,{" "}
+					{counter.status === "pending" ? "pending" : counter.status}.
+				</p>
+			)}
 		</Card>
 	);
 }

@@ -26,7 +26,9 @@ export default function TradeScreen() {
 
 	const market = markets?.find((m) => m.id === wanted) ?? markets?.find((m) => m.status === "open");
 	const mine = orders.filter((o) => o.market === market?.id);
-	const latest = mine[0];
+	// The trader's own latest order; a demo counter-order is shown under it, never as the result.
+	const latest = mine.find((o) => !o.counterOf);
+	const counter = latest?.counterId ? mine.find((o) => o.orderId === latest.counterId) : undefined;
 	const digests = useMemo(() => digestsOf(orders), [orders]);
 
 	return (
@@ -46,7 +48,7 @@ export default function TradeScreen() {
 								) : (
 									<p className="note">Trading on this market has closed.</p>
 								)}
-								{latest && <ShareXor order={latest} />}
+								{latest && <ShareXor counter={counter} order={latest} />}
 								<OrderList orders={mine} />
 								<DepositInfo />
 								<WithdrawForm />

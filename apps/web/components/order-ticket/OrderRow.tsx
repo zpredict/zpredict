@@ -10,12 +10,14 @@ const fillText = (o: MyOrder) => {
 
 export default function OrderRow({ order: o }: { order: MyOrder }) {
 	return (
-		<li className={`orow orow--${o.status}`}>
+		<li className={`orow orow--${o.status}${o.counterOf ? " orow--counter" : ""}`}>
 			<Badge tone={o.side === 0 ? "yes" : "no"}>{sideName(o.side)}</Badge>
 			<span className="num">
 				{o.size} × {o.price}¢
 			</span>
-			<span className="orow__id">{o.orderId.slice(0, 8)}</span>
+			<span className="orow__id">
+				{o.counterOf ? "demo counterparty (self-trade)" : o.orderId.slice(0, 8)}
+			</span>
 			<span className="orow__fill num">{fillText(o)}</span>
 		</li>
 	);
