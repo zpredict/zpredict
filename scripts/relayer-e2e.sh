@@ -80,8 +80,10 @@ TX=$(rpc getrawtransaction "[\"$TXID\", 1]")
 echo "txid $TXID  version $(jq -r .result.version <<<"$TX")  ironwood actions $(jq -r '.result.ironwood.actions | length' <<<"$TX")  transparent in+out $(jq -r '(.result.vin | length) + (.result.vout | length)' <<<"$TX")"
 [ "$(jq -r '(.result.vin | length) + (.result.vout | length)' <<<"$TX")" = 0 ] || die "transparent parts"
 sync_wallet payee
-wallet payee balance | grep -E 'Balance:'
-wallet payee balance | grep -q '0.29240000' || die "payee did not receive (5850 - 2) x 5000 zats"
+# Read once: `grep -q` closing the pipe early made devtool panic on EPIPE, failing pipefail.
+BAL=$(wallet payee balance)
+grep -E 'Balance:' <<<"$BAL"
+grep -q '0.29240000' <<<"$BAL" || die "payee did not receive (5850 - 2) x 5000 zats"
 
 log "no relayer secret in clear"
 clear=$(find "$F" -type f ! -name '*.sealed')
