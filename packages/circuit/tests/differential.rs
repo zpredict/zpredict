@@ -149,7 +149,7 @@ fn disagreement_is_an_error() {
     let batch = random_batch(&mut Rng(3), 16, 16);
     let ours = &batch.public;
     let other_markets = Public {
-        markets: vec![7, 9, 0, 0],
+        markets: [7, 9].into_iter().chain([0; MARKETS.len() - 2]).collect(),
         ..ours.clone()
     };
     let more_credits = Public {
