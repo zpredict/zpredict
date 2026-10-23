@@ -1,6 +1,7 @@
-// The demo markets: same questions, heights and opening prices as the landing
-// (apps/landing/src/data/markets.ts). Params follow packages/plugins/*. Every market
-// resolves at a future mainnet height; a market closes 100 blocks before it resolves.
+// The demo markets: the three headline markets of deploy/production/relayer.toml (shown on
+// the landing) plus three extra ones, with mock opening prices. Params follow
+// packages/plugins/*. Every market resolves at a future mainnet height; a market closes 100
+// blocks before it resolves.
 
 const market = (id, plugin, question, params, resolveHeight, fair) => ({
 	id,

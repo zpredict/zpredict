@@ -1,11 +1,10 @@
 ---
 /**
- * The core object of a prediction market, square and mono: question, chance, YES/NO prices,
- * probability bar and sparkline, plus what stays hidden on zPredict.
+ * A live market, square and mono: question, resolve height, YES/NO links into the app, plus
+ * what stays hidden on zPredict. No price: the live one is in the app.
  */
 import { categoryOf, type Market } from "../../data/markets";
 import { site } from "../../data/site";
-import Sparkline from "./Sparkline.astro";
 
 interface Props {
 	market: Market;
@@ -13,32 +12,37 @@ interface Props {
 }
 
 const { market, class: className } = Astro.props;
-const no = 100 - market.yes;
-const height = market.resolveHeight.toLocaleString("en-US");
+const trade = (side: string) => `${site.appUrl}/trade/?m=${market.id}&side=${side}`;
 ---
 
 <article class:list={["market", className]}>
 	<header class="top">
 		<span class="category">{categoryOf[market.plugin]}</span>
-		<span class="height">Block {height}</span>
+		<span class="height">{market.resolve}</span>
 	</header>
 
 	<h3 class="question">{market.question}</h3>
 
-	<div class="odds">
-		<p class="chance"><span class="pct">{market.yes}%</span> chance</p>
-		<Sparkline class="spark" points={market.history} />
-	</div>
-	<div class="bar" aria-hidden="true"><span style={`width:${market.yes}%`}></span></div>
+	<p class="live">Live price in the app</p>
 
-	<div class="prices">
-		<a class="price price--yes" href={site.appUrl} aria-label={`Buy Yes ${market.yes}¢`}>
-			Yes <strong>{market.yes}¢</strong>
-		</a>
-		<a class="price price--no" href={site.appUrl} aria-label={`Buy No ${no}¢`}>
-			No <strong>{no}¢</strong>
-		</a>
-	</div>
+	{
+		market.id === undefined ? (
+			<div class="prices prices--one">
+				<a class="price price--yes" href={`${site.appUrl}/`}>
+					This hour's market <span aria-hidden="true">→</span>
+				</a>
+			</div>
+		) : (
+			<div class="prices">
+				<a class="price price--yes" href={trade("yes")} aria-label={`Trade Yes: ${market.question}`}>
+					Yes <span aria-hidden="true">→</span>
+				</a>
+				<a class="price price--no" href={trade("no")} aria-label={`Trade No: ${market.question}`}>
+					No <span aria-hidden="true">→</span>
+				</a>
+			</div>
+		)
+	}
 
 	<footer class="meta">
 		<span>Bettors: hidden</span>
@@ -92,41 +96,20 @@ const height = market.resolveHeight.toLocaleString("en-US");
 		letter-spacing: -0.02em;
 		text-wrap: balance;
 	}
-	.odds {
-		display: flex;
-		align-items: flex-end;
-		justify-content: space-between;
-		gap: 16px;
+	.live {
 		margin-top: auto;
-	}
-	.chance {
 		color: var(--zp-muted);
-		white-space: nowrap;
-	}
-	.pct {
-		margin-right: 4px;
-		color: var(--zp-lime);
-		font-size: 40px;
-		line-height: 1;
-		letter-spacing: -0.06em;
-	}
-	.spark {
-		width: 46%;
-		height: 36px;
-	}
-	.bar {
-		height: 4px;
-		background: rgb(255 255 255 / 0.08);
-	}
-	.bar span {
-		display: block;
-		height: 100%;
-		background: var(--zp-lime);
+		font-size: 11px;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
 	}
 	.prices {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
 		gap: 6px;
+	}
+	.prices--one {
+		grid-template-columns: 1fr;
 	}
 	.price {
 		display: flex;
@@ -140,9 +123,6 @@ const height = market.resolveHeight.toLocaleString("en-US");
 			background-color 250ms ease,
 			color 250ms ease,
 			border-color 250ms ease;
-	}
-	.price strong {
-		font-weight: inherit;
 	}
 	.price--yes {
 		background: var(--zp-lime);
