@@ -9,6 +9,7 @@ import { accountHex, KEY_LEN, keyShares, type MemoKeys } from "./memo.js";
 export * from "./address.js";
 export * from "./backup.js";
 export { fromHex, random, toHex } from "./bytes.js";
+export * from "./faucet.js";
 export type { Relayers } from "./http.js";
 export * from "./memo.js";
 export * from "./outcome.js";

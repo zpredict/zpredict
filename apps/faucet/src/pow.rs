@@ -167,4 +167,14 @@ mod tests {
         assert_eq!(zero_bits(&[0x80]), 0);
         assert_eq!(zero_bits(&[0, 0]), 16);
     }
+
+    /// Pinned in packages/sdk/src/faucet.test.ts too: both languages find the same nonce.
+    #[test]
+    fn cross_language_vector() {
+        let raw = include_str!("../../../packages/settle/testdata/memo-vectors.json");
+        let v: serde_json::Value = serde_json::from_str(raw).unwrap();
+        let m = memo::parse(v["memos"][0]["uriMemo"].as_str().unwrap()).unwrap();
+        let c = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2021222324252627";
+        assert_eq!(solve(c, &m, 12), 720);
+    }
 }
