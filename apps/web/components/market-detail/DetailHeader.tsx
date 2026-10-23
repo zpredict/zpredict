@@ -1,5 +1,6 @@
 import type { Market } from "@zpredict/sdk";
 import Link from "next/link";
+import DocumentTitle from "@/components/layout/DocumentTitle";
 import Glyph from "@/components/markets/Glyph";
 import PrivacyChips from "@/components/markets/PrivacyChips";
 import Badge from "@/components/ui/Badge";
@@ -10,6 +11,7 @@ export default function DetailHeader({ market: m, group }: { market: Market; gro
 	const title = m.event?.title ?? m.question;
 	return (
 		<header className="dhead">
+			<DocumentTitle title={title} />
 			<Glyph market={m} size="lg" />
 			<div className="dhead__text">
 				<p className="dhead__cat">
