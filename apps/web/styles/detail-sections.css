@@ -59,6 +59,10 @@
 	gap: 12px;
 }
 
+.dtabs__pos[hidden] {
+	display: none;
+}
+
 .dtabs .rpanel {
 	height: 460px;
 }
@@ -131,10 +135,6 @@
 	font-size: 12px;
 }
 
-.related__row:hover .related__q {
-	color: var(--zp-lime);
-}
-
 .related__q {
 	display: -webkit-box;
 	overflow: hidden;
@@ -143,5 +143,9 @@
 }
 
 .related__pct {
+	color: var(--zp-lime);
+}
+
+.related__row:hover .related__q {
 	color: var(--zp-lime);
 }

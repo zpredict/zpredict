@@ -204,10 +204,6 @@
 	border-bottom: 0;
 }
 
-.soon__row:hover .soon__q {
-	color: var(--zp-lime);
-}
-
 .soon__n {
 	color: var(--zp-muted);
 }
@@ -227,4 +223,8 @@
 .soon__meta small {
 	color: var(--zp-muted);
 	font-size: 10px;
+}
+
+.soon__row:hover .soon__q {
+	color: var(--zp-lime);
 }
