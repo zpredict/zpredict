@@ -4178,6 +4178,23 @@ name = "zpredict-core"
 version = "0.1.0"
 
 [[package]]
+name = "zpredict-faucet"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "base64 0.22.1",
+ "blake2b_simd",
+ "getrandom 0.3.4",
+ "hex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower",
+ "x25519-dalek",
+]
+
+[[package]]
 name = "zpredict-oracle"
 version = "0.1.0"
 dependencies = [
