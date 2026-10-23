@@ -5,7 +5,13 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const DIST = new URL("../dist/", import.meta.url).pathname;
-const ROUTES = ["index.html", "pitch/index.html", "404.html"];
+const ROUTES = [
+	"index.html",
+	"pitch/index.html",
+	"privacy/index.html",
+	"terms/index.html",
+	"404.html",
+];
 
 const bad = [];
 const pages = [];
