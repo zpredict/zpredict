@@ -249,6 +249,32 @@ export async function submitOrder(relayers: Relayers, order: Order) {
 	return { orderId, batch: Math.max(...res.map((r) => r.batch)), shares, tokens };
 }
 
+/**
+ * The order that crosses `o` exactly: the other side at `100 - price`, same market and size,
+ * from the same account. `p + (100 - p) = 100`, so they always cross, at `p`.
+ */
+export function counterOrder(o: Order): Order {
+	return { ...o, side: o.side === 0 ? 1 : 0, price: 100 - o.price };
+}
+
+/**
+ * DEMO counterparty (#103): submits `o` and {@link counterOrder}(o) from the same account
+ * together, so a lone judge sees a fill even with nobody else trading. The two orders
+ * fill against each other (a self-trade): the account pays `p` for one side and
+ * `100 - p` for the other, one unit per contract, and gets one unit back per contract at
+ * resolution, so its balance nets out. Each order is still split and sent like any
+ * other; relayers can at most guess from timing that the two came together. It takes
+ * two of the batch's order slots. If a batch boundary falls between the two submissions,
+ * neither fills (orders don't rest across batches): resubmit both.
+ */
+export async function submitWithCounterparty(relayers: Relayers, o: Order) {
+	const [order, counter] = await Promise.all([
+		submitOrder(relayers, o),
+		submitOrder(relayers, counterOrder(o)),
+	]);
+	return { order, counter };
+}
+
 /** Combines the three fill shares; relayer i answers only to `tokens[i]` from `submitOrder`. */
 export async function getFill(
 	relayers: Relayers,

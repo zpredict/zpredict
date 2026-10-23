@@ -5,6 +5,7 @@ import {
 	accountHex,
 	claimJudge,
 	combine,
+	counterOrder,
 	decodeBalance,
 	decodeFill,
 	decodeOrder,
@@ -19,6 +20,7 @@ import {
 	RELAYERS,
 	split,
 	submitOrder,
+	submitWithCounterparty,
 	submitWithdrawal,
 	TableFullError,
 	toHex,
@@ -150,6 +152,24 @@ test("a full table is a TableFullError; seats come from relayer 0", async (t) =>
 		balance: 0n,
 		seat: "waiting",
 	});
+});
+
+test("the demo counterparty always crosses, in the same market and size", async (t) => {
+	const o = order(v.orders[0]);
+	const c = counterOrder(o);
+	assert.deepEqual({ ...c, side: o.side, price: o.price }, o);
+	assert.notEqual(c.side, o.side);
+	assert.equal(c.price + o.price, 100);
+	const posts: { orderId: string; share: string }[] = [];
+	t.mock.method(globalThis, "fetch", async (_: string, init: RequestInit) => {
+		posts.push(JSON.parse(init.body as string));
+		return Response.json({ batch: 4 }, { status: 202 });
+	});
+	const pair = await submitWithCounterparty(RELAYERS, o);
+	assert.equal(posts.length, 6, "two orders, one share per relayer each");
+	const shares = (id: string) => posts.filter((p) => p.orderId === id).map((p) => fromHex(p.share));
+	assert.deepEqual(decodeOrder(combine(shares(pair.order.orderId))), o);
+	assert.deepEqual(decodeOrder(combine(shares(pair.counter.orderId))), c);
 });
 
 test("submitOrder sends exactly one share to each relayer", async (t) => {
