@@ -36,7 +36,10 @@ export default function WalletGuide() {
 					<p className="dim">
 						Pay the request from a shielded testnet wallet: scan the QR code, open it in a wallet on
 						this device, or copy it. No testnet ZEC? Get some from the{" "}
-						<Link href="/faucet/">faucet</Link>.
+						<Link href="/faucet/" prefetch={false}>
+							faucet
+						</Link>
+						.
 					</p>
 					<DepositInfo open />
 				</li>
