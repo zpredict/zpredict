@@ -28,7 +28,7 @@ function rolling(k, n) {
 	const resolve = (k + 1) * WINDOW;
 	return {
 		id: BASE + k,
-		question: `Will mainnet block ${resolve.toLocaleString("en-US")} contain ≥ ${n} shielded actions?`,
+		question: `Will mainnet block ${resolve.toLocaleString("en-US")} contain ≥ ${n} shielded action${n === 1 ? "" : "s"}?`,
 		plugin: "shielded-actions",
 		params: { minActions: n },
 		closeHeight: resolve - CLOSE,

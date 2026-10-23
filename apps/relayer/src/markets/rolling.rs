@@ -98,8 +98,9 @@ impl Rolling {
         Ok(Some(Market {
             id,
             question: format!(
-                "Will mainnet block {} contain ≥ {n} shielded actions?",
-                thousands(resolve)
+                "Will mainnet block {} contain ≥ {n} shielded action{}?",
+                thousands(resolve),
+                if n == 1 { "" } else { "s" }
             ),
             plugin: self.plugin.clone(),
             params: json!({ "minActions": n }),
@@ -208,6 +209,19 @@ mod tests {
             .unwrap();
         assert_eq!(next.id, a.id + 1);
         assert_eq!(r.due(3_527_050, &[a], &c).unwrap(), None, "already made");
+    }
+
+    #[test]
+    fn one_action_is_singular() {
+        let mut c = chain(3_526_900, 3_527_100);
+        c.blocks.iter_mut().for_each(|b| b.shielded_actions = 0);
+        let m = rolling().due(3_527_040, &[], &c).unwrap().unwrap();
+        assert_eq!(m.params, json!({"minActions": 1}), "N is at least 1");
+        assert!(
+            m.question.ends_with("≥ 1 shielded action?"),
+            "{}",
+            m.question
+        );
     }
 
     #[test]

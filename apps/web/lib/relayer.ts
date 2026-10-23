@@ -30,15 +30,7 @@ const at = (base: string, path: string) => base.replace(/\/+$/, "") + path;
 
 export const fetchHealth = (i: number) => json<Health>(at(relayers[i], "/health"));
 
-// ponytail: the relayers' rolling generator writes "≥ 1 shielded actions"; drop this once
-// markets/rolling.rs pluralizes.
-const singular = (q: string) => q.replace(/≥ 1 shielded actions\?$/, "≥ 1 shielded action?");
-
-export const fetchMarkets = async () =>
-	(await json<Market[]>(at(relayers[0], "/markets"))).map((m) => ({
-		...m,
-		question: singular(m.question),
-	}));
+export const fetchMarkets = () => json<Market[]>(at(relayers[0], "/markets"));
 
 /** Mock, testnet only: opens account `tag` with demo balance; relayer i gets only its share. */
 export const claimJudge = (tag: string) => claim(relayers, tag);
