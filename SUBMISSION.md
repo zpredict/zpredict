@@ -14,14 +14,14 @@ Text for the ZECATHON submission form. Every sentence must stay true of `main` a
 
 <!-- DESCRIPTION START -->
 WHAT IT DOES
-zPredict is the first prediction market on Zcash where nobody can see that you bet. Polymarket traders keep getting traced to real names; here no chain observer, no single operator and no counterparty learns who bet, which side or how much. Price public, participants private.
+The first prediction market on Zcash where nobody can see that you bet. Polymarket traders get traced to real names; here no chain observer, single operator or counterparty learns who bet, which side or how much. Price public, participants private.
 
 HOW
 - Orders: XOR-shared in your browser, one share per relayer.
 - Matching: three relayers cross YES/NO at the midpoint inside 3-party MPC (polytune), checking balances in-circuit. Only fills and a public clearing price come out.
 - Accounts: your account secret never leaves the browser whole; the circuit checks it, so no relayer can spend for you.
 - Escrow: FROST 2-of-3 Ironwood address from a DKG; batched withdrawals, each signer re-derives the sighash.
-- Resolution: markets resolve from Zcash mainnet block data (incl. hourly rolling markets); outcomes are FROST-signed and checkable in the browser.
+- Resolution: from Zcash mainnet block data (incl. hourly rolling markets); outcomes FROST-signed, checkable in the browser.
 
 WHY IT DOES NOT LEAK
 - Chain: shielded (Ironwood) only; no transparent address in any path.
@@ -31,7 +31,7 @@ WHY IT DOES NOT LEAK
 
 WHAT IS REAL / WHAT IS A MOCK
 Real: 3-party MPC matching, in-circuit balances and credentials, FROST DKG and 2-of-3 Ironwood spends (regtest e2e incl. forged-withdrawal rejection), chain-data resolution, live relayers.
-Demo limits: judge mode credits mock collateral (not withdrawable); orders cross only inside a batch, so a lone judge can add a labelled "demo counterparty", the opposite order from their own account (a self-trade), to see a fill; all three relayers and the DKG ran on one VM behind Cloudflare, which sees what they see (the model needs independent operators); relayers see deposit/withdrawal amounts and timing.
+Demo limits: judge mode credits mock collateral (not withdrawable); a lone judge can add a labelled self-trade counterparty to see a fill; all three relayers and the DKG ran on one VM behind Cloudflare, which sees what they see (the model needs independent operators); relayers see deposit/withdrawal amounts and timing.
 
 TRY IT
 app.zpredict.site → Judge mode → bet (alone? tick "take the other side (demo)"). The Relayer View shows what each relayer holds: noise.
