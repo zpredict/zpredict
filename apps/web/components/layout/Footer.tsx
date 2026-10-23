@@ -1,5 +1,4 @@
 import Link from "next/link";
-
 import { DOCS_URL, LANDING_URL as SITE } from "@/lib/config";
 
 /** Site footer: what zPredict is, where to read more. Only our own origins (privacy gate). */
@@ -10,7 +9,8 @@ export default function Footer() {
 				<p className="sitefoot__name">zPredict</p>
 				<p className="dim">Price public. Participants private.</p>
 				<p className="dim">
-					Zcash testnet demo for Zecathon 2026. Markets resolve from Zcash mainnet.
+					Zcash testnet demo for Zecathon 2026. Markets resolve from Zcash mainnet data, or per
+					Polymarket for mirrored markets.
 				</p>
 			</div>
 			<nav aria-label="Footer" className="sitefoot__cols">
@@ -24,6 +24,8 @@ export default function Footer() {
 					<Link href="/threat-model/">Threat model</Link>
 					<a href={`${SITE}/#how`}>How it works</a>
 					<a href={`${DOCS_URL}/docs/privacy`}>Privacy docs</a>
+					<a href={`${SITE}/privacy/`}>Privacy Policy</a>
+					<a href={`${SITE}/terms/`}>Terms of Service</a>
 				</div>
 				<div>
 					<p className="sitefoot__head">zPredict</p>
