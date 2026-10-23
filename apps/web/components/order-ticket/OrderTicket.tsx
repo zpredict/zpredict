@@ -13,6 +13,9 @@ interface Props {
 	initialSide?: Side;
 }
 
+/** Quick-add sizes, in contracts. */
+const QUICK = [1, 5, 10, 25];
+
 export default function OrderTicket({ market, initialSide }: Props) {
 	const t = useOrderTicket(market, initialSide);
 	return (
@@ -38,6 +41,20 @@ export default function OrderTicket({ market, initialSide }: Props) {
 					value={t.size}
 				/>
 			</div>
+			<fieldset className="ticket__quick">
+				<legend className="sr-only">Add contracts</legend>
+				{QUICK.map((n) => (
+					<button
+						aria-label={`Add ${n} contract${n === 1 ? "" : "s"}`}
+						className="ticket__add"
+						key={n}
+						onClick={() => t.setSize((Number.isNaN(t.size) ? 0 : t.size) + n)}
+						type="button"
+					>
+						+{n}
+					</button>
+				))}
+			</fieldset>
 			{t.canCounter && (
 				<CounterpartyToggle
 					on={t.counterparty}

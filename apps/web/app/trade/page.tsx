@@ -1,13 +1,13 @@
 import { Suspense } from "react";
+import DetailScreen from "@/components/market-detail/DetailScreen";
 import TradeIntro from "@/components/trade/TradeIntro";
-import TradeScreen from "@/components/trade/TradeScreen";
 
 export default function TradePage() {
 	return (
-		<main className="trade">
+		<main className="detail">
 			<TradeIntro />
 			<Suspense>
-				<TradeScreen />
+				<DetailScreen />
 			</Suspense>
 		</main>
 	);

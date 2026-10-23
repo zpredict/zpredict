@@ -18,8 +18,9 @@
 	pointer-events: auto;
 }
 
-/* The trade page scrolls dense content under the bar: give the bar the page background. */
-body:has(.trade) .topbar::before {
+/* Dense dark pages scroll content under the bar: give it the page background. The threat
+   model's lime/paper sections keep the transparent bar that turns dark over them. */
+body:not(:has(.tm)) .topbar::before {
 	content: "";
 	position: absolute;
 	z-index: -1;
@@ -136,5 +137,64 @@ body:has(.trade) .topbar::before {
 @media (max-width: 360px) {
 	.brand__word {
 		display: none;
+	}
+}
+
+/* Site footer. */
+.sitefoot {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 28px 48px;
+	padding: 48px var(--zp-gutter);
+	border-top: 1px solid var(--line);
+	font-size: 13px;
+}
+
+.sitefoot__brand {
+	display: grid;
+	gap: 8px;
+	align-content: start;
+}
+
+.sitefoot__name {
+	color: var(--zp-lime);
+	font-size: 22px;
+	letter-spacing: -0.04em;
+}
+
+.sitefoot__cols {
+	display: grid;
+	grid-template-columns: repeat(3, auto);
+	gap: 24px 48px;
+}
+
+.sitefoot__cols div {
+	display: grid;
+	gap: 8px;
+	align-content: start;
+}
+
+.sitefoot__cols a:hover {
+	color: var(--zp-lime);
+}
+
+.sitefoot__head {
+	color: var(--zp-muted);
+	font-size: 11px;
+	text-transform: uppercase;
+}
+
+.sitefoot__fine {
+	grid-column: 1 / -1;
+	font-size: 11px;
+}
+
+@media (max-width: 699.98px) {
+	.sitefoot {
+		grid-template-columns: minmax(0, 1fr);
+		padding-inline: 20px;
+	}
+	.sitefoot__cols {
+		grid-template-columns: repeat(2, auto);
 	}
 }

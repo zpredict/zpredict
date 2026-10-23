@@ -6,13 +6,18 @@ import "@/styles/layout.css";
 import "@/styles/menu.css";
 import "@/styles/home.css";
 import "@/styles/markets.css";
+import "@/styles/pieces.css";
 import "@/styles/outcomes.css";
 import "@/styles/trade.css";
 import "@/styles/ticket.css";
 import "@/styles/xor.css";
 import "@/styles/relayer-view.css";
 import "@/styles/threat-model.css";
+import "@/styles/detail.css";
+import "@/styles/detail-sections.css";
+import "@/styles/chart.css";
 import type { Metadata, Viewport } from "next";
+import Footer from "@/components/layout/Footer";
 import Providers from "@/components/layout/Providers";
 import Topbar from "@/components/layout/Topbar";
 import { mono } from "@/lib/font";
@@ -45,6 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 				<Providers>
 					<Topbar />
 					{children}
+					<Footer />
 				</Providers>
 			</body>
 		</html>

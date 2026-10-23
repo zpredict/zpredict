@@ -59,7 +59,15 @@ input {
 }
 
 button {
+	border: 0;
+	background: none;
+	color: inherit;
+	font: inherit;
 	cursor: pointer;
+}
+
+[hidden] {
+	display: none !important;
 }
 
 button:disabled {
@@ -119,7 +127,6 @@ fieldset {
 
 /* Section labels: small uppercase grey, as in the template's eyebrows and captions. */
 .eyebrow,
-.hero__eyebrow,
 .rview__eyebrow,
 .tm__eyebrow,
 .field__label,
