@@ -4,7 +4,9 @@
 .detail {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) 380px;
+	align-content: start;
 	gap: 28px 40px;
+	min-height: 100svh;
 	padding: var(--header-space) var(--zp-gutter) 72px;
 }
 

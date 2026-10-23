@@ -1,9 +1,12 @@
 /* Markets home: featured carousel + side column, then all markets. The ASCII mark (AsciiHero)
    is the featured card's visual. */
 
+/* min-height keeps the footer below the fold while markets load (no layout shift). */
 .home {
 	display: grid;
+	align-content: start;
 	gap: 56px;
+	min-height: 100svh;
 	padding: var(--header-space) var(--zp-gutter) 72px;
 }
 
@@ -42,6 +45,8 @@
 
 .home__cta a {
 	color: var(--zp-lime);
+	text-decoration: underline;
+	text-underline-offset: 3px;
 }
 
 /* Featured carousel card: copy left, ASCII mark right; fixed height so data never shifts it. */
@@ -125,6 +130,7 @@
 	display: flex;
 	align-items: center;
 	gap: 8px;
+	min-height: 32px;
 }
 
 .feat__nav button {
@@ -139,14 +145,23 @@
 	color: var(--zp-lime);
 }
 
+/* 24 px hit area, 10 px square mark. */
 .feat__nav .feat__dot {
-	min-width: 0;
-	width: 10px;
-	height: 10px;
-	border-color: var(--zp-glyph);
+	display: grid;
+	place-items: center;
+	min-width: 24px;
+	height: 24px;
+	border: 0;
 }
 
-.feat__dot[aria-current="true"] {
+.feat__dot::before {
+	content: "";
+	width: 10px;
+	height: 10px;
+	border: 1px solid var(--zp-glyph);
+}
+
+.feat__dot[aria-current="true"]::before {
 	border-color: var(--zp-lime);
 	background: var(--zp-lime);
 }
@@ -227,6 +242,9 @@
 		grid-template-columns: minmax(0, 1fr);
 		min-height: 0;
 		padding: 18px;
+	}
+	.feat__body {
+		min-height: 330px;
 	}
 	.feat__visual {
 		order: -1;

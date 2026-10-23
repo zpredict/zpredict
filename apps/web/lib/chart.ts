@@ -90,27 +90,66 @@ const FULL = fmt({ month: "short", day: "numeric", hour: "numeric", minute: "2-d
 export const pointLabel = (t: number, useTime: boolean, count: number) =>
 	useTime ? FULL.format(t * 1000) : `Cross ${t + 1} of ${count}`;
 
-/** X-axis labels at calendar boundaries: months, days or hours, at most ~7. */
+interface Unit {
+	/** Used when the span is longer than this, in seconds. */
+	over: number;
+	/** Steps of this unit between labels, so there are at most ~7. */
+	step: (span: number) => number;
+	/** Rounds down to a boundary of this unit. */
+	floor: (d: Date) => void;
+	/** Moves forward `n` units. */
+	add: (d: Date, n: number) => void;
+	format: Intl.DateTimeFormat;
+}
+
+const minutes = (span: number) => [5, 10, 15, 30, 60].find((m) => span / 60 / m <= 6) ?? 60;
+
+const UNITS: Unit[] = [
+	{
+		over: 60 * 86_400,
+		step: () => 1,
+		floor: (d) => {
+			d.setHours(0, 0, 0, 0);
+			d.setDate(1);
+		},
+		add: (d, n) => d.setMonth(d.getMonth() + n),
+		format: MONTH,
+	},
+	{
+		over: 2 * 86_400,
+		step: (span) => Math.ceil(span / 86_400 / 7),
+		floor: (d) => d.setHours(0, 0, 0, 0),
+		add: (d, n) => d.setDate(d.getDate() + n),
+		format: DAY,
+	},
+	{
+		over: 3 * 3_600,
+		step: (span) => Math.ceil(span / 3_600 / 7),
+		floor: (d) => d.setHours(d.getHours(), 0, 0, 0),
+		add: (d, n) => d.setHours(d.getHours() + n),
+		format: HOUR,
+	},
+	{
+		over: 0,
+		step: minutes,
+		floor: (d) => d.setHours(d.getHours(), 0, 0, 0),
+		add: (d, n) => d.setMinutes(d.getMinutes() + n),
+		format: HOUR,
+	},
+];
+
+/** X-axis labels at calendar boundaries (months, days, hours or round minutes), at most ~7. */
 export function xTicks(t0: number, t1: number): { t: number; label: string }[] {
 	const span = t1 - t0;
-	if (span <= 0) return [];
-	const out: { t: number; label: string }[] = [];
+	const unit = UNITS.find((u) => span > u.over);
+	if (!unit) return [];
+	const step = unit.step(span);
 	const d = new Date(t0 * 1000);
-	if (span > 60 * 86_400) {
-		d.setDate(1);
-		d.setHours(0, 0, 0, 0);
-		for (d.setMonth(d.getMonth() + 1); d.getTime() / 1000 <= t1; d.setMonth(d.getMonth() + 1))
-			out.push({ t: d.getTime() / 1000, label: MONTH.format(d) });
-	} else if (span > 2 * 86_400) {
-		const step = Math.ceil(span / 86_400 / 7);
-		d.setHours(0, 0, 0, 0);
-		for (d.setDate(d.getDate() + 1); d.getTime() / 1000 <= t1; d.setDate(d.getDate() + step))
-			out.push({ t: d.getTime() / 1000, label: DAY.format(d) });
-	} else {
-		const step = Math.max(1, Math.ceil(span / 3_600 / 7));
-		d.setMinutes(0, 0, 0);
-		for (d.setHours(d.getHours() + 1); d.getTime() / 1000 <= t1; d.setHours(d.getHours() + step))
-			out.push({ t: d.getTime() / 1000, label: HOUR.format(d) });
+	unit.floor(d);
+	const out: { t: number; label: string }[] = [];
+	for (; d.getTime() / 1000 <= t1; unit.add(d, step)) {
+		const t = d.getTime() / 1000;
+		if (t >= t0) out.push({ t, label: unit.format.format(d) });
 	}
 	return out;
 }

@@ -78,6 +78,11 @@
 	transition: border-color 450ms var(--zp-ease);
 }
 
+.mcard--ghost {
+	border-style: dashed;
+	background: none;
+}
+
 .mcard:hover,
 .mcard:focus-within {
 	border-color: var(--zp-lime);
@@ -185,6 +190,7 @@
 }
 
 .soon ol {
+	min-height: 230px;
 	margin: 0;
 	padding: 0;
 	list-style: none;

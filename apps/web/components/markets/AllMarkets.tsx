@@ -5,6 +5,8 @@ import { groupItems, type Item, topic } from "@/lib/markets";
 import BinaryCard from "./BinaryCard";
 import EventCard from "./EventCard";
 
+const GHOSTS = ["a", "b", "c", "d"];
+
 const itemTopic = (it: Item) => topic(it.kind === "event" ? it.markets[0] : it.market);
 const itemText = (it: Item) =>
 	(it.kind === "event"
@@ -15,7 +17,16 @@ const itemText = (it: Item) =>
 		.toLowerCase();
 
 /** "All markets": topic tabs from the markets' metadata, a search box, and the card grid. */
-export default function AllMarkets({ markets, tip }: { markets: Market[]; tip: number | null }) {
+export default function AllMarkets({
+	markets,
+	tip,
+	loading,
+}: {
+	markets: Market[];
+	tip: number | null;
+	/** Before the first `/markets` answer: placeholder cards hold the grid's height. */
+	loading: boolean;
+}) {
 	const [tab, setTab] = useState("All");
 	const [query, setQuery] = useState("");
 	const items = groupItems(markets);
@@ -52,6 +63,8 @@ export default function AllMarkets({ markets, tip }: { markets: Market[]; tip: n
 				))}
 			</fieldset>
 			<div className="all__grid">
+				{loading &&
+					GHOSTS.map((k) => <div aria-hidden="true" className="mcard mcard--ghost" key={k} />)}
 				{shown.map((it) =>
 					it.kind === "event" ? (
 						<EventCard key={it.key} markets={it.markets} tip={tip} title={it.title} />
@@ -60,7 +73,7 @@ export default function AllMarkets({ markets, tip }: { markets: Market[]; tip: n
 					),
 				)}
 			</div>
-			{shown.length === 0 && <p className="dim">No market matches.</p>}
+			{!loading && shown.length === 0 && <p className="dim">No market matches.</p>}
 		</section>
 	);
 }

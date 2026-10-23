@@ -6,14 +6,14 @@ const MAX = 5;
 
 /**
  * Where Polymarket ranks "hot topics" by volume, zPredict has no volume to rank by (sizes are
- * private), so this lists open markets by how soon trading closes: the hourly one first.
+ * private), so this lists open markets by how soon trading closes: the hourly one first. Always
+ * rendered, with its height reserved, so loading markets never shifts the page.
  */
 export default function ClosingSoon({ markets, tip }: { markets: Market[]; tip: number | null }) {
 	const list = markets
 		.filter((m) => m.status === "open" && !m.event)
 		.sort((a, b) => a.closeHeight - b.closeHeight)
 		.slice(0, MAX);
-	if (list.length === 0) return null;
 	return (
 		<section aria-labelledby="soon-title" className="soon">
 			<h2 className="soon__title" id="soon-title">

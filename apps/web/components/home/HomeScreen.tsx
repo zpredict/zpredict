@@ -39,7 +39,11 @@ export default function HomeScreen({ visual }: { visual: ReactNode }) {
 				</aside>
 			</div>
 			{down && <RelayersDown />}
-			<AllMarkets markets={all.filter((m) => m.status !== "resolved")} tip={tip} />
+			<AllMarkets
+				loading={!markets && !down}
+				markets={all.filter((m) => m.status !== "resolved")}
+				tip={tip}
+			/>
 			<ResolvedList groupKey={groupKey} markets={all.filter((m) => m.status === "resolved")} />
 		</>
 	);

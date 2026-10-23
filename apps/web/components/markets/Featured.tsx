@@ -84,26 +84,29 @@ export default function Featured({
 				</div>
 				<div className="feat__visual">{visual}</div>
 			</div>
-			{items.length > 1 && (
-				<div className="feat__nav">
-					<button aria-label="Previous featured market" onClick={() => go(-1)} type="button">
-						←
-					</button>
-					{items.map((x, k) => (
-						<button
-							aria-current={k === Math.min(i, items.length - 1)}
-							aria-label={`Featured market ${k + 1} of ${items.length}`}
-							className="feat__dot"
-							key={x.key}
-							onClick={() => setI(k)}
-							type="button"
-						/>
-					))}
-					<button aria-label="Next featured market" onClick={() => go(1)} type="button">
-						→
-					</button>
-				</div>
-			)}
+			{/* Always there (empty while loading), so the controls never push the page down. */}
+			<div className="feat__nav">
+				{items.length > 1 && (
+					<>
+						<button aria-label="Previous featured market" onClick={() => go(-1)} type="button">
+							←
+						</button>
+						{items.map((x, k) => (
+							<button
+								aria-current={k === Math.min(i, items.length - 1)}
+								aria-label={`Featured market ${k + 1} of ${items.length}`}
+								className="feat__dot"
+								key={x.key}
+								onClick={() => setI(k)}
+								type="button"
+							/>
+						))}
+						<button aria-label="Next featured market" onClick={() => go(1)} type="button">
+							→
+						</button>
+					</>
+				)}
+			</div>
 		</section>
 	);
 }
