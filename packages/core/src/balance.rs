@@ -152,6 +152,7 @@ mod tests {
         );
     }
 
+    /// Regression #49: orders in different markets never cross; one price per market.
     #[test]
     fn markets_clear_apart_with_their_own_prices() {
         let in_market = |mut ord: Order, m: u32| {

@@ -75,8 +75,8 @@ fn other_shapes_match() {
     }
 }
 
-/// A relayer knows every account's id and its own share of every key, nothing more. A
-/// withdrawal or an order built from that, for a funded account, must not touch its row.
+/// Regression #85 (PR #87). A relayer knows every account's id and its own share of
+/// every key, nothing more. A withdrawal or an order built from that, for a funded account, must not touch its row.
 #[test]
 fn a_relayer_cannot_act_as_an_account() {
     let mut rng = Rng(85);
@@ -108,7 +108,7 @@ fn a_relayer_cannot_act_as_an_account() {
     }
 }
 
-/// A judge-mode (mock) row never pays out on chain: its owner's own withdrawal, with the
+/// Regression #104 (PR #111). A judge-mode (mock) row never pays out on chain: its owner's own withdrawal, with the
 /// real key, is refused once any one relayer flags the row, and goes through otherwise.
 #[test]
 fn mock_rows_never_withdraw() {

@@ -6,6 +6,9 @@ use serde_json::json;
 use super::tests::{app, call};
 use crate::store::Event;
 
+/// Regression #99 (PR #101): a judge claim on a full table is `503`, a retried claim is
+/// `200` with no second credit, and an account past the cap reads `waiting`, never a
+/// silent dummy.
 #[tokio::test]
 async fn accounts_and_judge_claims() {
     let (app, state) = app(0, "api-accounts", true);

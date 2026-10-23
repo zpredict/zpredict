@@ -81,6 +81,8 @@ fn vector_share(k: usize) -> String {
     v["split"]["shares"][k].as_str().unwrap().to_owned()
 }
 
+/// Regression #92 (PR #92): `/view` publishes digests only (no orderId, no share), and a
+/// fill share is served only with the read token this relayer got with the order.
 #[tokio::test]
 async fn orders_contract() {
     let (app, state) = app(1, "api-orders", false);

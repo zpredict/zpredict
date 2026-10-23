@@ -41,6 +41,7 @@ mod tests {
     use crate::order::Side;
     use crate::order::test_order as o;
 
+    /// Regression #23: one record per order, summing size and total cost over matches.
     #[test]
     fn fill_records_sum_over_matches() {
         // NO 5 @ 50 crosses YES 2 @ 70 (cost 120 each) then YES 3 of 4 @ 55 (cost 105 each).
