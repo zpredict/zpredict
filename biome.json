@@ -113,6 +113,17 @@
 			}
 		},
 		{
+			"includes": ["apps/docs/src/app/global.css"],
+			"css": { "parser": { "tailwindDirectives": true } },
+			"linter": {
+				"rules": {
+					"complexity": {
+						"noImportantStyles": "off"
+					}
+				}
+			}
+		},
+		{
 			"includes": ["**/*.astro"],
 			"linter": {
 				"rules": {
