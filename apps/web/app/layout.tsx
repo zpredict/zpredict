@@ -23,7 +23,7 @@ import Topbar from "@/components/layout/Topbar";
 import { mono } from "@/lib/font";
 
 export const metadata: Metadata = {
-	title: "zPredict — shielded prediction markets on Zcash",
+	title: { default: "zPredict | Shielded prediction markets on Zcash", template: "%s | zPredict" },
 	description:
 		"Bet on an outcome without anyone learning that you bet, which side you took, or how much.",
 	referrer: "no-referrer",
