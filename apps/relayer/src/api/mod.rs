@@ -39,6 +39,8 @@ pub struct Api {
     pub group_key: Option<[u8; 32]>,
     /// With `[settlement]` on: the escrow's network, for checking payout addresses.
     pub escrow: Option<Arc<crate::escrow::Escrow>>,
+    /// Mirrored markets' Polymarket reference prices (`reference.rs`).
+    pub references: crate::reference::References,
 }
 
 pub fn router(api: Api) -> Router {

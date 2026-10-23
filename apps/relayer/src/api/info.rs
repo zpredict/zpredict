@@ -9,6 +9,7 @@ use serde_json::json;
 use zpredict_oracle::Market;
 
 use super::{Api, fail};
+use crate::reference::Reference;
 
 /// Most items one `/view` call returns.
 const VIEW_PAGE: usize = 200;
@@ -30,9 +31,13 @@ struct MarketView<'a> {
     last_price: Option<f64>,
     #[serde(skip_serializing_if = "<[f64]>::is_empty")]
     history: &'a [f64],
+    /// Mirrored markets: the source's own price, fetched by this relayer (`reference.rs`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reference: Option<Reference>,
 }
 
 pub async fn markets(State(api): State<Api>) -> Response {
+    let refs = api.references.lock().expect("refs lock").clone();
     let s = api.state.lock().expect("state lock");
     let list: Vec<MarketView> = (s.markets.iter())
         .map(|m| {
@@ -41,6 +46,7 @@ pub async fn markets(State(api): State<Api>) -> Response {
                 market: m,
                 last_price: history.last().copied(),
                 history,
+                reference: refs.get(&m.id).cloned(),
             }
         })
         .collect();

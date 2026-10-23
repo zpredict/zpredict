@@ -38,8 +38,8 @@ memo_key_file = "/data/escrow/memo.pub"
 # new "Will mainnet block H contain ≥ N shielded actions?" with H one hour ahead (48 blocks
 # at 75 s; 144 at 25 s from NU7) and N the median of the 24 blocks before, so YES/NO are
 # about even. Ids are 1,000,000 + window number, the same on all three relayers.
-# Cap: one MPC run clears 4 markets (DEFAULT_MARKETS) = the 3 headline markets below + 1
-# rolling market, which interval = horizon guarantees. Resolved ones stay 24 h as history.
+# Cap: one MPC run clears 6 markets (DEFAULT_MARKETS) = the 5 markets below + 1 rolling
+# market, which interval = horizon guarantees. Resolved ones stay 24 h as history.
 [rolling]
 plugin = "shielded-actions"
 interval_secs = 3600
@@ -49,8 +49,8 @@ sample_blocks = 24
 keep_resolved = 24
 fast_from = 3543405
 
-# The three headline markets. One MPC run clears up to 4 markets; more would need a second
-# run per window and slow judges' fills (see deploy/README.md).
+# Six markets (DEFAULT_MARKETS = 6, one MPC run, DESIGN.md "Market capacity"): NU7 and
+# Ironwood below, three mirrored Polymarket markets, and the hourly rolling market.
 [[markets]]
 id = 1
 question = "Will NU7 activate on mainnet at block 3,543,405?"
@@ -59,6 +59,8 @@ params = { activationHeight = 3543405 }
 closeHeight = 3543000
 resolveHeight = 3543405
 status = "open"
+category = "Zcash network"
+rules = "Resolves YES if the coinbase transaction of mainnet block 3,543,405 carries the NU7 consensus branch ID, read by each relayer from its own node 10 blocks later. Trading closes at block 3,543,000."
 
 [[markets]]
 id = 2
@@ -68,15 +70,50 @@ params = { minNotes = 900000 }
 closeHeight = 3559000
 resolveHeight = 3560000
 status = "open"
+category = "Zcash network"
+rules = "Resolves YES if the Ironwood note commitment tree holds at least 900,000 notes at the end of mainnet block 3,560,000, read by each relayer from its own node 10 blocks later. Trading closes at block 3,559,000."
+
+# Mirrored Polymarket markets (packages/plugins/polymarket, #114): same question, our own
+# private book. The oracle is Polymarket (UMA): YES iff Polymarket settles "Yes" to 1. Each
+# relayer reads gamma-api.polymarket.com itself; the outcome is signed only if all three
+# read the same. Binary Yes/No only (checked at startup); no death or violence markets.
+# Trading closes at block 3,540,470 ≈ 2026-11-03 12:00 UTC (75 s blocks from 3,527,437 at
+# 2026-10-23 04:25 UTC), before US polls open; resolveHeight = closeHeight, the resolver
+# then waits for Polymarket. 11 and 12 are the two rows of one Polymarket event.
+[[markets]]
+id = 11
+question = "Will the Democratic Party control the House after the 2026 Midterm elections?"
+plugin = "polymarket"
+params = { conditionId = "0xd5d9fc47718bd553592d126b1fa5e87183d27f3936975b0c04cc0f2dec1f1bb4", slug = "will-the-democratic-party-control-the-house-after-the-2026-midterm-elections" }
+closeHeight = 3540470
+resolveHeight = 3540470
+status = "open"
+category = "Politics"
+event = { id = "house-2026", title = "Which party will win the House in 2026?" }
+rules = "Mirrors the Polymarket market of the same question. Resolves YES if Polymarket settles it Yes (UMA optimistic oracle); No, or a 50-50 settlement, resolves NO. Trading here closes at block 3,540,470 (about Nov 3, 12:00 UTC); the outcome follows whenever Polymarket settles."
 
 [[markets]]
-id = 3
-question = "Will block 3,550,000 contain at least 5 shielded actions?"
-plugin = "shielded-actions"
-params = { minActions = 5 }
-closeHeight = 3549000
-resolveHeight = 3550000
+id = 12
+question = "Will the Republican Party control the House after the 2026 Midterm elections?"
+plugin = "polymarket"
+params = { conditionId = "0x4e4f77e7dbf4cab666e9a1943674d7ae66348e862df03ea6f44b11eb95731928", slug = "will-the-republican-party-control-the-house-after-the-2026-midterm-elections" }
+closeHeight = 3540470
+resolveHeight = 3540470
 status = "open"
+category = "Politics"
+event = { id = "house-2026", title = "Which party will win the House in 2026?" }
+rules = "Mirrors the Polymarket market of the same question. Resolves YES if Polymarket settles it Yes (UMA optimistic oracle); No, or a 50-50 settlement, resolves NO. Trading here closes at block 3,540,470 (about Nov 3, 12:00 UTC); the outcome follows whenever Polymarket settles."
+
+[[markets]]
+id = 13
+question = "Will the Democrats win the Texas Senate race in 2026?"
+plugin = "polymarket"
+params = { conditionId = "0x34918035a590555ba1fb1d6a019d766ab6e557d63e7f3140b63b4550eee7f417", slug = "will-the-democrats-win-the-texas-senate-race-in-2026" }
+closeHeight = 3540470
+resolveHeight = 3540470
+status = "open"
+category = "Politics"
+rules = "Mirrors the Polymarket market of the same question. Resolves YES if Polymarket settles it Yes (UMA optimistic oracle); No, or a 50-50 settlement, resolves NO. Trading here closes at block 3,540,470 (about Nov 3, 12:00 UTC); the outcome follows whenever Polymarket settles."
 
 # Real testnet deposits and payouts. The FROST key share also signs outcomes, so
 # /group-key answers and outcomes carry outcomeSig. Relayer 0 is the prover: zcash-devtool

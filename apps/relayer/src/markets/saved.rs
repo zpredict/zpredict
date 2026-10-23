@@ -37,12 +37,13 @@ pub fn load(dir: &Path, configured: Vec<Market>) -> Vec<Market> {
     };
     let mut out: Vec<Market> = configured
         .into_iter()
-        .map(|c| {
-            saved
-                .iter()
-                .find(|s| same_terms(s, &c))
-                .cloned()
-                .unwrap_or(c)
+        .map(|c| match saved.iter().find(|s| same_terms(s, &c)) {
+            // Progress from the saved copy, display info (not part of the terms) from config.
+            Some(s) => Market {
+                info: c.info,
+                ..s.clone()
+            },
+            None => c,
         })
         .collect();
     let rolling: Vec<Market> = (saved.into_iter())
@@ -90,8 +91,10 @@ mod tests {
         };
         save(&dir, &[signed.clone(), edited, rolling.clone()]).unwrap();
 
-        let config = vec![market(1, "a?"), market(2, "b, reworded?")];
-        let got = load(&dir, config);
+        let mut config = vec![market(1, "a?"), market(2, "b, reworded?")];
+        config[0].info.category = Some("Zcash network".into());
+        let got = load(&dir, config.clone());
+        signed.info = config[0].info.clone();
         assert_eq!(got, vec![signed, market(2, "b, reworded?"), rolling]);
     }
 }
