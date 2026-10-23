@@ -4206,6 +4206,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "zpredict-plugin-polymarket"
+version = "0.1.0"
+dependencies = [
+ "reqwest",
+ "serde",
+ "serde_json",
+ "zpredict-oracle",
+]
+
+[[package]]
 name = "zpredict-plugin-shielded-actions"
 version = "0.1.0"
 dependencies = [
@@ -4234,6 +4244,7 @@ dependencies = [
  "zpredict-oracle",
  "zpredict-plugin-ironwood-pool",
  "zpredict-plugin-nu7-activation",
+ "zpredict-plugin-polymarket",
  "zpredict-plugin-shielded-actions",
  "zpredict-settle",
 ]

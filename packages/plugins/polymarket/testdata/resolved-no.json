@@ -1,0 +1,18 @@
+{
+ "id": "5640336",
+ "question": "Will Elon Musk post 240-259 tweets from October 16 to October 23, 2026?",
+ "conditionId": "0xab5dadf5febcd92d545509dc527473462b2a7e8eaad1ce1b6b1594dc84d020bc",
+ "slug": "elon-musk-of-tweets-october-16-october-23-2026-240-259",
+ "endDate": "2026-10-23T16:00:00Z",
+ "outcomes": "[\"Yes\", \"No\"]",
+ "outcomePrices": "[\"0\", \"1\"]",
+ "active": true,
+ "closed": true,
+ "acceptingOrders": false,
+ "umaResolutionStatus": "resolved",
+ "umaResolutionStatuses": "[\"proposed\", \"proposed\"]",
+ "clobTokenIds": "[\"87747462054823018114563618010883827403749997971703001730728146746051065967821\", \"2504435476864070052789462707722872920165940542409610667918757333907248029197\"]",
+ "updatedAt": "2026-10-23T04:22:17.41366Z",
+ "closedTime": "2026-10-23 03:36:15.908185+00",
+ "volumeNum": 285542.59901899996
+}

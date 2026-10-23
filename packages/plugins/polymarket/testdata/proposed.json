@@ -1,0 +1,17 @@
+{
+ "id": "561243",
+ "question": "Will Donald Trump win the 2028 US Presidential Election?",
+ "conditionId": "0xce9a5fa30fe74e323b4a8f15afbb0b7a41a537aa880779ddf7dee22223b2f34a",
+ "slug": "will-donald-trump-win-the-2028-us-presidential-election",
+ "endDate": "2028-11-08T04:59:00Z",
+ "outcomes": "[\"Yes\", \"No\"]",
+ "outcomePrices": "[\"0.0145\", \"0.9855\"]",
+ "active": true,
+ "closed": false,
+ "acceptingOrders": true,
+ "umaResolutionStatus": "proposed",
+ "umaResolutionStatuses": "[\"proposed\"]",
+ "clobTokenIds": "[\"11807691644868166983390207408868795383945915035851758101409310535538572683733\", \"72656506786460378316387284276713856836841708169262528054985577978493419440428\"]",
+ "updatedAt": "2026-10-23T04:28:05.502623Z",
+ "volumeNum": 10728603.647954999
+}

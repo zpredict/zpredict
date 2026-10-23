@@ -1,0 +1,18 @@
+{
+ "id": "4950297",
+ "question": "Hurricanes vs. Oilers",
+ "conditionId": "0x30da729d4adecac42fa145f55f73810b9b2a239696641e36d27ebfbd77b4dc76",
+ "slug": "nhl-car-edm-2026-10-22",
+ "endDate": "2026-10-23T01:00:00Z",
+ "outcomes": "[\"Hurricanes\", \"Oilers\"]",
+ "outcomePrices": "[\"0\", \"1\"]",
+ "active": true,
+ "closed": true,
+ "acceptingOrders": false,
+ "umaResolutionStatus": "resolved",
+ "umaResolutionStatuses": "[\"proposed\", \"proposed\"]",
+ "clobTokenIds": "[\"50670219903221008271360464911418703516624724591687900451676601324173889520373\", \"17472766341599775632357736531899737120542930189929631179680975195065924612666\"]",
+ "updatedAt": "2026-10-23T04:22:17.41366Z",
+ "closedTime": "2026-10-23 04:13:02.053995+00",
+ "volumeNum": 354438.30694000004
+}

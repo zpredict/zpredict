@@ -1,0 +1,18 @@
+{
+ "id": "5914178",
+ "question": "Will the highest temperature in Warsaw be 16\u00b0C on October 21?",
+ "conditionId": "0x96df10bb5b67b16adf969226919cf818f8b3935c6ef9c79507d6169994b2c4e6",
+ "slug": "highest-temperature-in-warsaw-on-october-21-2026-16c",
+ "endDate": "2026-10-21T12:00:00Z",
+ "outcomes": "[\"Yes\", \"No\"]",
+ "outcomePrices": "[\"1\", \"0\"]",
+ "active": true,
+ "closed": true,
+ "acceptingOrders": false,
+ "umaResolutionStatus": "resolved",
+ "umaResolutionStatuses": "[\"proposed\", \"proposed\"]",
+ "clobTokenIds": "[\"108521005750877167032181678521196350513042391099494921526671753038091165754740\", \"18669254882822965894304144306311558141362319325190331339107413103317524466757\"]",
+ "updatedAt": "2026-10-23T04:22:17.41366Z",
+ "closedTime": "2026-10-23 04:17:46.320049+00",
+ "volumeNum": 4837.118845999999
+}
