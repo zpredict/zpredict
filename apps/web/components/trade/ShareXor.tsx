@@ -1,9 +1,10 @@
 "use client";
+import type { Fill } from "@zpredict/sdk";
 import Badge from "@/components/ui/Badge";
 import Card from "@/components/ui/Card";
 import type { MyOrder } from "@/hooks/useOrders";
 import { avgCents, sideName } from "@/lib/format";
-import { openFill, openOrder, xorHex } from "@/lib/shares";
+import { missed, openFill, openOrder, xorHex } from "@/lib/shares";
 import HexBytes from "./HexBytes";
 
 interface Props {
@@ -18,6 +19,15 @@ function unfilledText(o: MyOrder): string {
 			? "Not filled. Try again."
 			: "Not filled: a batch boundary fell between your order and its counter-order. Retrying the pair once…";
 	return "Not filled: nobody took the other side in this batch, and an unfilled order is dropped unopened. In judge mode, tick “Take the other side (demo)” to see a fill; otherwise someone has to take the other side in the same batch.";
+}
+
+function fillText(o: MyOrder, fill: Fill | null): string {
+	if (fill?.filled)
+		return `Filled ${fill.size} @ ${avgCents(fill).toFixed(1)}¢ average — only you can open this.`;
+	if (fill || missed(o)) return unfilledText(o);
+	return o.retry && o.counterId
+		? "Retrying in the next batch…"
+		: `Waiting for batch ${o.batch} to clear…`;
 }
 
 /**
@@ -52,13 +62,7 @@ export default function ShareXor({ order, counter }: Props) {
 					: "Waiting for the shares to land at all three relayers…"}
 			</p>
 			<p className={`xor__fill${fill?.filled ? " is-filled" : ""}`} role="status">
-				{fill?.filled
-					? `Filled ${fill.size} @ ${avgCents(fill).toFixed(1)}¢ average — only you can open this.`
-					: fill
-						? unfilledText(order)
-						: order.retry && order.counterId
-							? "Retrying in the next batch…"
-							: `Waiting for batch ${order.batch} to clear…`}
+				{fillText(order, fill)}
 			</p>
 			{counter && (
 				<p className="xor__counter">
