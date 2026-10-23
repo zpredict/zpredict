@@ -13,6 +13,8 @@ pnpm --filter @zpredict/web dev:mock   # 3 mock relayers on :4101-4103 + next de
 
 Open http://localhost:3000, click **Judge mode** (mock credit of 25 units), place an order, and watch the three relayer panels. A fill shows up within one batch (5 s).
 
+Judge mode makes one account per browser (its tag lives in `localStorage`; a claim that fails halfway is retried with the same tag, so it never takes a second table row). The relayers' balance table has a fixed number of rows (`table_rows`). When it is full, Judge mode says so instead of creating an account, and an account that only has a row past the cap (a deposit that arrived after the table filled) gets a clear notice on the order ticket rather than orders that never fill.
+
 Other scripts:
 
 | Command | What |

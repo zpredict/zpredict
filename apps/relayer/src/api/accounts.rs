@@ -10,10 +10,13 @@ use serde_json::json;
 
 use super::{Api, fail, hex_id, hex_key};
 
-/// `{balanceShare: hex16}`: this relayer's u64 LE share of account `id` (hex16, the u64
-/// LE id). `key` must be this relayer's share of the account's key (hex32), which only
-/// the account's browser and this relayer know, so another relayer cannot collect the
-/// shares and read the balance. Ids with no key here hold a zero share.
+/// `{balanceShare: hex16, seat}`: this relayer's u64 LE share of account `id` (hex16, the
+/// u64 LE id), and whether the account is `seated` in the batch's table rows, `waiting`
+/// past them (the table is full, so its orders can't fill yet) or `none` (no row yet).
+/// `key` must be this relayer's share of the account's key (hex32), which only the
+/// account's browser and this relayer know, so another relayer cannot collect the shares
+/// and read the balance, nor anyone learn another account's seat. Ids with no key here
+/// hold a zero share.
 pub async fn get(
     State(api): State<Api>,
     Path(id): Path<String>,
@@ -27,5 +30,6 @@ pub async fn get(
         return fail(StatusCode::FORBIDDEN, "wrong key");
     }
     let share = s.table.balance_share(id);
-    Json(json!({ "balanceShare": hex::encode(share) })).into_response()
+    let seat = s.seat(id, api.table_rows);
+    Json(json!({ "balanceShare": hex::encode(share), "seat": seat })).into_response()
 }

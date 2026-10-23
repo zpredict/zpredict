@@ -1,4 +1,5 @@
 "use client";
+import { TableFullError } from "@zpredict/sdk";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAccount } from "./useAccount";
@@ -16,8 +17,12 @@ export function useJudge(market?: number) {
 			setBusy(true);
 			try {
 				await claim();
-			} catch {
-				setError("Relayers unreachable");
+			} catch (e) {
+				setError(
+					e instanceof TableFullError
+						? "Demo accounts are all taken: the relayers' balance table is full."
+						: "Relayers unreachable",
+				);
 				return;
 			} finally {
 				setBusy(false);

@@ -63,6 +63,19 @@ pub fn view_digest(share: &[u8]) -> String {
     hex::encode(h.as_bytes())
 }
 
+/// The result of a judge claim ([`State::claim`]).
+#[derive(Debug, PartialEq, Eq)]
+pub enum Claim {
+    /// A new account; relayer 0 credited it.
+    New,
+    /// This relayer already holds exactly this key share for the id (a retried claim).
+    Again,
+    /// The id belongs to another key or a deposit.
+    Taken,
+    /// The table already has `table_rows` rows: a new account could never trade.
+    Full,
+}
+
 pub enum Accept {
     Joined(u64),
     Duplicate,
@@ -174,16 +187,32 @@ impl State {
     /// relayer 0 credits it `amount` (relayers 1 and 2 learn the row at the next batch).
     /// Every relayer sees the amount anyway. False if the id is already known here: a
     /// claim never tops up an existing account or replaces its key.
-    pub fn claim(&mut self, id: u64, share: Key, amount: u64) -> Result<bool> {
+    pub fn claim(&mut self, id: u64, share: Key, amount: u64, rows: usize) -> Result<Claim> {
+        if self.table.key_matches(id, &share) {
+            return Ok(Claim::Again);
+        }
         if self.table.has_key(id) || self.table.ids().contains(&id) {
-            return Ok(false);
+            return Ok(Claim::Taken);
+        }
+        if self.table.len() >= rows {
+            return Ok(Claim::Full);
         }
         let share = hex::encode(share);
         self.record(Event::Key { id, share })?;
         if self.index == 0 {
             self.record(Event::Credit { id, amount })?;
         }
-        Ok(true)
+        Ok(Claim::New)
+    }
+
+    /// Where account `id` stands in the balance table: in the first `rows` (its orders
+    /// can fill), past them (it waits for a row, #99), or not in it.
+    pub fn seat(&self, id: u64, rows: usize) -> &'static str {
+        match self.table.ids().iter().position(|&r| r == id) {
+            Some(k) if k < rows => "seated",
+            Some(_) => "waiting",
+            None => "none",
+        }
     }
 
     pub fn view_after(&self, after: u64, max: usize) -> Vec<ViewItem> {

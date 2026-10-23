@@ -18,6 +18,11 @@ escrow_lightwalletd = "https://testnet.zec.rocks:443"
 # Fill ≈ window/2 + online when a preprocessed run is ready (~7 s on the VPS), up to one
 # preprocessing (~33 s) more when an order lands right after another batch.
 batch_size = 8
+# 48 accounts for judging (#99): every judge browser takes one row and rows are never
+# reclaimed (#64). On an M4 Pro: preprocessing 8.0 s, online 0.75 s (×5.7 on the VPS:
+# ~46 s and ~4 s), so a fill takes ~8 s with a run ready and up to ~50 s back to back.
+# Relayer 0 logs "table: N of 48 rows used"; when it is full, Judge mode says so.
+table_rows = 48
 window_secs = 5
 # Batches, not seconds: ~30 s for a browser's three POSTs to all arrive.
 expire_batches = 6

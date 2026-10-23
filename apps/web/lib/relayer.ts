@@ -2,7 +2,7 @@
 // Each relayer only ever receives its own share; requests carry no cookies and no referrer.
 import {
 	claimJudge as claim,
-	getBalance,
+	getAccount,
 	getFill,
 	getGroupKey,
 	getMemoKeys,
@@ -35,7 +35,8 @@ export const fetchMarkets = () => json<Market[]>(at(relayers[0], "/markets"));
 /** Mock, testnet only: opens account `tag` with demo balance; relayer i gets only its share. */
 export const claimJudge = (tag: string) => claim(relayers, tag);
 
-export const fetchBalance = (tag: string) => getBalance(relayers, tag);
+/** Balance and seat (whether the account's orders can fill: see `Seat`). */
+export const fetchAccount = (tag: string) => getAccount(relayers, tag);
 
 /** Relayer i answers only to `tokens[i]`, the read token this browser gave it with the order. */
 export const fetchFill = (orderId: string, tokens: readonly string[]) =>

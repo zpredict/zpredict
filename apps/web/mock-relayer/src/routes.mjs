@@ -93,7 +93,10 @@ async function judgeClaim(i, req, res) {
 	if (!b || !HEX(16).test(b.account) || !HEX(32).test(b.keyShare))
 		return send(res, 400, { error: "bad claim" });
 	const k = keys.get(b.account) ?? [null, null, null];
-	if (k[i]) return send(res, 409, { error: "account exists" });
+	if (k[i]) {
+		const again = hex(k[i]) === b.keyShare;
+		return again ? send(res, 200, {}) : send(res, 409, { error: "account exists" });
+	}
 	k[i] = Buffer.from(b.keyShare, "hex");
 	keys.set(b.account, k);
 	if (k.every(Boolean)) account(hex(xor(...k))).bal += JUDGE_CREDIT;

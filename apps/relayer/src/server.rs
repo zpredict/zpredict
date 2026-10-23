@@ -32,17 +32,12 @@ pub async fn run(c: Config) -> Result<()> {
             "insecure_matcher needs a build with --features dev-insecure".into(),
         ));
     }
-    // Compile the Garble program now, not inside the first batch (~6 s at 8 slots and
-    // 32 rows, ~25 s at 16 slots).
     if !(2..=zpredict_circuit::MAX_SLOTS).contains(&c.batch_size) {
         return Err(Error::Config(format!(
             "batch_size must be 2..={}",
             zpredict_circuit::MAX_SLOTS
         )));
     }
-    let markets = zpredict_circuit::DEFAULT_MARKETS;
-    let withdrawals = zpredict_circuit::DEFAULT_WITHDRAWALS;
-    let _ = zpredict_circuit::program(c.batch_size, c.table_rows, markets, withdrawals);
     serve(c, Polytune).await
 }
 
@@ -50,6 +45,11 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
     let (slots, rows) = (c.batch_size, c.table_rows);
     let markets = markets::load(&c.data_dir, c.markets.clone());
     let state = State::open(c.index, markets, &c.data_dir)?.shared();
+    if c.index == 0 {
+        // Operator log only (#99): the count from the replayed log, before the compile.
+        let used = state.lock().expect("state lock").table.len();
+        eprintln!("table: {used} of {rows} rows used at startup");
+    }
     // Outcomes are signed with the escrow's key share: `frost_share_file`, or else the
     // `[settlement]` one, so turning settlement on also signs outcomes.
     let settlement_share = c.settlement.as_ref().map(|s| s.key_share.as_path());
@@ -94,9 +94,15 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
         judge: c.judge,
         escrow: escrow.clone(),
         pre: Default::default(),
+        logged_rows: Default::default(),
     };
     let handle = tokio::runtime::Handle::current();
-    tokio::task::spawn_blocking(move || handle.block_on(batch::run(b)));
+    // The circuit compiles on the batch thread before the first window (~7 s at 32 rows,
+    // ~17 s at 48 on an M4 Pro), so HTTP and the health check are up meanwhile.
+    tokio::task::spawn_blocking(move || {
+        b.matcher.warm_up(slots, rows);
+        handle.block_on(batch::run(b))
+    });
     // Deposits come from the escrow chain (testnet or regtest), never the oracle's.
     if let Some(e) = escrow.clone() {
         let (url, s) = (c.escrow_lightwalletd.clone(), state.clone());
@@ -115,6 +121,7 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
     let app = api::router(Api {
         state,
         origin,
+        table_rows: rows,
         judge_credit,
         memo_key,
         group_key,

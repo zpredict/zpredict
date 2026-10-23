@@ -13,7 +13,7 @@ const isInt = (v: number, lo: number, hi: number) => Number.isInteger(v) && v >=
  * the public last price for the chosen side (see defaultPrice) and follows the side.
  */
 export function useOrderTicket(market: Market, initialSide: Side = 0) {
-	const { tag, balance } = useAccount();
+	const { tag, balance, seat } = useAccount();
 	const { place } = useOrders();
 	const [side, setSideState] = useState<Side>(initialSide);
 	const [price, setPrice] = useState(() => defaultPrice(market, initialSide));
@@ -29,11 +29,14 @@ export function useOrderTicket(market: Market, initialSide: Side = 0) {
 	const cost = maxCost(size, price);
 	const affordable = balance === null || BigInt(size * price * 2) <= balance;
 	const valid = isInt(price, 1, 99) && isInt(size, 1, MAX_SIZE);
-	const problem = !valid
-		? "Price 1–99¢, size a whole number of contracts"
-		: !affordable
-			? "Worst-case cost exceeds your balance"
-			: "";
+	const problem =
+		seat === "waiting"
+			? "The relayers' balance table is full, so this account's orders can't fill until a row frees up."
+			: !valid
+				? "Price 1–99¢, size a whole number of contracts"
+				: !affordable
+					? "Worst-case cost exceeds your balance"
+					: "";
 
 	const submit = async () => {
 		if (problem || !tag) return;

@@ -1,16 +1,18 @@
 "use client";
 // The account: a random tag kept only in this browser (its credential: relayers only ever
 // get shares of it), and its balance, combined from the three relayers' XOR balance shares.
-import { newTag } from "@zpredict/sdk";
+import { newTag, type Seat } from "@zpredict/sdk";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { POLL_MS } from "@/lib/config";
-import { claimJudge, fetchBalance } from "@/lib/relayer";
+import { claimJudge, fetchAccount } from "@/lib/relayer";
 import { KEYS, load, save } from "@/lib/storage";
 import { usePoll } from "./usePoll";
 
 interface Account {
 	tag: string | null;
 	balance: bigint | null;
+	/** `waiting`: the relayers' table is full, so this account's orders can't fill yet. */
+	seat: Seat | null;
 	claim: () => Promise<void>;
 	/** A fresh tag made in this browser, for a real deposit; never sent anywhere in clear. */
 	create: () => string;
@@ -29,19 +31,27 @@ export function useAccount(): Account {
 export function AccountProvider({ children }: { children: ReactNode }) {
 	const [tag, setTag] = useState<string | null>(null);
 	const [balance, setBalance] = useState<bigint | null>(null);
+	const [seat, setSeat] = useState<Seat | null>(null);
 
 	useEffect(() => setTag(load(KEYS.tag)), []);
 
 	const refresh = useCallback(async () => {
-		if (tag) setBalance(await fetchBalance(tag));
+		if (!tag) return;
+		const a = await fetchAccount(tag);
+		setBalance(a.balance);
+		setSeat(a.seat);
 	}, [tag]);
 
 	usePoll(refresh, POLL_MS.balance, tag);
 
+	// One account per browser: a claim that failed halfway is retried with the same tag,
+	// which the relayers accept without a second credit (or a second table row).
 	const claim = useCallback(async () => {
-		const t = newTag();
+		const t = load(KEYS.claim) ?? newTag();
+		save(KEYS.claim, t);
 		await claimJudge(t);
 		save(KEYS.tag, t);
+		save(KEYS.claim, null);
 		setTag(t);
 	}, []);
 
@@ -57,9 +67,12 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 		save(KEYS.orders, null);
 		setTag(null);
 		setBalance(null);
+		setSeat(null);
 	}, []);
 
 	return (
-		<Ctx.Provider value={{ tag, balance, claim, create, forget, refresh }}>{children}</Ctx.Provider>
+		<Ctx.Provider value={{ tag, balance, seat, claim, create, forget, refresh }}>
+			{children}
+		</Ctx.Provider>
 	);
 }

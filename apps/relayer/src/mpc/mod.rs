@@ -21,6 +21,9 @@ pub trait Matcher {
     /// A clearing run's input-independent part, made before the batch is known.
     type Pre: Send;
 
+    /// Compiles what the first batch would otherwise compile inside its run.
+    fn warm_up(&self, _slots: usize, _rows: usize) {}
+
     /// Preprocesses one clearing run with `slots` order slots and `rows` table rows (all
     /// three relayers together), for exactly one [`Matcher::clear`].
     #[allow(async_fn_in_trait)]
@@ -62,6 +65,11 @@ pub struct Polytune;
 
 impl Matcher for Polytune {
     type Pre = zpredict_circuit::Preprocessed;
+
+    fn warm_up(&self, slots: usize, rows: usize) {
+        let _ = zpredict_circuit::program(slots, rows, DEFAULT_MARKETS, DEFAULT_WITHDRAWALS);
+        let _ = zpredict_circuit::resolve_program(zpredict_circuit::DEFAULT_POSITIONS, rows);
+    }
 
     async fn preprocess(&self, links: &Links, slots: usize, rows: usize) -> Result<Self::Pre> {
         let prg = zpredict_circuit::program(slots, rows, DEFAULT_MARKETS, DEFAULT_WITHDRAWALS);

@@ -180,7 +180,12 @@ export interface OrderStatus {
 /** `GET /accounts/:id?key=<this relayer's key share>`; balanceShare hex16. */
 export interface AccountShare {
 	balanceShare: string;
+	/** Whether the account has a balance-table row its orders can use: `waiting` means
+	 * the table is full and its orders can't fill yet; `none`, no row yet. */
+	seat?: Seat;
 }
+
+export type Seat = "seated" | "waiting" | "none";
 
 /** One share a relayer received, as a digest (`viewDigest`): never the share or orderId. */
 export interface ViewItem {
@@ -269,21 +274,42 @@ export async function getFill(
 
 /** Balance in half-ticks. Each relayer answers only to its own share of the tag. */
 export async function getBalance(relayers: Relayers, tag: string) {
+	return (await getAccount(relayers, tag)).balance;
+}
+
+/** Balance in half-ticks and the account's seat in the table (relayer 0's row order). */
+export async function getAccount(relayers: Relayers, tag: string) {
 	distinct(relayers);
 	const [id, shares] = [accountHex(tag), keyShares(tag)];
 	const res = await Promise.all(
 		relayers.map((u, i) => call<AccountShare>(at(u, `/accounts/${id}?key=${toHex(shares[i])}`))),
 	);
-	return decodeBalance(combine(res.map((r) => fromHex(r.balanceShare))));
+	const balance = decodeBalance(combine(res.map((r) => fromHex(r.balanceShare))));
+	return { balance, seat: res[0].seat ?? ("seated" as Seat) };
 }
 
 /** Judge mode: opens account `tag` with the relayers' mock credit, sending relayer i only
- * its share of the tag (as a deposit memo would). Fails if the account already exists. */
+ * its share of the tag (as a deposit memo would). Repeating it for the same tag is safe
+ * (no second credit), so a claim that failed halfway can be retried with the same tag.
+ * Throws {@link TableFullError} when the demo's balance table has no free row. */
 export async function claimJudge(relayers: Relayers, tag: string) {
 	distinct(relayers);
 	const account = accountHex(tag);
 	const bodies = keyShares(tag).map((s): JudgeClaim => ({ account, keyShare: toHex(s) }));
-	await postEach(relayers, "/judge/claim", bodies);
+	try {
+		await postEach(relayers, "/judge/claim", bodies);
+	} catch (e) {
+		if (e instanceof Error && e.message.startsWith("503 ")) throw new TableFullError();
+		throw e;
+	}
+}
+
+/** The relayers' balance table is full: no new account can trade until a row frees. */
+export class TableFullError extends Error {
+	constructor() {
+		super("the balance table is full");
+		this.name = "TableFullError";
+	}
 }
 
 export const getMarkets = (url: string) => call<Market[]>(at(url, "/markets"));
