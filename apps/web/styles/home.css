@@ -1,24 +1,164 @@
-/* Markets hero: the ASCII mark, with the statement over it as lime highlighter strips. */
+/* Markets home: featured carousel + side column, then all markets. The ASCII mark (AsciiHero)
+   is the featured card's visual. */
 
-.hero {
-	position: relative;
+.home {
 	display: grid;
-	place-items: center;
-	min-height: min(100svh, 920px);
-	padding: var(--header-space) var(--zp-gutter) 48px;
-	overflow: hidden;
+	gap: 56px;
+	padding: var(--header-space) var(--zp-gutter) 72px;
 }
 
+.home__top {
+	display: grid;
+	grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+	gap: 24px;
+	align-items: start;
+}
+
+.home__side {
+	display: grid;
+	gap: 16px;
+}
+
+.home__cta {
+	display: grid;
+	gap: 16px;
+	padding: 22px;
+	border: 1px solid var(--line);
+}
+
+.home__title {
+	font-size: clamp(20px, 1.7vw, 26px);
+	line-height: 1.5;
+	letter-spacing: -0.02em;
+}
+
+.home__title span {
+	padding: 2px 7px;
+	background: var(--zp-lime);
+	color: var(--zp-ink);
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
+}
+
+.home__cta a {
+	color: var(--zp-lime);
+}
+
+/* Featured carousel card: copy left, ASCII mark right; fixed height so data never shifts it. */
+.feat {
+	display: grid;
+	gap: 12px;
+}
+
+.feat__card {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 24px;
+	min-height: 400px;
+	padding: 28px;
+	border: 1px solid var(--line);
+	background: #0b0b0b;
+}
+
+.feat__body {
+	display: flex;
+	flex-direction: column;
+	gap: 18px;
+	min-width: 0;
+}
+
+.feat__cat {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	color: var(--zp-muted);
+	font-size: 11px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.feat__title {
+	font-size: clamp(22px, 2vw, 30px);
+	line-height: 1.25;
+	letter-spacing: -0.04em;
+	text-wrap: balance;
+}
+
+.feat__title a:hover {
+	color: var(--zp-lime);
+}
+
+.feat__rows {
+	display: grid;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.feat__rows li {
+	display: flex;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 10px 0;
+	border-bottom: 1px solid var(--line);
+	font-size: 15px;
+}
+
+.feat__rows a:hover {
+	color: var(--zp-lime);
+}
+
+.feat__rows .num {
+	color: var(--zp-lime);
+}
+
+.feat__body .mmeta {
+	margin-top: auto;
+}
+
+.feat__visual {
+	display: grid;
+	place-items: center;
+}
+
+.feat__nav {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.feat__nav button {
+	min-width: 32px;
+	height: 32px;
+	border: 1px solid var(--line-strong);
+	color: var(--zp-text);
+}
+
+.feat__nav button:hover {
+	border-color: var(--zp-lime);
+	color: var(--zp-lime);
+}
+
+.feat__nav .feat__dot {
+	min-width: 0;
+	width: 10px;
+	height: 10px;
+	border-color: var(--zp-glyph);
+}
+
+.feat__dot[aria-current="true"] {
+	border-color: var(--zp-lime);
+	background: var(--zp-lime);
+}
+
+/* The ASCII mark inside the featured card: snapshot <pre> and live canvas share one square, a
+   cell is --s / cols wide (JetBrains Mono advance = 0.6em). Grids: AsciiHero GRID. */
 .ascii-hero {
-	--s: min(calc(100svh - var(--header-space) - 48px), 60vw);
-	position: absolute;
-	inset: var(--header-space) 0 0;
+	--s: 340px;
 	display: grid;
 	place-items: center;
 }
 
-/* Snapshot <pre> and live canvas share one square; the snapshot covers exactly the framing
-   square, so a cell is --s / cols wide (JetBrains Mono advance = 0.6em). Grids: AsciiHero GRID. */
 .ascii-hero > * {
 	grid-area: 1 / 1;
 	width: var(--s);
@@ -54,41 +194,9 @@
 	opacity: 1;
 }
 
-.hero__copy {
-	position: relative;
-	display: grid;
-	justify-items: center;
-	gap: 28px;
-	text-align: center;
-}
-
-/* Small text sits on the ASCII art: give it its own near-black strip. */
-.hero__eyebrow,
-.judge__note {
-	padding: 4px 8px;
-	background: var(--zp-bg);
-}
-
-.hero__eyebrow {
-	color: var(--zp-text);
-}
-
-.hero__title {
-	color: var(--zp-ink);
-	font-size: clamp(20px, 2vw, 30px);
-	line-height: 1.45;
-	letter-spacing: -0.02em;
-}
-
-.hero__title .scr__line {
-	margin-inline: auto;
-	padding: 0 7px;
-	background: var(--zp-lime);
-}
-
 .judge {
 	display: grid;
-	justify-items: center;
+	justify-items: start;
 	gap: 14px;
 }
 
@@ -96,45 +204,40 @@
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	max-width: 46ch;
 	color: var(--zp-muted);
 	font-size: 12px;
 	line-height: 1.5;
-	text-align: left;
 }
 
-@media (max-width: 900px) {
-	.hero {
-		place-items: start stretch;
-		min-height: 0;
-		padding: var(--header-space) 20px 56px;
+@media (max-width: 1099.98px) {
+	.home__top {
+		grid-template-columns: minmax(0, 1fr);
 	}
 	.ascii-hero {
-		--s: calc(100vw - 40px);
-		position: relative;
-		inset: auto;
-		order: 2;
-		margin-top: 32px;
+		--s: 260px;
+	}
+}
+
+@media (max-width: 699.98px) {
+	.home {
+		gap: 40px;
+		padding-inline: 12px;
+	}
+	.feat__card {
+		grid-template-columns: minmax(0, 1fr);
+		min-height: 0;
+		padding: 18px;
+	}
+	.feat__visual {
+		order: -1;
+	}
+	.ascii-hero {
+		--s: min(200px, 60vw);
 	}
 	.ascii-hero__art--desktop {
 		display: none;
 	}
 	.ascii-hero__art--phone {
 		display: block;
-	}
-	.hero__copy {
-		justify-items: start;
-		text-align: left;
-	}
-	.hero__title {
-		font-size: clamp(20px, 5.6vw, 30px);
-		line-height: 1.5;
-	}
-	.hero__title .scr__line {
-		margin-inline: 0;
-		padding: 3px 6px;
-	}
-	.judge {
-		justify-items: start;
 	}
 }
