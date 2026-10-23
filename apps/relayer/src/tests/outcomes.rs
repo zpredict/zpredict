@@ -1,15 +1,18 @@
 //! Rolling markets and FROST-signed outcomes end to end: three relayers each generate and
 //! resolve markets from their own (fixture) chain, then sign over the batch's Noise links.
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use zpredict_oracle::{Block, FixtureChain, Market, Status};
+use zpredict_oracle::{Block, FixtureChain, Market, Resolution, Status};
+use zpredict_plugin_polymarket::Point;
 use zpredict_settle::{dkg_local, outcome};
 
 use super::*;
 use crate::chain::{registry, tick};
 use crate::markets::Rolling;
 use crate::mpc::InsecureLocalMatcher;
+use crate::reference::Reference;
 
 fn rolling() -> Rolling {
     Rolling {
@@ -55,7 +58,7 @@ async fn three_relayers_generate_resolve_and_sign_only_what_they_agree_on() {
         x.batcher.frost = Some(Arc::new(s));
         x.batcher.state.lock().unwrap().markets = vec![headline()];
     }
-    let (reg, roll) = (registry(), rolling());
+    let (reg, roll) = (registry(Default::default()), rolling());
 
     // Window start 3,527,040: every relayer makes the same rolling market.
     for (i, x) in r.iter().enumerate() {
@@ -135,10 +138,80 @@ async fn group_key_is_served_only_with_a_share() {
         memo_key: None,
         group_key: Some([7; 32]),
         escrow: None,
+        references: Default::default(),
     });
     let (_, body) = call(&signed, "GET", "/group-key", None).await;
     assert_eq!(
         body,
         json!({"relayer": 1, "groupKey": "07".repeat(32), "threshold": 2})
     );
+}
+
+/// A mirrored market: each relayer reads Polymarket itself; what all three read the same is
+/// signed over `source` and `conditionId`, with no block. `/markets` also serves the
+/// reference price the relayer fetched.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_polymarket_resolution_is_signed_over_its_source() {
+    let mut r = relayers("outcomes-polymarket", 2, || InsecureLocalMatcher, false);
+    let shares = dkg_local().unwrap();
+    let ak = shares[0].ak().unwrap();
+    let cid = "0xd5d9fc47718bd553592d126b1fa5e87183d27f3936975b0c04cc0f2dec1f1bb4";
+    let mirrored: Market = serde_json::from_value(json!({
+        "id": 11, "question": "Will the Democratic Party control the House?",
+        "plugin": "polymarket", "params": {"conditionId": cid, "slug": "house"},
+        "closeHeight": 90, "resolveHeight": 90, "status": "closed", "category": "Politics"
+    }))
+    .unwrap();
+    let resolution = Resolution::from_source(&mirrored, "polymarket", cid, true);
+    for (x, s) in r.iter_mut().zip(shares) {
+        x.batcher.frost = Some(Arc::new(s));
+        let mut m = mirrored.clone();
+        m.set_resolution(&resolution);
+        x.batcher.state.lock().unwrap().markets = vec![m];
+    }
+    batch_all(&r).await;
+
+    let reference = Reference {
+        source: "polymarket",
+        price: 92.5,
+        url: "https://polymarket.com/market/house".into(),
+        updated_at: None,
+        history: vec![Point { t: 1, price: 90.0 }],
+    };
+    let http = crate::api::router(crate::api::Api {
+        state: r[2].batcher.state.clone(),
+        origin: "http://localhost:3000".into(),
+        table_rows: 16,
+        judge_credit: None,
+        memo_key: None,
+        group_key: None,
+        escrow: None,
+        references: Arc::new(
+            [(11, reference)]
+                .into_iter()
+                .collect::<BTreeMap<_, _>>()
+                .into(),
+        ),
+    });
+    let (_, list) = call(&http, "GET", "/markets", None).await;
+    let m = &list[0];
+    assert_eq!(m["source"], "polymarket");
+    assert_eq!(
+        (m["conditionId"].as_str(), m.get("blockHash")),
+        (Some(cid), None)
+    );
+    assert_eq!(m["category"], "Politics");
+    assert_eq!(
+        m["reference"],
+        json!({"source": "polymarket", "price": 92.5, "url": "https://polymarket.com/market/house",
+               "history": [{"t": 1, "price": 90.0}]})
+    );
+    let m: Market = serde_json::from_value(m.clone()).unwrap();
+    assert_eq!(m.resolution(), Some(resolution.clone()));
+    let sig = hex::decode(m.outcome_sig.expect("signed")).unwrap();
+    assert!(outcome::verify(
+        &ak,
+        &resolution.message(),
+        &sig.try_into().unwrap()
+    ));
 }

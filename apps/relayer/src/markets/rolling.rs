@@ -12,15 +12,15 @@
 //! window start (blocks every relayer reads from its own node), so YES and NO are about
 //! even.
 //!
-//! **Cap:** a market is only created while fewer than `DEFAULT_MARKETS` (4, the markets
-//! one MPC run clears) close after its start height. With the three headline markets and
-//! `horizon_secs = interval_secs`, that is one rolling market open at a time: 3 + 1 = 4.
+//! **Cap:** a market is only created while fewer than `DEFAULT_MARKETS` (6, the markets
+//! one MPC run clears) close after its start height. With the five configured markets and
+//! `horizon_secs = interval_secs`, that is one rolling market open at a time: 5 + 1 = 6.
 
 use std::collections::HashSet;
 
 use serde::Deserialize;
 use serde_json::json;
-use zpredict_oracle::{CONFIRMATIONS, Chain, Error, Market, Result, Status};
+use zpredict_oracle::{CONFIRMATIONS, Chain, Error, Info, Market, Result, Status};
 
 /// Rolling market ids are `ROLLING_ID_BASE + window`; config markets stay below it.
 pub const ROLLING_ID_BASE: u32 = 1_000_000;
@@ -111,7 +111,13 @@ impl Rolling {
             outcome_sig: None,
             block_hash: None,
             block_height: None,
+            source: None,
+            condition_id: None,
             rolling: true,
+            info: Info {
+                category: Some("Rolling".into()),
+                ..Info::default()
+            },
         }))
     }
 
@@ -250,17 +256,15 @@ mod tests {
             rolling: false,
             ..r.due(3_527_040, &[], &c).unwrap().unwrap()
         };
-        let three: Vec<Market> = (1..=3).map(|i| headline(i, 3_543_000)).collect();
+        let cap = zpredict_circuit::DEFAULT_MARKETS as u32;
+        let five: Vec<Market> = (1..cap).map(|i| headline(i, 3_543_000)).collect();
+        assert!(r.due(3_527_040, &five, &c).unwrap().is_some(), "5 + 1 fits");
+        let mut six = five.clone();
+        six.push(headline(cap, 3_560_000));
+        assert_eq!(r.due(3_527_040, &six, &c).unwrap(), None);
+        six[5].close_height = 3_527_000;
         assert!(
-            r.due(3_527_040, &three, &c).unwrap().is_some(),
-            "3 + 1 fits"
-        );
-        let mut four = three.clone();
-        four.push(headline(4, 3_560_000));
-        assert_eq!(r.due(3_527_040, &four, &c).unwrap(), None);
-        four[3].close_height = 3_527_000;
-        assert!(
-            r.due(3_527_040, &four, &c).unwrap().is_some(),
+            r.due(3_527_040, &six, &c).unwrap().is_some(),
             "closed ones free a slot"
         );
     }

@@ -1,5 +1,8 @@
+import type { Market } from "@zpredict/sdk";
+import { isMirrored } from "@/lib/markets";
+
 /** What a public market can't show, by design, plus how it resolves. */
-export default function PrivacyChips() {
+export default function PrivacyChips({ market }: { market: Market }) {
 	return (
 		<footer className="mmeta">
 			<span
@@ -14,7 +17,9 @@ export default function PrivacyChips() {
 			>
 				Sizes: hidden
 			</span>
-			<span className="mmeta__badge">Resolved from chain data</span>
+			<span className="mmeta__badge">
+				{isMirrored(market) ? "Resolves per Polymarket" : "Resolved from chain data"}
+			</span>
 		</footer>
 	);
 }

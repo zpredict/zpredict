@@ -1,5 +1,6 @@
-// The demo markets: the three headline markets of deploy/production/relayer.toml (shown on
-// the landing) plus three extra ones, with mock opening prices. Params follow
+// The demo markets: the configured markets of deploy/production/relayer.toml (shown on
+// the landing; ids 11-13 mirror Polymarket) plus three extra chain markets, with mock
+// opening prices. Params follow
 // packages/plugins/*. Every market resolves at a future mainnet height; a market closes 100
 // blocks before it resolves.
 
@@ -14,6 +15,33 @@ const market = (id, plugin, question, params, resolveHeight, fair) => ({
 	/** Bot fair value in YES cents; not published. */
 	fair,
 });
+
+const HOUSE = { id: "house-2026", title: "Which party will win the House in 2026?" };
+
+/**
+ * A mirrored Polymarket market (packages/plugins/polymarket) with a mock reference: the
+ * real relayers fetch it from Polymarket, the browser never does. Closes at block 3,540,470.
+ */
+const mirror = (id, question, conditionId, slug, price, event) => {
+	const now = Math.floor(Date.now() / 1000);
+	const history = Array.from({ length: 48 }, (_, i) => ({
+		t: now - (47 - i) * 3600,
+		price: Math.round((price + Math.sin(i / 5) * 3) * 10) / 10,
+	}));
+	return {
+		...market(id, "polymarket", question, { conditionId, slug }, 3_540_470, Math.round(price)),
+		closeHeight: 3_540_470,
+		category: "Politics",
+		...(event && { event }),
+		rules: "Mirrors the Polymarket market of the same question; YES iff Polymarket settles it Yes.",
+		reference: {
+			source: "polymarket",
+			price,
+			url: `https://polymarket.com/market/${slug}`,
+			history,
+		},
+	};
+};
 
 export const MARKET_DEFS = [
 	market(
@@ -32,13 +60,28 @@ export const MARKET_DEFS = [
 		3_560_000,
 		38,
 	),
-	market(
-		3,
-		"shielded-actions",
-		"Will block 3,550,000 contain at least 5 shielded actions?",
-		{ minActions: 5 },
-		3_550_000,
-		54,
+	mirror(
+		11,
+		"Will the Democratic Party control the House after the 2026 Midterm elections?",
+		"0xd5d9fc47718bd553592d126b1fa5e87183d27f3936975b0c04cc0f2dec1f1bb4",
+		"will-the-democratic-party-control-the-house-after-the-2026-midterm-elections",
+		92.5,
+		HOUSE,
+	),
+	mirror(
+		12,
+		"Will the Republican Party control the House after the 2026 Midterm elections?",
+		"0x4e4f77e7dbf4cab666e9a1943674d7ae66348e862df03ea6f44b11eb95731928",
+		"will-the-republican-party-control-the-house-after-the-2026-midterm-elections",
+		7.5,
+		HOUSE,
+	),
+	mirror(
+		13,
+		"Will the Democrats win the Texas Senate race in 2026?",
+		"0x34918035a590555ba1fb1d6a019d766ab6e557d63e7f3140b63b4550eee7f417",
+		"will-the-democrats-win-the-texas-senate-race-in-2026",
+		66.5,
 	),
 	market(
 		4,

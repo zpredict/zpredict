@@ -3,12 +3,13 @@ import Link from "next/link";
 import Badge from "@/components/ui/Badge";
 import { useGroupKey } from "@/hooks/useGroupKey";
 import { useTip } from "@/hooks/useTip";
-import { category, chance, heightLabel } from "@/lib/markets";
+import { category, chance, heightLabel, isMirrored } from "@/lib/markets";
 import Chance from "./Chance";
 import Countdown from "./Countdown";
 import OutcomeProof from "./OutcomeProof";
 import PrivacyChips from "./PrivacyChips";
 import ProbabilityBar from "./ProbabilityBar";
+import Reference from "./Reference";
 import Sparkline from "./Sparkline";
 
 /** Trade page header: the market card's information, laid out for the trader pane. */
@@ -30,12 +31,16 @@ export default function MarketHeader({ market: m }: { market: Market }) {
 				<Sparkline className="mcard__spark" points={m.history ?? []} />
 			</div>
 			<ProbabilityBar yes={chance(m)} />
+			<Reference market={m} />
 			<p className="mhead__heights num">
-				Closes {heightLabel(m.closeHeight)} · resolves at block {heightLabel(m.resolveHeight)}
+				Closes {heightLabel(m.closeHeight)} ·{" "}
+				{isMirrored(m)
+					? "resolves when Polymarket settles"
+					: `resolves at block ${heightLabel(m.resolveHeight)}`}
 			</p>
 			<Countdown market={m} tip={tip} />
 			<OutcomeProof groupKey={groupKey} market={m} />
-			<PrivacyChips />
+			<PrivacyChips market={m} />
 		</header>
 	);
 }

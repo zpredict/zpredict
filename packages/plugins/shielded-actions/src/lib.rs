@@ -56,7 +56,7 @@ mod tests {
             .resolve(&market(500, 12), &chain)
             .unwrap()
             .unwrap();
-        assert_eq!((at.outcome, at.block_hash.as_str()), (Outcome::Yes, "00bb"));
+        assert_eq!((at.outcome, at.block().unwrap().1), (Outcome::Yes, "00bb"));
         let above = ShieldedActions
             .resolve(&market(500, 13), &chain)
             .unwrap()

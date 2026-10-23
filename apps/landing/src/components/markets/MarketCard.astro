@@ -3,7 +3,7 @@
  * A live market, square and mono: question, resolve height, YES/NO links into the app, plus
  * what stays hidden on zPredict. No price: the live one is in the app.
  */
-import { categoryOf, type Market } from "../../data/markets";
+import { categoryOf, type Market, resolvedBy } from "../../data/markets";
 import { site } from "../../data/site";
 
 interface Props {
@@ -47,7 +47,7 @@ const trade = (side: string) => `${site.appUrl}/trade/?m=${market.id}&side=${sid
 	<footer class="meta">
 		<span>Bettors: hidden</span>
 		<span>Sizes: hidden</span>
-		<span>Resolved from chain data</span>
+		<span>{resolvedBy(market)}</span>
 	</footer>
 </article>
 

@@ -1,0 +1,16 @@
+{
+ "id": "630963",
+ "question": "Will the Democrats win the Texas Senate race in 2026?",
+ "conditionId": "0x34918035a590555ba1fb1d6a019d766ab6e557d63e7f3140b63b4550eee7f417",
+ "slug": "will-the-democrats-win-the-texas-senate-race-in-2026",
+ "endDate": "2026-11-04T04:59:00Z",
+ "outcomes": "[\"Yes\", \"No\"]",
+ "outcomePrices": "[\"0.665\", \"0.335\"]",
+ "active": true,
+ "closed": false,
+ "acceptingOrders": true,
+ "umaResolutionStatuses": "[]",
+ "clobTokenIds": "[\"15290572385458522370285732869432740297199321382471116558439914335588167718663\", \"25172545206000541692667496253531562288536270988826888609620735617040533835056\"]",
+ "updatedAt": "2026-10-23T04:26:04.580943Z",
+ "volumeNum": 2325412.5551869995
+}

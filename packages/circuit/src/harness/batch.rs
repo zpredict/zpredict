@@ -10,7 +10,7 @@ use crate::{DEFAULT_WITHDRAWALS, Error, Outcome, Public, Shares, run_party};
 
 /// The markets every generated batch clears (two used slots, two unused); a few orders
 /// are for [`UNLISTED`], which the batch does not clear.
-pub const MARKETS: [u32; 4] = [7, 8, 0, 0];
+pub const MARKETS: [u32; 6] = [7, 8, 0, 0, 0, 0];
 pub const UNLISTED: u32 = 9;
 
 /// A batch of encoded orders, the balance table, and the three relayers' shares of both.

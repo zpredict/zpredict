@@ -28,6 +28,7 @@ zpredict-core = { path = "../../packages/core" }
 zpredict-oracle = { path = "../../packages/oracle" }
 zpredict-plugin-ironwood-pool = { path = "../../packages/plugins/ironwood-pool" }
 zpredict-plugin-nu7-activation = { path = "../../packages/plugins/nu7-activation" }
+zpredict-plugin-polymarket = { path = "../../packages/plugins/polymarket" }
 zpredict-plugin-shielded-actions = { path = "../../packages/plugins/shielded-actions" }
 zpredict-settle = { path = "../../packages/settle" }
 

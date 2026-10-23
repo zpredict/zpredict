@@ -5,10 +5,27 @@ const CATEGORIES: Record<string, string> = {
 	"nu7-activation": "Network upgrade",
 	"ironwood-pool": "Ironwood pool",
 	"shielded-actions": "Shielded activity",
+	polymarket: "Mirrored",
 };
 
 export const category = (m: Market) =>
-	m.rolling ? "Hourly · shielded activity" : (CATEGORIES[m.plugin] ?? m.plugin);
+	m.rolling ? "Hourly · shielded activity" : (m.category ?? CATEGORIES[m.plugin] ?? m.plugin);
+
+/** A mirrored Polymarket market: Polymarket (UMA) is its oracle, not chain data. */
+export const isMirrored = (m: Market) => m.plugin === "polymarket";
+
+/**
+ * The reference's outbound link (relayer-supplied), only if it is an https page on
+ * Polymarket's own site. A link, never a request: nothing is fetched until a click.
+ */
+export function referenceUrl(m: Market): string | null {
+	try {
+		const url = new URL(m.reference?.url ?? "");
+		return url.protocol === "https:" && url.hostname === "polymarket.com" ? url.href : null;
+	} catch {
+		return null;
+	}
+}
 
 /** YES chance in whole percent from the public last price; null before the first cross. */
 export const chance = (m: Market) => (m.lastPrice === undefined ? null : Math.round(m.lastPrice));

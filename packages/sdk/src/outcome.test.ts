@@ -10,11 +10,14 @@ const v = JSON.parse(
 	readFileSync(new URL("../../settle/testdata/outcome-vectors.json", import.meta.url), "utf8"),
 );
 
+// Block cases carry height/blockHash, mirrored-market cases source/conditionId.
 const signed = (c: (typeof v.cases)[number]) => ({
 	id: c.market,
 	outcome: c.outcome,
 	blockHeight: c.height,
 	blockHash: c.blockHash,
+	source: c.source,
+	conditionId: c.conditionId,
 	outcomeSig: c.sig,
 });
 
@@ -32,6 +35,14 @@ test("missing or malformed fields never verify", () => {
 	assert.equal(verifyOutcome(m, "00".repeat(32)), false);
 	assert.equal(verifyOutcome({ ...m, id: m.id + 1 }, v.groupKey), false);
 	assert.equal(verifyOutcome({ ...m, blockHeight: m.blockHeight + 1 }, v.groupKey), false);
+});
+
+test("a mirrored market verifies over source and conditionId, never as a block", () => {
+	const c = v.cases.find((c: { source?: string; valid: boolean }) => c.source && c.valid);
+	const m = signed(c);
+	assert.equal(verifyOutcome(m, v.groupKey), true);
+	assert.equal(verifyOutcome({ ...m, source: "other" }, v.groupKey), false);
+	assert.equal(verifyOutcome({ ...m, conditionId: undefined }, v.groupKey), false);
 });
 
 test("the group key must be the same at all three relayers", async () => {

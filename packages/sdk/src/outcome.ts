@@ -13,37 +13,51 @@ import { fromHex } from "./bytes.js";
 export interface SignedOutcome {
 	id: number;
 	outcome?: "yes" | "no";
+	/** Chain-data markets: the block the outcome was computed from. */
 	blockHeight?: number;
 	blockHash?: string;
+	/** Mirrored markets: the outside oracle ("polymarket") and its market id, instead of a block. */
+	source?: string;
+	conditionId?: string;
 	outcomeSig?: string;
 }
 
 /** Mirrors `zpredict_oracle::MESSAGE_PREFIX`. */
 const PREFIX = "zPredict outcome v1\n";
 
+/** `zpredict_oracle::Resolution`: a block, or an outside oracle's market. */
+export type Resolution = { market: number; outcome: "yes" | "no" } & (
+	| { height: number; blockHash: string }
+	| { source: string; conditionId: string }
+);
+
 /** The signed bytes: prefix, then the compact JSON `zpredict_oracle::Resolution` serializes to. */
-export function outcomeMessage(r: {
-	market: number;
-	outcome: "yes" | "no";
-	height: number;
-	blockHash: string;
-}): Uint8Array {
-	const json = JSON.stringify({
-		market: r.market,
-		outcome: r.outcome,
-		height: r.height,
-		blockHash: r.blockHash,
-	});
+export function outcomeMessage(r: Resolution): Uint8Array {
+	const evidence =
+		"source" in r
+			? { source: r.source, conditionId: r.conditionId }
+			: { height: r.height, blockHash: r.blockHash };
+	const json = JSON.stringify({ market: r.market, outcome: r.outcome, ...evidence });
 	return new TextEncoder().encode(PREFIX + json);
 }
 
-/** True iff `m` carries an outcome signed by the group key (hex64) over its block. */
+/** The resolution `m` claims, or null if it lacks the fields. */
+function resolutionOf(m: SignedOutcome): Resolution | null {
+	const { id: market, outcome } = m;
+	if (!outcome) return null;
+	if (m.source && m.conditionId)
+		return { market, outcome, source: m.source, conditionId: m.conditionId };
+	if (m.blockHeight !== undefined && m.blockHash)
+		return { market, outcome, height: m.blockHeight, blockHash: m.blockHash };
+	return null;
+}
+
+/** True iff `m` carries an outcome signed by the group key (hex64) over its block or source. */
 export function verifyOutcome(m: SignedOutcome, groupKey: string): boolean {
-	const { outcome, blockHeight, blockHash, outcomeSig } = m;
-	if (!outcome || blockHeight === undefined || !blockHash || !outcomeSig) return false;
+	const r = resolutionOf(m);
+	if (!r || !m.outcomeSig) return false;
 	try {
-		const msg = outcomeMessage({ market: m.id, outcome, height: blockHeight, blockHash });
-		return verifySpendAuth(fromHex(groupKey), msg, fromHex(outcomeSig));
+		return verifySpendAuth(fromHex(groupKey), outcomeMessage(r), fromHex(m.outcomeSig));
 	} catch {
 		return false;
 	}

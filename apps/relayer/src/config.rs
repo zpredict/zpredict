@@ -193,6 +193,9 @@ impl Config {
         {
             return bad("market ids must be 1..1000000 (rolling markets use the rest)");
         }
+        // Mirrored markets: params here; that each is a binary Yes/No market is checked
+        // against Gamma at startup (`reference::check`).
+        crate::reference::mirrored(&self.markets).map_err(|e| Error::Config(e.to_string()))?;
         match &self.rolling {
             Some(r) => r.validate().map_err(Error::Config),
             None => Ok(()),
@@ -255,6 +258,17 @@ pub(crate) mod tests {
         ];
         let c = Config::parse(EXAMPLE, env.into_iter()).unwrap();
         assert_eq!(c.memo_key_file, Some("keys/r0-memo.pub".into()));
+    }
+
+    /// The mirrored markets in production are the binary markets their params name.
+    #[test]
+    #[ignore = "network"]
+    fn production_mirrored_markets_check_against_gamma() {
+        let prod = include_str!("../../../deploy/production/relayer.toml");
+        let c = Config::parse(prod, std::iter::empty()).unwrap();
+        let pm = zpredict_plugin_polymarket::Polymarket::default();
+        crate::reference::check(&pm, &c.markets).unwrap();
+        assert_eq!(crate::reference::mirrored(&c.markets).unwrap().len(), 3);
     }
 
     #[test]

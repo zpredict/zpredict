@@ -57,7 +57,7 @@ mod tests {
         assert_eq!(reg.resolve(&m, &chain).unwrap(), None);
         chain.tip = 110;
         let r = reg.resolve(&m, &chain).unwrap().unwrap();
-        assert_eq!((r.height, r.block_hash.as_str()), (100, "ab"));
+        assert_eq!(r.block(), Some((100, "ab")));
 
         let unknown = Market {
             plugin: "nope".into(),

@@ -62,7 +62,7 @@ mod tests {
             .resolve(&market(900, 4_096), &chain)
             .unwrap()
             .unwrap();
-        assert_eq!((at.outcome, at.height), (Outcome::Yes, 900));
+        assert_eq!((at.outcome, at.block().unwrap().0), (Outcome::Yes, 900));
         let above = IronwoodPool
             .resolve(&market(900, 4_097), &chain)
             .unwrap()

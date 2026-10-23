@@ -31,7 +31,7 @@ TOML, one file per relayer (`config/r{0,1,2}.toml` are the local examples). Path
 | `peers` | The three parties' Noise addresses in party order; this relayer listens on `peers[index]` |
 | `key_file`, `peer_keys` | Own private key, the three public keys (hex files from `keygen`) |
 | `web_origin` | The only origin CORS answers |
-| `oracle_lightwalletd` | The chain the markets are about (default `https://zec.rocks:443`, mainnet): tip height in `/health` and market progress, and the oracle resolvers. `""` = offline |
+| `oracle_lightwalletd` | The chain the markets are about (default `https://zec.rocks:443`, mainnet): tip height in `/health` and market progress, and the oracle resolvers. `""` = offline, which also stops the Polymarket fetches |
 | `escrow_lightwalletd` | The chain the escrow lives on (default `https://testnet.zec.rocks:443`): deposit scanning and payouts (settle). Never used for market data |
 | `batch_size` | Order slots per batch, N, shared by all open markets (2..=21). Crossing costs ~N² gates: at 32 rows, 8 ≈ 5 s and 16 ≈ 13.5 s per window on an M4 Pro |
 | `table_rows` | Balance-table rows per batch (default 32): the most funded accounts this deployment holds. ~8k AND gates per row |
@@ -43,7 +43,7 @@ TOML, one file per relayer (`config/r{0,1,2}.toml` are the local examples). Path
 | `data_dir` | Event log directory, plus `markets.json` (rolling markets and signed outcomes, kept across restarts) |
 | `insecure_matcher` | Plaintext dev matcher; needs the `dev-insecure` cargo feature as well |
 | `[rolling]` | Optional hourly markets (`markets/rolling.rs`): `plugin` (`shielded-actions`), `interval_secs`, `horizon_secs`, `close_secs`, `sample_blocks` (median for N), `keep_resolved`, `fast_from` (NU7: 25 s blocks from here). See DESIGN.md "Resolution" |
-| `[[markets]]` | The `Market` records served by `/markets` (ids below 1,000,000; rolling markets use the rest) |
+| `[[markets]]` | The `Market` records served by `/markets` (ids below 1,000,000; rolling markets use the rest), with optional display fields `category`, `event = {id, title}`, `opensAt`, `rules`. `plugin = "polymarket"` with `params = {conditionId, slug}` mirrors a binary Yes/No Polymarket market (#114): checked against Gamma at startup, resolved per Polymarket, and its reference price (`reference.rs`) fetched every 5 min and served in `/markets` |
 | `[settlement]` | Optional; off = deposits only from judge mode, nothing paid out. `network` (`main`/`test`/`regtest`), the three sealed files from the key ceremony (`ufvk`, `memo_key`, `key_share`, opened with `ZPREDICT_STORE_KEY`), `start_height` (first escrow block to scan), `confirmations` (default 10). Relayer 0, the prover, also needs `devtool` (zcash-devtool binary), `wallet_dir` (the unsealed escrow wallet, ideally tmpfs) and `devtool_server` (its `-s` lightwalletd) |
 
 ## How a batch runs (`batch/`)
@@ -54,7 +54,7 @@ Every window, each relayer:
 3. Relayers 1 and 2 append zero-share rows for any table rows relayer 0 added (see Balances).
 4. If a market resolved alike on all three nodes and is unpaid, runs the resolution program instead of clearing (`batch/resolution.rs`): every position, 16 at a time, pays its winners into the table. Recorded once per market.
 5. Otherwise pads orders to N, the table to `table_rows` rows and the withdrawal slots to 2 with all-zero shares, and sets the credits: agreed deposits for accounts in the batch's rows, plus relayer 0's judge credits where this relayer runs judge mode (otherwise it refuses the batch). A zero order rebuilds to price 0, which the circuit treats as a dummy; a zero row has balance 0.
-6. Runs the matcher (`mpc/`) once per group of up to 4 open markets (`zpredict_circuit::DEFAULT_MARKETS`), padded with unused slots: one run for the demo's three markets. With more markets, fill shares XOR together and balances chain from run to run. Which markets have orders never changes what runs.
+6. Runs the matcher (`mpc/`) once per group of up to 6 open markets (`zpredict_circuit::DEFAULT_MARKETS`), padded with unused slots: one run for the demo's six markets. With more markets, fill shares XOR together and balances chain from run to run. Which markets have orders never changes what runs.
 7. Stores its fill share per order, its new balance share per row, public prices, the deposits credited and each withdrawal slot's result as one fsynced event, and expires orders that are `expire_batches` old and not in the intersection. These are orders where one of the browser's three POSTs never arrived.
 8. With `[settlement]` on, pays debited withdrawals (`escrow/payout.rs`): relayer 0 syncs the escrow wallet, builds one PCZT for all of them and proves it in the background; relayers 0 and 1 each run verify-then-sign against their own ledger's payout vector, exchanging FROST round messages over the Noise links; relayer 0 aggregates, combines and broadcasts, recording `paying` first so a crash can never pay twice, then sends both peers the txid.
 9. If it holds no preprocessed clearing run, preprocesses the next one with its peers (`batch/mod.rs`, #94): ~92% of a run, input-independent. The next window with work runs only the online part. The hello carries each relayer's held run id; a run is used only if all three hold the same one, otherwise each drops its own and the batch preprocesses inline.
@@ -79,7 +79,7 @@ The circuit (#46) checks collateral against a **balance table** of `table_rows` 
 - **`Polytune` (default, real):** `zpredict_circuit::run_party_on` (clearing) and `run_resolution_on` (payouts) over our Noise links (the relayer implements polytune's `Channel` for them).
 - **`InsecureLocalMatcher`:** parties 1 and 2 send their shares to party 0. Party 0 rebuilds everything, runs `zpredict_core::{apply_flows, clear_with_balances, resolve}`, and hands back fresh shares and the public outputs. It mirrors the circuits. It is compiled only for tests or with `--features dev-insecure`, and even then used only when the config sets `insecure_matcher = true`. It prints a warning at startup. Never deploy it.
 
-`Polytune` clears up to four markets per circuit run (orders only cross within their market), passing that window's public credits in the first run, and takes `Cleared::prices` (one per market) from the circuit's public output.
+`Polytune` clears up to six markets per circuit run (orders only cross within their market), passing that window's public credits in the first run, and takes `Cleared::prices` (one per market) from the circuit's public output.
 
 ## State (`state.rs`, `store.rs`)
 

@@ -1,7 +1,8 @@
 //! Chain tip and market status from the oracle lightwalletd: the chain the markets are
 //! about (mainnet), never the escrow chain. Each poll: maybe a new rolling market
 //! (`markets/rolling.rs`), then markets go open → closed at `closeHeight` → resolved once
-//! the market's plugin can resolve it against this relayer's own node. Outcomes are signed
+//! the market's plugin can resolve it against this relayer's own node (mirrored markets:
+//! once Polymarket settled them, `zpredict_plugin_polymarket`). Outcomes are signed
 //! separately, in the batch loop (`outcome.rs`); a changed list is saved to `data_dir`.
 
 use std::path::PathBuf;
@@ -10,6 +11,7 @@ use std::time::Duration;
 use zpredict_oracle::{Chain, Lightwalletd, Market, Registry, Status};
 use zpredict_plugin_ironwood_pool::IronwoodPool;
 use zpredict_plugin_nu7_activation::Nu7Activation;
+use zpredict_plugin_polymarket::{PLUGIN as POLYMARKET, Polymarket};
 use zpredict_plugin_shielded_actions::ShieldedActions;
 
 use crate::markets::{self, Rolling};
@@ -17,18 +19,21 @@ use crate::state::Shared;
 
 const POLL: Duration = Duration::from_secs(30);
 
-pub fn registry() -> Registry {
+/// Every plugin; `pm` is shared with the reference poller (`reference.rs`), so both use one
+/// Gamma cache.
+pub fn registry(pm: Polymarket) -> Registry {
     let mut r = Registry::default();
     r.register("nu7-activation", Nu7Activation)
         .register("ironwood-pool", IronwoodPool)
-        .register("shielded-actions", ShieldedActions);
+        .register("shielded-actions", ShieldedActions)
+        .register(POLYMARKET, pm);
     r
 }
 
 /// Polls forever on a blocking thread (the oracle client is blocking).
-pub fn poll(url: &str, state: Shared, rolling: Option<Rolling>, dir: PathBuf) {
+pub fn poll(url: &str, state: Shared, rolling: Option<Rolling>, dir: PathBuf, pm: Polymarket) {
     let (node, reg) = match Lightwalletd::new(url) {
-        Ok(n) => (n, registry()),
+        Ok(n) => (n, registry(pm)),
         Err(e) => return eprintln!("chain: {e}"),
     };
     let mut saved = Vec::new();
@@ -123,7 +128,7 @@ mod tests {
             tip: 95,
             blocks: vec![block],
         };
-        let reg = registry();
+        let reg = registry(Polymarket::default());
         let m = advance(m, 95, &chain, &reg);
         assert_eq!(m.status, Status::Closed);
         let chain = FixtureChain { tip: 120, ..chain };

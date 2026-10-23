@@ -148,8 +148,21 @@ export interface Market {
 	/** The block the outcome was computed from: display-order hash (hex64) and height. */
 	blockHash?: string;
 	blockHeight?: number;
+	/** Mirrored markets: the oracle the outcome came from ("polymarket") and its market id there, instead of a block. */
+	source?: string;
+	conditionId?: string;
 	/** Made by the relayers' hourly rolling-market generator. */
 	rolling?: boolean;
+	/** Display only, from the relayer config: e.g. "Zcash network", "Rolling", "Politics". */
+	category?: string;
+	/** Groups binary markets shown as one multi-outcome event, one row per market. */
+	event?: { id: string; title: string };
+	/** When trading opened (RFC 3339). */
+	opensAt?: string;
+	/** Plain-text resolution rules. */
+	rules?: string;
+	/** Mirrored markets: the source market's own price, fetched by the relayers (never by the browser). */
+	reference?: Reference;
 	/**
 	 * Public price: cents per YES contract at the latest cross (the midpoint, so it can end
 	 * in .5). Absent until the market's first fill. Sizes and counts are never published.
@@ -157,6 +170,21 @@ export interface Market {
 	lastPrice?: number;
 	/** The last N clearing prices (same unit as `lastPrice`), oldest first, one per batch that crossed. */
 	history?: number[];
+}
+
+/**
+ * A mirrored market's price on its source, as the relayer last fetched it (cached ≥ 5 min).
+ * `price` and `history[].price` are YES cents like `lastPrice`; `t` is unix seconds.
+ * `url` is the source's public market page, for a plain outbound link.
+ */
+export interface Reference {
+	source: "polymarket";
+	price: number;
+	url: string;
+	/** When the source last updated its market record (RFC 3339). */
+	updatedAt?: string;
+	/** Hourly prices over the last week, oldest first. */
+	history: { t: number; price: number }[];
 }
 
 /** `POST /orders`: orderId hex32, share hex52, token hex32 (fresh per order and relayer). */

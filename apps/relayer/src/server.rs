@@ -3,6 +3,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use zpredict_plugin_polymarket::Polymarket;
 use zpredict_settle::KeyShare;
 
 use crate::api::{self, Api};
@@ -109,11 +110,20 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
         let (url, s) = (c.escrow_lightwalletd.clone(), state.clone());
         tokio::task::spawn_blocking(move || crate::escrow::scan::poll(e, &url, s));
     }
-    // Market progress and resolution read the oracle (mainnet) chain only.
+    // Market progress and resolution read the oracle (mainnet) chain only; mirrored
+    // markets read Polymarket, and "" for the oracle turns both off.
+    let references = crate::reference::References::default();
     if !c.oracle_lightwalletd.is_empty() {
+        let pm = Polymarket::default();
+        let (p, list) = (pm.clone(), c.markets.clone());
+        tokio::task::spawn_blocking(move || crate::reference::check(&p, &list))
+            .await
+            .map_err(|e| Error::Config(e.to_string()))??;
         let (url, s) = (c.oracle_lightwalletd.clone(), state.clone());
-        let (rolling, dir) = (c.rolling.clone(), c.data_dir.clone());
-        tokio::task::spawn_blocking(move || chain::poll(&url, s, rolling, dir));
+        let (rolling, dir, p) = (c.rolling.clone(), c.data_dir.clone(), pm.clone());
+        tokio::task::spawn_blocking(move || chain::poll(&url, s, rolling, dir, p));
+        let (s, r) = (state.clone(), references.clone());
+        tokio::task::spawn_blocking(move || crate::reference::poll(pm, s, r));
     }
 
     let judge_credit = c.judge.then_some(c.judge_credit);
@@ -127,6 +137,7 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
         memo_key,
         group_key,
         escrow,
+        references,
     });
     axum::serve(http, app).await?;
     Ok(())

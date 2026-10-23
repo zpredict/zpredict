@@ -30,6 +30,7 @@ pub fn app(index: usize, name: &str, judge: bool) -> (Router, crate::state::Shar
         memo_key: Some(memo_vector(index)),
         group_key: None,
         escrow: None,
+        references: Default::default(),
     };
     (router(api), state)
 }
