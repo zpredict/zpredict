@@ -13,6 +13,7 @@ import {
 } from "react";
 import { POLL_MS } from "@/lib/config";
 import { fetchFill, type OrderInput, placeOrder, placeWithCounterparty } from "@/lib/relayer";
+import { missed } from "@/lib/shares";
 import { KEYS, loadJson, save } from "@/lib/storage";
 import { useAccount } from "./useAccount";
 import { usePoll } from "./usePoll";
@@ -118,10 +119,9 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 	// the pair once, never after either filled (a partial fill against a trader is real).
 	useEffect(() => {
 		for (const o of orders) {
-			if (!o.counterId || o.retry || o.status !== "unfilled" || retried.current.has(o.orderId))
-				continue;
+			if (!o.counterId || o.retry || !missed(o) || retried.current.has(o.orderId)) continue;
 			const c = orders.find((x) => x.orderId === o.counterId);
-			if (c?.status !== "unfilled") continue;
+			if (!c || !missed(c)) continue;
 			retried.current.add(o.orderId);
 			const ids = [o.orderId, c.orderId];
 			update((all) => all.map((x) => (ids.includes(x.orderId) ? { ...x, retry: true } : x)));

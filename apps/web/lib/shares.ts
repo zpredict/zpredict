@@ -28,6 +28,13 @@ export function openFill(shares: string[]): Fill | null {
 	return h ? decodeFill(fromHex(h)) : null;
 }
 
+/**
+ * Settled with nothing filled: batched without a match (a relayer answers `filled` for every
+ * batched order, so only the combined record's flag tells), or expired unbatched (`unfilled`).
+ */
+export const missed = (o: { status: string; fill?: Fill }) =>
+	o.status === "unfilled" || o.fill?.filled === false;
+
 /** Digests of every share this browser sent or got back: how it finds its own rows in a view. */
 export function digestsOf(orders: { shares?: string[]; fillShares?: string[] }[]) {
 	const hex = orders.flatMap((o) => [...(o.shares ?? []), ...(o.fillShares ?? [])]);

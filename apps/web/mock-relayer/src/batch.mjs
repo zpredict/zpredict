@@ -70,7 +70,9 @@ export function runBatch(at = Date.now()) {
 		const fill = Buffer.from(recs[k]);
 		const filled = fill[9] === 1;
 		if (filled) account(order.key).bal -= BigInt(fill.readUInt32LE(4));
-		o.status = filled ? "filled" : "unfilled";
+		// Like the relayers: every batched order is "filled", hit or miss (only the combined
+		// record's flag tells); one whose three shares never all arrived expires "unfilled".
+		o.status = order ? "filled" : "unfilled";
 		o.fillShares = split(fill);
 		// Every order in the batch gets a fill share, filled or not: same shape either way.
 		PORTS.forEach((_, i) => {
