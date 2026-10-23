@@ -80,9 +80,13 @@ jobs:
           docker save -o /tmp/regtest-images.tar $imgs
       - name: scripts/relayer-e2e.sh
         run: scripts/relayer-e2e.sh
-      - name: Relayer logs
+        env:
+          KEEP: "1" # the runner is thrown away; keeps the containers for the logs below
+      - name: Logs
         if: failure()
-        run: tail -n 100 ~/.cache/zpredict-run/relayers/r*.log || true
+        run: |
+          tail -n 100 ~/.cache/zpredict-run/relayers/r*.log || true
+          docker logs --tail 100 zpredict-regtest-zebra-1 || true
 
   coverage:
     name: Coverage (Rust, TS)
