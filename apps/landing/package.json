@@ -5,7 +5,7 @@
 	"scripts": {
 		"prepare:deps": "pnpm --filter @zpredict/ascii build && node scripts/copy-brand.mjs",
 		"dev": "pnpm prepare:deps && astro dev",
-		"build": "pnpm prepare:deps && astro build",
+		"build": "pnpm prepare:deps && astro build && node scripts/smoke.mjs && node ../web/scripts/privacy.mjs dist",
 		"preview": "astro preview",
 		"test": "node --test scripts/legal.test.mjs"
 	},

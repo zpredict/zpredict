@@ -1,6 +1,6 @@
 # zPredict
 
-[![CI](https://github.com/zpredict/zpredict/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/zpredict/zpredict/actions/workflows/deploy.yml)
+[![CI](https://github.com/zpredict/zpredict/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/zpredict/zpredict/actions/workflows/deploy.yml) [![Nightly](https://github.com/zpredict/zpredict/actions/workflows/nightly.yml/badge.svg?branch=main)](https://github.com/zpredict/zpredict/actions/workflows/nightly.yml)
 
 Shielded prediction market on Zcash. Price public, participants private: nobody learns that you bet, which side, or how much.
 
@@ -30,6 +30,7 @@ Reading orders needs all three relayers; moving funds needs two. Demo limits (on
 ```sh
 pnpm install && pnpm test && cargo test --workspace
 pnpm --filter @zpredict/web dev:mock     # app + three mock relayers on :3000
+pnpm --filter @zpredict/web e2e          # the app in headless Chrome against them
 apps/relayer/scripts/dev.sh              # three real relayers with MPC
 scripts/relayer-e2e.sh                   # regtest: deposit → trade → resolve → withdraw
 ```

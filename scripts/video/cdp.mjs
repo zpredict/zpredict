@@ -23,6 +23,8 @@ export async function launch() {
 			"--mute-audio",
 			"--no-first-run",
 			"--force-color-profile=srgb",
+			// CI runners (Ubuntu 24.04) forbid the unprivileged user namespaces Chrome's sandbox needs.
+			...(process.env.CI ? ["--no-sandbox"] : []),
 			"about:blank",
 		],
 		{ stdio: ["ignore", "ignore", "pipe"] },

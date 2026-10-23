@@ -10,7 +10,8 @@
 		"lint": "biome lint .",
 		"format": "biome format --write .",
 		"fix": "biome check --write .",
-		"prepare": "husky"
+		"prepare": "husky",
+		"coverage:ts": "pnpm --filter @zpredict/sdk --filter @zpredict/ascii build && mkdir -p coverage && node --test --experimental-test-coverage --test-coverage-exclude=\"**/*.test.*\" --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/ts.lcov \"packages/*/dist/*.test.js\" \"apps/web/mock-relayer/src/*.test.mjs\" \"apps/web/lib/*.test.ts\""
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.6.2",

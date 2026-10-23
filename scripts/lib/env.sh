@@ -71,7 +71,14 @@ rpc() {
 
 # Mines n blocks (to MINER_ADDRESS, set in compose), then waits for lightwalletd.
 mine() {
-  rpc generate "[$1]" >/dev/null || die "generate failed"
+  # Ten at a time: each block solves Equihash, so 110 in one call can outlast rpc's 300 s
+  # timeout on a slow CI runner.
+  local left=$1 n
+  while [ "$left" -gt 0 ]; do
+    n=$((left < 10 ? left : 10))
+    rpc generate "[$n]" >/dev/null || die "generate failed"
+    left=$((left - n))
+  done
   local tip
   tip=$(rpc getblockcount '[]' | jq -r .result)
   [ -d "$RUN_DIR/funder" ] || { sleep 3; return; }

@@ -52,3 +52,36 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test (slow real-MPC and live-network tests stay #[ignore])
         run: cargo test --workspace --locked
+      # The sdk against the three relayer binaries (dev config, plaintext matcher); the
+      # real-MPC variant runs nightly. Reuses the test build's dependencies.
+      - name: Build the relayer (dev-insecure)
+        run: cargo build --locked -p zpredict-relayer --features dev-insecure
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter @zpredict/sdk
+      - name: sdk ↔ relayers
+        run: pnpm --filter @zpredict/sdk test:relayers
+        env:
+          RELAYER_BIN: ${{ github.workspace }}/target/debug/zpredict-relayer
+
+  e2e:
+    name: Web e2e (headless Chrome, mock relayers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: browser-actions/setup-chrome@v2
+        id: chrome
+      - name: Judge mode → fill → chart → withdraw → deposit
+        run: pnpm --filter @zpredict/web e2e
+        env:
+          CHROME: ${{ steps.chrome.outputs.chrome-path }}

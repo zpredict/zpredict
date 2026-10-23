@@ -8,11 +8,13 @@
 	"types": "./dist/index.d.ts",
 	"files": [
 		"dist",
-		"!dist/*.test.*"
+		"!dist/*.test.*",
+		"!dist/*.integration.*"
 	],
 	"scripts": {
 		"build": "tsc",
-		"test": "tsc && node --test dist/*.test.js"
+		"test": "tsc && node --test dist/*.test.js",
+		"test:relayers": "tsc && node --test dist/relayers.integration.js"
 	},
 	"devDependencies": {
 		"@types/node": "^24.19.2",
