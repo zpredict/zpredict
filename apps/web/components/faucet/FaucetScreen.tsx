@@ -4,6 +4,7 @@ import { useRef } from "react";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Pane from "@/components/ui/Pane";
+import ZecIcon from "@/components/ui/ZecIcon";
 import { useAccount } from "@/hooks/useAccount";
 import { type Phase, useFaucet } from "./useFaucet";
 
@@ -48,7 +49,15 @@ function StatusList({ status, down }: { status: FaucetStatus | null; down: boole
 			<dt>Faucet</dt>
 			<dd>{state}</dd>
 			<dt>Balance</dt>
-			<dd>{status?.balance != null ? `${zec(status.balance)} TAZ` : "…"}</dd>
+			<dd>
+				{status?.balance != null ? (
+					<>
+						<ZecIcon /> {zec(status.balance)} TAZ
+					</>
+				) : (
+					"…"
+				)}
+			</dd>
 			<dt>Next drop</dt>
 			<dd>{next ?? "…"}</dd>
 			<dt>Left today</dt>
