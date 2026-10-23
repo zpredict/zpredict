@@ -12,6 +12,7 @@ import {
 	type Market,
 	type Side,
 	submitOrder,
+	submitWithCounterparty,
 	submitWithdrawal,
 } from "@zpredict/sdk";
 import { relayers } from "./config";
@@ -59,6 +60,10 @@ export interface OrderInput {
 
 /** Encodes (the tag is the order's key), splits and sends share i to relayer i only. */
 export const placeOrder = (o: OrderInput, tag: string) => submitOrder(relayers, { ...o, key: tag });
+
+/** DEMO (#103): `o` plus its exact opposite from the same account, so they cross (a self-trade). */
+export const placeWithCounterparty = (o: OrderInput, tag: string) =>
+	submitWithCounterparty(relayers, { ...o, key: tag });
 
 /** Sends relayer i only a fresh share of the tag; amount (half-ticks) and address are public. */
 export const withdraw = (tag: string, halfTicks: bigint, address: string) =>

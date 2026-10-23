@@ -23,10 +23,14 @@ export function sideCents(m: Market, side: Side): number | null {
 /** Cents above the last price a default limit sits, so it meets a counterparty near the last price; fills price at the midpoint. */
 export const LIMIT_EDGE = 3;
 
-/** Ticket default: the side's last price plus LIMIT_EDGE, clamped to 1..99; 50 with no price yet. */
-export function defaultPrice(m: Market, side: Side): number {
+/**
+ * Ticket default: the side's last price plus `edge`, clamped to 1..99; 50 with no price yet.
+ * A demo self-trade passes edge 0: it fills at its own limit, which becomes the public price,
+ * so an edge would walk the price up with every judge's self-trade.
+ */
+export function defaultPrice(m: Market, side: Side, edge = LIMIT_EDGE): number {
 	const last = sideCents(m, side);
-	return last === null ? 50 : Math.min(99, Math.max(1, last + LIMIT_EDGE));
+	return last === null ? 50 : Math.min(99, Math.max(1, last + edge));
 }
 
 export const heightLabel = (h: number) => h.toLocaleString("en-US");

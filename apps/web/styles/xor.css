@@ -90,6 +90,12 @@
 	color: var(--zp-ink);
 }
 
+.xor__counter {
+	color: var(--zp-muted);
+	font-size: 12px;
+	line-height: 1.6;
+}
+
 /* Phones: fixed two-line byte grid (market side price size / account), so every row aligns. */
 @media (max-width: 599.98px) {
 	.hexbytes {
