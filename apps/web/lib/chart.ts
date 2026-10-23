@@ -102,7 +102,7 @@ interface Unit {
 	format: Intl.DateTimeFormat;
 }
 
-const minutes = (span: number) => [5, 10, 15, 30, 60].find((m) => span / 60 / m <= 6) ?? 60;
+const minutes = (span: number) => [1, 2, 5, 10, 15, 30, 60].find((m) => span / 60 / m <= 6) ?? 60;
 
 const UNITS: Unit[] = [
 	{
