@@ -1,5 +1,10 @@
 "use client";
-import { HALF_TICKS_PER_UNIT, payoutZats, WITHDRAWAL_FEE } from "@zpredict/sdk";
+import {
+	HALF_TICKS_PER_UNIT,
+	payoutZats,
+	WITHDRAWAL_FEE,
+	type WithdrawalStatus,
+} from "@zpredict/sdk";
 import { useState } from "react";
 import NumberField from "@/components/order-ticket/NumberField";
 import Button from "@/components/ui/Button";
@@ -7,21 +12,28 @@ import { useAccount } from "@/hooks/useAccount";
 import { useWithdraw } from "@/hooks/useWithdraw";
 import { units } from "@/lib/format";
 
+const statusText = (s: WithdrawalStatus) =>
+	s.status === "debited" && s.payout === "retrying"
+		? "Debited; waiting for escrow funds: the payout is retried automatically."
+		: s.status === "refused"
+			? "Refused: the balance doesn't cover it."
+			: s.status;
+
 /** Withdraw to a fresh shielded address. Each relayer gets only a share of the account. */
 export default function WithdrawForm() {
-	const { tag, balance, judge } = useAccount();
+	const { tag, balance, mock } = useAccount();
 	const [amount, setAmount] = useState(1);
 	const [address, setAddress] = useState("");
 	const { submit, status, error, pending } = useWithdraw(tag);
-	if (!tag) return null;
-	if (judge)
+	// Nothing until the relayers say whether this is a judge account, so no enabled form flashes.
+	if (!tag || mock === null) return null;
+	if (mock)
 		return (
 			<details className="deposit">
 				<summary>Withdraw</summary>
 				<p className="dim">
-					Mock: judge-mode credits are demo collateral, not escrow funds, so they can&apos;t be
-					withdrawn as testnet ZEC. A real withdrawal needs an account funded by a real deposit:
-					under Deposit, forget this account, create your own tag and send a testnet deposit to it.
+					Mock: judge-mode credit can&apos;t be withdrawn; the relayers refuse it inside the MPC. To
+					try a real withdrawal, deposit testnet ZEC with a new account tag (Deposit).
 				</p>
 			</details>
 		);
@@ -70,7 +82,7 @@ export default function WithdrawForm() {
 			</Button>
 			{status && (
 				<p className="dim">
-					{status.status}
+					{statusText(status)}
 					{status.txid && <code className="deposit__ua">{status.txid}</code>}
 				</p>
 			)}

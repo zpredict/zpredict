@@ -10,9 +10,9 @@ import { useDeposit } from "@/hooks/useDeposit";
 
 /** A real testnet deposit: one fixed-size note to the escrow, tagged in an encrypted memo. */
 export default function DepositInfo() {
-	const { tag, create, forget } = useAccount();
+	const { tag, mock, create, forget } = useAccount();
 	const [units, setUnits] = useState<Denomination>(5);
-	const { request, error, escrowReady } = useDeposit(tag, units);
+	const { request, error, escrowReady } = useDeposit(mock ? null : tag, units);
 	const zec = unitsToZec(units);
 
 	return (
@@ -25,7 +25,9 @@ export default function DepositInfo() {
 					<DenominationPicker onChange={setUnits} units={units} />
 				</li>
 				<li>
-					{tag ? (
+					{tag && mock ? (
+						"This is a judge account: its credit is mock, and a deposit to it would stay mock (never withdrawable). Use Forget this account below, then create a fresh tag."
+					) : tag ? (
 						"Your account tag stays in this browser. It is the only key to your balance."
 					) : (
 						<>
