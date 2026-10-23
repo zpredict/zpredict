@@ -19,6 +19,7 @@
 | https://app.zpredict.site | app `web` (`apps/web/Dockerfile`) | 3171 |
 | https://r0.zpredict.site … r2 | compose `relayers` (`production/compose.yaml`) | 3172–3174 |
 | https://docs.zpredict.site | app `docs` (`apps/docs/Dockerfile`, Next standalone server) | 3175 |
+| https://faucet.zpredict.site (DNS-only, not proxied) | compose `faucet` (`production/faucet.compose.yaml`) | 3176 |
 
 Request path: browser → Cloudflare (proxied) → host nginx on the VPS (TLS, `production/nginx.conf`) → container on `127.0.0.1:<port>`. Coolify builds the images on the VPS from this repo; nothing is pushed to a registry.
 
@@ -58,6 +59,15 @@ Coolify UI → resource → **Deployments** → pick an earlier build → **Rede
   On the VPS (×5.7) 48 rows means ~8 s to a fill with a run ready and up to ~50 s back to back (64 rows: ~9 s and ~63 s, ~160 s to compile), so caps r0 1.25 GiB and r1/r2 768 MiB. The compile now runs on the batch thread, so HTTP and the health check are up meanwhile. Relayer 0 logs `table: N of 48 rows used at startup` (from its event log, before the compile) and `table: N of 48 rows used, W accounts waiting` whenever it changes (operator log only: `docker logs r0 | grep table:`); at 48, Judge mode answers "table full" (`503`) and the web app says so, and a depositor whose row is past the cap sees that their orders can't fill yet. If the log nears 48 during judging, raise `table_rows` (more memory and slower back-to-back fills) or, on testnet, start from a fresh data volume.
 - **Markets:** NU7 activation and Ironwood ≥ 900k notes, three mirrored Polymarket markets on the US midterms (#114), plus one hourly rolling market (`[rolling]` in `relayer.toml`): 5 + 1 = 6, what one MPC run clears (`DEFAULT_MARKETS`, raised from 4 for ~+3% preprocessing, DESIGN.md "Market capacity"). The generator never opens a market past that cap; a seventh open market would need a second run per window and slow every judge's fill. The relayers fetch public data from `gamma-api.polymarket.com` and `clob.polymarket.com` (outbound HTTPS from the VPS).
 - **Build** takes about 3.5 min on the VPS (`CARGO_BUILD_JOBS=4` keeps rustc's memory down; r1/r2 reuse r0's image). Each build leaves several GB of BuildKit cache; the host's cron runs `docker builder prune -af` every 6 h, so after many redeploys in a row run it by hand and keep > 10 GB free.
+
+### Testnet faucet (#133)
+
+`apps/faucet` sends one 1-unit (0.01 TAZ) shielded deposit to the escrow per drip, with a memo the browser built for its own account at `app.zpredict.site/faucet/` (the faucet never sees the tag). API at `https://faucet.zpredict.site`: `GET /status`, `POST /challenge`, `POST /drip`; a static page at `/`.
+
+- **Wallet:** the demo zcash-devtool wallet on the VPS, `~/.cache/zpredict-demo-wallet` (`wallet/`, and `age.txt`, the age identity its mnemonic is encrypted to), bind-mounted into the container as uid 1001. Testnet only; the identity sits on the VPS disk (mode 600) because devtool needs it to sign. Fund it by sending TAZ to its address (`zcash-devtool wallet -w wallet generate-address`).
+- **Anti-abuse:** Cloudflare Turnstile (secret `TURNSTILE_SECRET_KEY` in Coolify → `faucet` → Environment Variables; the public site key is the `NEXT_PUBLIC_TURNSTILE_SITE_KEY` build arg of the web image), a hashcash proof of work, one drop per 30 s globally and 100 a day (`FAUCET_*` in `apps/faucet/src/main.rs`). No per-IP state; logs carry no request data.
+- **CSP:** the app allows `https://challenges.cloudflare.com` (script, frame, connect) on `/faucet/` only (`static/prepare.mjs` writes a per-path header) and `https://faucet.zpredict.site` in `connect-src`.
+- **Regtest:** `scripts/faucet-e2e.sh` (drip → mined → credited on all three relayers).
 
 ### Key ceremony and testnet escrow (#78)
 

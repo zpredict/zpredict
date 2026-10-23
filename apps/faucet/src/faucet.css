@@ -1,0 +1,66 @@
+/* ASCII Studio tokens (packages/brand/tokens.css), system mono: no font requests. */
+:root {
+	color-scheme: dark;
+	--bg: #050505;
+	--lime: #d2fc52;
+	--ink: #080a04;
+	--text: #deded6;
+	--muted: #a4a69e;
+	--line: #ffffff1f;
+}
+* {
+	box-sizing: border-box;
+}
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--text);
+	font:
+		500 15px / 1.6 ui-monospace,
+		"JetBrains Mono",
+		monospace;
+}
+main {
+	max-width: 760px;
+	margin: 0 auto;
+	padding: 64px 16px;
+}
+.eyebrow {
+	color: var(--lime);
+}
+h1 {
+	font-size: clamp(26px, 5vw, 40px);
+	line-height: 1.15;
+	margin: 16px 0 24px;
+}
+h2 {
+	font-size: 18px;
+	margin-top: 48px;
+}
+dl {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	gap: 8px 24px;
+	border: 1px solid var(--line);
+	padding: 16px;
+}
+dt {
+	color: var(--muted);
+}
+dd {
+	margin: 0;
+}
+a {
+	color: var(--lime);
+}
+.btn {
+	display: inline-block;
+	background: var(--lime);
+	color: var(--ink);
+	padding: 14px 20px;
+	text-decoration: none;
+}
+.dim {
+	color: var(--muted);
+	font-size: 13px;
+}

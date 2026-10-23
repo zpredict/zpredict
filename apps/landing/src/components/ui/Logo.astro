@@ -2,12 +2,14 @@
 /** White mark from packages/brand plus the lime wordmark; `filter: brightness(0)` turns both black on light surfaces. */
 interface Props {
 	class?: string;
+	/** Defaults to the top of the current page. */
+	href?: string;
 }
 
-const { class: className } = Astro.props;
+const { class: className, href = "#top" } = Astro.props;
 ---
 
-<a class:list={["logo", className]} href="#top" aria-label="zPredict home">
+<a class:list={["logo", className]} href={href} aria-label="zPredict home">
 	<img src="/white/android-chrome-192x192.png" alt="" width="40" height="40" />
 	<span aria-hidden="true">zPredict</span>
 </a>

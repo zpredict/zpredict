@@ -25,5 +25,13 @@ export function loadJson<T>(key: string, fallback: T): T {
 	}
 }
 
-/** `claim`: a judge tag whose claim hasn't finished, so a retry reuses it (one row). */
-export const KEYS = { tag: "zp.tag", orders: "zp.orders", claim: "zp.claim" } as const;
+/**
+ * `claim`: a judge tag whose claim hasn't finished, so a retry reuses it (one row).
+ * `backup`: set once the account key was copied or saved, so the backup prompt stops.
+ */
+export const KEYS = {
+	tag: "zp.tag",
+	orders: "zp.orders",
+	claim: "zp.claim",
+	backup: "zp.backup",
+} as const;

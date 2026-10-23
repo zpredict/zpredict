@@ -9,7 +9,7 @@ export interface Step {
 export const steps: Step[] = [
 	{
 		title: "Deposit shielded ZEC.",
-		text: "Send fixed-size notes (1, 5 or 25 units) from any Zcash wallet to the escrow's Ironwood address. The memo holds only a random account tag. No account, no KYC.",
+		text: "Send fixed-size notes (1, 5 or 25 units: 0.01, 0.05 or 0.25 ZEC) from a Zcash wallet to the escrow's Ironwood address. The memo holds only encrypted shares of a random account tag. No account, no KYC.",
 		panel: [
 			"$ zcash send --to escrow.ironwood",
 			"",

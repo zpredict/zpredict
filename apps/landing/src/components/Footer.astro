@@ -5,7 +5,9 @@ import Logo from "./ui/Logo.astro";
 
 <footer class="footer" data-surface="dark">
 	<Logo />
-	<p>Built for Zecathon 2026 · MIT</p>
+	<p>
+		Built for Zecathon 2026 · MIT · <a href="/privacy/">Privacy</a> · <a href="/terms/">Terms</a>
+	</p>
 	<a class="repo" href="/pitch/">Watch the 2-min pitch</a>
 	<a class="repo" href={site.docsUrl}>Docs</a>
 	<a class="repo" href={site.repoUrl}>GitHub</a>
@@ -24,6 +26,13 @@ import Logo from "./ui/Logo.astro";
 	}
 	p {
 		margin-right: auto;
+	}
+	p a {
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+	p a:hover {
+		color: var(--zp-lime);
 	}
 	.repo {
 		display: inline-flex;

@@ -11,7 +11,7 @@
 		"build": "next build && node scripts/privacy.mjs",
 		"mock": "pnpm --filter @zpredict/sdk build && node mock-relayer/src/server.mjs",
 		"dev:mock": "pnpm prepare:deps && node scripts/dev-mock.mjs",
-		"test": "pnpm --filter @zpredict/sdk build && node --test mock-relayer/src/clearing.test.mjs lib/chart.test.ts lib/markets.test.ts"
+		"test": "pnpm --filter @zpredict/sdk build && node --test mock-relayer/src/clearing.test.mjs lib/chart.test.ts lib/markets.test.ts lib/qr.test.ts lib/format.test.ts scripts/privacy.test.mjs"
 	},
 	"dependencies": {
 		"@fontsource/jetbrains-mono": "^5.3.0",
@@ -20,12 +20,14 @@
 		"@zpredict/sdk": "workspace:*",
 		"next": "^16.4.2",
 		"react": "^19.3.1",
-		"react-dom": "^19.3.1"
+		"react-dom": "^19.3.1",
+		"uqr": "0.1.3"
 	},
 	"devDependencies": {
 		"@types/node": "^26.6.5",
 		"@types/react": "^19.3.0",
 		"@types/react-dom": "^19.3.0",
+		"jsqr": "1.4.0",
 		"typescript": "^5.9.3"
 	}
 }

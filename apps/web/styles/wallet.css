@@ -1,0 +1,165 @@
+/* Your wallet: the 3-step guide, deposit QR and status, key backup, backup prompt. */
+
+.wallet {
+	min-height: 100svh;
+	padding: var(--header-space) var(--zp-gutter) 72px;
+}
+
+.wguide {
+	display: grid;
+	gap: 32px;
+	max-width: 760px;
+	margin: 0 auto;
+}
+
+.wguide__head {
+	display: grid;
+	gap: 12px;
+}
+
+.wguide__title {
+	font-size: clamp(26px, 3vw, 40px);
+	letter-spacing: -0.04em;
+}
+
+.wguide__lede {
+	font-size: 15px;
+	line-height: 1.6;
+}
+
+.wguide__steps {
+	display: grid;
+	gap: 28px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.wguide__steps > li {
+	display: grid;
+	gap: 12px;
+	padding: 20px;
+	border: 1px solid var(--line);
+}
+
+.wguide__steps h2,
+.wguide__compat h2 {
+	font-size: 18px;
+	letter-spacing: -0.02em;
+}
+
+.wguide__steps > li > .btn {
+	justify-self: start;
+}
+
+.wguide a:not(.btn) {
+	color: var(--zp-lime);
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+
+.wguide__compat {
+	display: grid;
+	gap: 10px;
+	font-size: 13px;
+	line-height: 1.6;
+}
+
+.wguide__compat ul {
+	display: grid;
+	gap: 6px;
+	margin: 0;
+	padding-left: 18px;
+}
+
+.qr {
+	display: grid;
+	gap: 8px;
+	justify-items: start;
+	margin: 12px 0;
+}
+
+.qr__svg {
+	width: min(100%, 320px);
+	height: auto;
+	image-rendering: pixelated;
+}
+
+.qr figcaption {
+	max-width: 40ch;
+	font-size: 12px;
+}
+
+.dstatus {
+	margin-top: 8px;
+	padding: 10px 12px;
+	border: 1px dashed var(--line-strong);
+	color: var(--zp-muted);
+	font-size: 12px;
+}
+
+.dstatus.is-done {
+	border: 0;
+	background: var(--zp-lime);
+	color: var(--zp-ink);
+}
+
+.kbackup {
+	display: grid;
+	gap: 10px;
+	padding: 20px;
+	border: 1px solid var(--zp-lime);
+	font-size: 13px;
+}
+
+.kbackup__reveal {
+	justify-self: start;
+}
+
+.kbackup__title {
+	font-size: 16px;
+	text-transform: uppercase;
+}
+
+.kbackup__warn {
+	color: var(--zp-lime);
+	line-height: 1.6;
+}
+
+.kbackup__file {
+	cursor: pointer;
+}
+
+.bprompt {
+	padding: 12px 14px;
+	border: 1px solid var(--zp-lime);
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+.bprompt strong {
+	color: var(--zp-lime);
+	font-weight: inherit;
+}
+
+.bprompt a,
+.dtabs__wallet {
+	color: var(--zp-lime);
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+
+.field__box.is-bad {
+	border-color: var(--zp-lime);
+	border-style: dashed;
+}
+
+@media (max-width: 699.98px) {
+	.wallet {
+		padding-inline: 12px;
+	}
+	.wguide__steps > li,
+	.kbackup {
+		padding: 16px;
+	}
+}

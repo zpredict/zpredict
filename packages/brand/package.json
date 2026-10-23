@@ -5,6 +5,7 @@
 	"exports": {
 		"./tokens.css": "./tokens.css",
 		"./black/*": "./black/*",
-		"./white/*": "./white/*"
+		"./white/*": "./white/*",
+		"./zec/*": "./zec/*"
 	}
 }
