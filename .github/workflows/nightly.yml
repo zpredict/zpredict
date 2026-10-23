@@ -1,0 +1,123 @@
+name: Nightly
+
+# The slow checks PR CI skips: the real 3-party MPC through the relayers, the money loop on
+# a regtest chain, and coverage. Also on demand, and on any PR that changes this file.
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths: [.github/workflows/nightly.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  mpc:
+    name: Real MPC (relayers, sdk ↔ relayers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.91.1
+      - uses: Swatinem/rust-cache@v2
+      - name: Three relayers, real polytune MPC over Noise (release)
+        run: cargo test --release --locked -p zpredict-relayer -- --ignored three_relayers_real_mpc
+      - name: Build the relayer (release)
+        run: cargo build --release --locked -p zpredict-relayer
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter @zpredict/sdk
+      - name: sdk ↔ three relayer binaries, real MPC
+        run: pnpm --filter @zpredict/sdk test:relayers
+        env:
+          RELAYER_BIN: ${{ github.workspace }}/target/release/zpredict-relayer
+          REAL_MPC: "1"
+
+  regtest:
+    name: Regtest e2e (deposit → trade → resolve → withdraw)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      # scripts/lib/env.sh defaults, spelled out so the cache paths match.
+      CARGO_TARGET_DIR: /home/runner/.cache/zpredict-target
+      TOOLS_DIR: /home/runner/.cache/zpredict-tools
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.91.1
+      - uses: astral-sh/setup-uv@v6
+      - name: Cache zcash-devtool and the release builds
+        uses: actions/cache@v4
+        with:
+          path: |
+            /home/runner/.cache/zpredict-target
+            /home/runner/.cache/zpredict-tools
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: regtest-${{ hashFiles('Cargo.lock', 'scripts/lib/env.sh') }}
+          restore-keys: regtest-
+      - name: Cache the Zebra and lightwalletd images
+        id: images
+        uses: actions/cache@v4
+        with:
+          path: /tmp/regtest-images.tar
+          key: images-${{ hashFiles('deploy/regtest/compose.yaml') }}
+      - name: Pull or load the images
+        run: |
+          if [ -f /tmp/regtest-images.tar ]; then docker load -i /tmp/regtest-images.tar; exit 0; fi
+          imgs=$(grep -oE 'image: \S+' deploy/regtest/compose.yaml | cut -d' ' -f2)
+          for i in $imgs; do docker pull --platform linux/amd64 "$i"; done
+          docker save -o /tmp/regtest-images.tar $imgs
+      - name: scripts/relayer-e2e.sh
+        run: scripts/relayer-e2e.sh
+      - name: Relayer logs
+        if: failure()
+        run: tail -n 100 ~/.cache/zpredict-run/relayers/r*.log || true
+
+  coverage:
+    name: Coverage (Rust, TS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.91.1
+        with:
+          components: llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Rust (cargo llvm-cov, workspace tests)
+        run: |
+          mkdir -p coverage
+          cargo llvm-cov --workspace --locked --no-report
+          cargo llvm-cov report --ignore-filename-regex 'vendor/' --lcov --output-path coverage/rust.lcov
+          cargo llvm-cov report --ignore-filename-regex 'vendor/' --summary-only | tee coverage/rust.txt
+      - name: TS (node --test --experimental-test-coverage)
+        run: pnpm coverage:ts | tee coverage/ts.txt
+      - name: Summary
+        run: |
+          {
+            echo '## Rust coverage'; echo '```'; cat coverage/rust.txt; echo '```'
+            echo '## TS coverage'; echo '```'; sed -n '/start of coverage report/,/end of coverage report/p' coverage/ts.txt; echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
