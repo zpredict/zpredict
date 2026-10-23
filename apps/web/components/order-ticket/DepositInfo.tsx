@@ -5,18 +5,23 @@ import DenominationPicker from "@/components/order-ticket/DenominationPicker";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import CopyButton from "@/components/ui/CopyButton";
+import DepositQr from "@/components/wallet/DepositQr";
+import DepositStatus from "@/components/wallet/DepositStatus";
 import { useAccount } from "@/hooks/useAccount";
 import { useDeposit } from "@/hooks/useDeposit";
 
-/** A real testnet deposit: one fixed-size note to the escrow, tagged in an encrypted memo. */
-export default function DepositInfo() {
+/**
+ * A real testnet deposit: one fixed-size note to the escrow, tagged in an encrypted memo, as a
+ * ZIP 321 request (QR, copy, or open in a wallet), with live status. `open` shows it expanded.
+ */
+export default function DepositInfo({ open = false }: { open?: boolean }) {
 	const { tag, mock, create, forget } = useAccount();
 	const [units, setUnits] = useState<Denomination>(5);
 	const { request, error, escrowReady } = useDeposit(mock ? null : tag, units);
 	const zec = unitsToZec(units);
 
 	return (
-		<details className="deposit">
+		<details className="deposit" open={open}>
 			<summary>Deposit</summary>
 			<ol className="deposit__steps">
 				<li>
@@ -28,7 +33,7 @@ export default function DepositInfo() {
 					{tag && mock ? (
 						"This is a judge account: its credit is mock, and a deposit to it would stay mock (never withdrawable). Use Forget this account below, then create a fresh tag."
 					) : tag ? (
-						"Your account tag stays in this browser. It is the only key to your balance."
+						"Your account tag stays in this browser. It is the only key to your balance: back it up (Account key)."
 					) : (
 						<>
 							Create an account tag. It is made in this browser and never leaves it in clear.{" "}
@@ -39,12 +44,13 @@ export default function DepositInfo() {
 					)}
 				</li>
 				<li>
-					From a shielded wallet, send exactly <strong>{zec} ZEC</strong> with this payment request.
-					It pays the escrow&apos;s unified address (Ironwood receiver only, FROST 2-of-3) and
-					carries a memo giving each relayer only its own share of your tag. Don&apos;t edit the
+					From a shielded testnet wallet, send exactly <strong>{zec} ZEC</strong> with this payment
+					request. It pays the escrow&apos;s unified address (Ironwood receiver only, FROST 2-of-3)
+					and carries a memo giving each relayer only its own share of your tag. Don&apos;t edit the
 					amount or the memo.
 					{request && (
 						<>
+							<DepositQr uri={request.uri} />
 							<code className="deposit__ua">{request.uri}</code>
 							<span className="deposit__actions">
 								<CopyButton label="Copy payment request" text={request.uri} />
@@ -56,7 +62,10 @@ export default function DepositInfo() {
 						</>
 					)}
 				</li>
-				<li>After 10 confirmations each relayer credits your balance.</li>
+				<li>
+					After 10 confirmations each relayer credits your balance.
+					{request && <DepositStatus />}
+				</li>
 			</ol>
 			{!escrowReady && (
 				<p className="dim">

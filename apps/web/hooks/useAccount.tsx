@@ -19,6 +19,8 @@ interface Account {
 	/** A fresh tag made in this browser, for a real deposit; never sent anywhere in clear. */
 	create: () => string;
 	forget: () => void;
+	/** Replaces this browser's account with a restored tag (its orders here are dropped). */
+	restore: (tag: string) => void;
 	refresh: () => Promise<void>;
 }
 
@@ -63,14 +65,26 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 	const create = useCallback(() => {
 		const t = newTag();
 		save(KEYS.tag, t);
+		save(KEYS.backup, null);
 		setTag(t);
 		setMock(false);
 		return t;
 	}, []);
 
+	const restore = useCallback((t: string) => {
+		save(KEYS.tag, t);
+		save(KEYS.orders, null);
+		save(KEYS.backup, "1");
+		setTag(t);
+		setBalance(null);
+		setSeat(null);
+		setMock(null);
+	}, []);
+
 	const forget = useCallback(() => {
 		save(KEYS.tag, null);
 		save(KEYS.orders, null);
+		save(KEYS.backup, null);
 		setTag(null);
 		setBalance(null);
 		setSeat(null);
@@ -78,7 +92,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	return (
-		<Ctx.Provider value={{ tag, balance, seat, mock, claim, create, forget, refresh }}>
+		<Ctx.Provider value={{ tag, balance, seat, mock, claim, create, forget, restore, refresh }}>
 			{children}
 		</Ctx.Provider>
 	);

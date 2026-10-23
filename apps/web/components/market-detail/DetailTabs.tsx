@@ -1,5 +1,6 @@
 "use client";
 import type { Market } from "@zpredict/sdk";
+import Link from "next/link";
 import { type KeyboardEvent, useMemo, useState } from "react";
 import DepositInfo from "@/components/order-ticket/DepositInfo";
 import OrderList from "@/components/order-ticket/OrderList";
@@ -69,6 +70,9 @@ export default function DetailTabs({ market, mine, orders, latest }: Props) {
 				</p>
 				{mine.length === 0 && <p className="dim">No orders on this market yet.</p>}
 				<OrderList orders={mine} />
+				<Link className="dtabs__wallet" href="/wallet/">
+					Deposit or withdraw with your own wallet →
+				</Link>
 				<DepositInfo />
 				<WithdrawForm />
 			</div>

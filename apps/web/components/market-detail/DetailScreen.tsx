@@ -3,6 +3,7 @@ import { useSearchParams } from "next/navigation";
 import RelayersDown from "@/components/markets/RelayersDown";
 import OrderTicket from "@/components/order-ticket/OrderTicket";
 import ShareXor from "@/components/trade/ShareXor";
+import BackupPrompt from "@/components/wallet/BackupPrompt";
 import { useMarkets } from "@/hooks/useMarkets";
 import { useOrders } from "@/hooks/useOrders";
 import { seriesOf, timed } from "@/lib/chart";
@@ -49,6 +50,7 @@ export default function DetailScreen() {
 			</div>
 			<OutcomeRows group={group} selected={market} />
 			<aside aria-label="Trade" className="detail__side">
+				<BackupPrompt />
 				<p className="ticket__market">
 					Trading <strong>{market.question}</strong>
 				</p>

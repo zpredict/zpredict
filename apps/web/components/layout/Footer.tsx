@@ -18,6 +18,7 @@ export default function Footer() {
 					<p className="sitefoot__head">Markets</p>
 					<Link href="/#markets">All markets</Link>
 					<Link href="/trade/">Trade</Link>
+					<Link href="/wallet/">Your wallet</Link>
 				</div>
 				<div>
 					<p className="sitefoot__head">Privacy</p>
