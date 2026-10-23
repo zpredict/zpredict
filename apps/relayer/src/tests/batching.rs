@@ -7,6 +7,7 @@ use super::*;
 use crate::mpc::InsecureLocalMatcher;
 use crate::state::{Shared, State, Status};
 
+/// Also regression #49: an order in another market never crosses (order 3).
 #[tokio::test(flavor = "multi_thread")]
 async fn three_relayers_clear_expire_and_restart() {
     let r = relayers("e2e", 4, || InsecureLocalMatcher, false);

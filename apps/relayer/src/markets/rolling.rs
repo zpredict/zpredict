@@ -217,6 +217,7 @@ mod tests {
         assert_eq!(r.due(3_527_050, &[a], &c).unwrap(), None, "already made");
     }
 
+    /// Regression PR #113 (febb1d6): "≥ 1 shielded action", not "actions".
     #[test]
     fn one_action_is_singular() {
         let mut c = chain(3_526_900, 3_527_100);

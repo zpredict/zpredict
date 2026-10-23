@@ -141,7 +141,7 @@ test("judge claims send relayer i only share i of the tag", async (t) => {
 	assert.equal(toHex(combine(posts.map(([, b]) => fromHex(b.keyShare)))), tag);
 });
 
-test("a full table is a TableFullError; seats come from relayer 0", async (t) => {
+test("regression #99: a full table is a TableFullError; seats come from relayer 0", async (t) => {
 	t.mock.method(globalThis, "fetch", async (url: string) =>
 		url.endsWith("/judge/claim")
 			? Response.json({ error: "table full" }, { status: 503 })

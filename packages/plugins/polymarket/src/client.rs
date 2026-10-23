@@ -70,8 +70,7 @@ impl Polymarket {
     }
 
     fn fetch(&self, slug: &str) -> Result<GammaMarket> {
-        let url = format!("{GAMMA}/markets/slug/{slug}");
-        GammaMarket::parse(&self.get(url)?)
+        GammaMarket::parse(&self.get(record_url(slug))?)
     }
 
     /// The last week of hourly Yes prices for a CLOB token. Not cached: the caller polls
@@ -96,6 +95,11 @@ impl Polymarket {
             })
             .collect())
     }
+}
+
+/// By slug: Gamma's `?condition_ids=` filter hides closed markets (#119).
+fn record_url(slug: &str) -> String {
+    format!("{GAMMA}/markets/slug/{slug}")
 }
 
 impl Resolver for Polymarket {
@@ -156,6 +160,27 @@ mod tests {
         assert!(pm.resolve(&m, &chain).is_err());
         let bad = market("UPPER", cid);
         assert!(pm.resolve(&bad, &chain).is_err(), "params are checked");
+    }
+
+    /// Regression #119: a mirrored market is looked up by slug, which still finds it once
+    /// it closed, and the record found must carry the configured conditionId, or no outcome.
+    #[test]
+    fn regression_119_closed_markets_by_slug_and_the_condition_id_must_match() {
+        let slug = "highest-temperature-in-warsaw-on-october-21-2026-16c";
+        assert_eq!(record_url(slug), format!("{GAMMA}/markets/slug/{slug}"));
+        let chain = FixtureChain::default();
+        let (pm, m) = seeded("resolved-yes");
+        assert!(pm.market(&Params::of(&m).unwrap()).unwrap().closed);
+        assert!(
+            pm.resolve(&m, &chain).unwrap().is_some(),
+            "closed: resolves"
+        );
+        let other = format!("0x{}", "ab".repeat(32));
+        let wrong = market(slug, &other);
+        assert!(
+            pm.resolve(&wrong, &chain).is_err(),
+            "another market's record"
+        );
     }
 
     #[test]

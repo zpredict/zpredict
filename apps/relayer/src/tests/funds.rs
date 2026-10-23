@@ -5,6 +5,8 @@ use zpredict_core::{clear, fill_records};
 use super::*;
 use crate::mpc::{InsecureLocalMatcher, Polytune};
 
+/// Regression #57: a top-up to an account whose row has been through MPC is a public
+/// credit into that same row, never a second row.
 #[tokio::test(flavor = "multi_thread")]
 async fn unfunded_orders_never_fill_and_top_ups_land_in_the_same_row() {
     let r = relayers("funds", 4, || InsecureLocalMatcher, false);
@@ -48,6 +50,31 @@ async fn a_self_cross_fills_in_one_batch() {
         );
     }
     assert_eq!(balance(&r, &a).await, 5000 - 3 * 200);
+}
+
+/// Regression #85 (PR #87): a relayer knows every account's id and its own share of the
+/// account's key, nothing more. Orders it builds from that, crossing a real counterparty,
+/// spend nothing from the account and fill nothing.
+#[tokio::test(flavor = "multi_thread")]
+async fn regression_85_a_relayer_cannot_order_for_an_account() {
+    let r = relayers("forged-order", 6, || InsecureLocalMatcher, false);
+    let (a, b) = (funded(&r).await, funded(&r).await);
+    for (p, forged) in key_shares(&a).into_iter().enumerate() {
+        let n = 2 * p as u8;
+        submit(
+            &r,
+            &id(n + 1),
+            order(1, Side::Yes, 99, 10, forged),
+            &[0, 1, 2],
+        )
+        .await;
+        submit(&r, &id(n + 2), order(1, Side::No, 50, 10, b), &[0, 1, 2]).await;
+    }
+    assert_eq!(batch_all(&r).await[0].len(), 6);
+    for n in 1..=6 {
+        assert_eq!(fill(&r, &id(n)).await, Some([0; FILL_LEN]), "order {n}");
+    }
+    assert_eq!((balance(&r, &a).await, balance(&r, &b).await), (5000, 5000));
 }
 
 /// The real polytune MPC (with balance checks) over our Noise channel. ~1 min even
