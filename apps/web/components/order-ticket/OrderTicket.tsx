@@ -57,7 +57,7 @@ export default function OrderTicket({ market, initialSide }: Props) {
 			)}
 			<p className={t.error ? "ticket__err" : "ticket__hint"}>
 				{t.error ||
-					"Your browser splits the order into three random shares and sends one to each relayer. The limit starts a few cents above the last price so it crosses; you pay the midpoint."}
+					"Your browser splits the order into three random shares and sends one to each relayer. Orders cross only inside the 5-second batch they land in, so a fill needs someone on the other side in the same batch; both pay the midpoint."}
 			</p>
 		</Card>
 	);

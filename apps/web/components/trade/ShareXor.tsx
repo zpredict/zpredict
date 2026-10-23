@@ -45,7 +45,7 @@ export default function ShareXor({ order }: Props) {
 				{fill?.filled
 					? `Filled ${fill.size} @ ${avgCents(fill).toFixed(1)}¢ average — only you can open this.`
 					: fill
-						? "Batch cleared: not filled. Unfilled orders are never opened."
+						? "Not filled: nobody took the other side in this batch, and an unfilled order is dropped unopened. To see a fill, send it again and, right after it, the opposite side at 100 minus your price (or have someone in another browser take it): both land in the same batch and cross."
 						: `Waiting for batch ${order.batch} to clear…`}
 			</p>
 		</Card>

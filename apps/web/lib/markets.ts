@@ -20,7 +20,7 @@ export function sideCents(m: Market, side: Side): number | null {
 	return side === 0 ? yes : 100 - yes;
 }
 
-/** Cents above the last price a default limit sits, so it crosses; fills still price at the midpoint. */
+/** Cents above the last price a default limit sits, so it meets a counterparty near the last price; fills price at the midpoint. */
 export const LIMIT_EDGE = 3;
 
 /** Ticket default: the side's last price plus LIMIT_EDGE, clamped to 1..99; 50 with no price yet. */
