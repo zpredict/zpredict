@@ -6,6 +6,8 @@ import { fromHex, random, toHex } from "./bytes.js";
 import { at, call, distinct, postEach, type Relayers } from "./http.js";
 import { accountHex, KEY_LEN, keyShares, type MemoKeys } from "./memo.js";
 
+export * from "./address.js";
+export * from "./backup.js";
 export { fromHex, random, toHex } from "./bytes.js";
 export type { Relayers } from "./http.js";
 export * from "./memo.js";
