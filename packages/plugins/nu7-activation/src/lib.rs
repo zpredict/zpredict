@@ -63,8 +63,8 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(
-            (yes.outcome, yes.height, yes.block_hash.as_str()),
-            (Outcome::Yes, 3_543_405, "00aa")
+            (yes.outcome, yes.block()),
+            (Outcome::Yes, Some((3_543_405, "00aa")))
         );
         // NU6 branch ID: the upgrade slipped.
         let no = Nu7Activation
