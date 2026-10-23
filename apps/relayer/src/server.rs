@@ -95,6 +95,7 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
         escrow: escrow.clone(),
         pre: Default::default(),
         logged_rows: Default::default(),
+        payout_backoff: Default::default(),
     };
     let handle = tokio::runtime::Handle::current();
     // The circuit compiles on the batch thread before the first window (~7 s at 32 rows,

@@ -74,6 +74,7 @@ pub(super) fn relayers<M: Matcher>(
                 escrow: None,
                 pre: Default::default(),
                 logged_rows: Default::default(),
+                payout_backoff: Default::default(),
             };
             Relayer { http, batcher }
         })

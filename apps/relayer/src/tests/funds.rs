@@ -69,7 +69,8 @@ async fn three_relayers_real_mpc() {
     batch_all(&r).await;
     assert_eq!(balance(&r, &a).await, 5000 - 230 + 400);
 
-    // b withdraws 1000 through the clearing MPC, its key only as fresh XOR shares.
+    // b, a judge-mode account, asks to withdraw 1000 through the clearing MPC (its key only
+    // as fresh XOR shares): the circuit refuses mock credit (#104), so nothing moves.
     let shares = fresh_shares(&b);
     for (i, x) in r.iter().enumerate() {
         let e = crate::store::Event::Withdrawal {
@@ -81,7 +82,16 @@ async fn three_relayers_real_mpc() {
         x.batcher.state.lock().unwrap().record(e).unwrap();
     }
     batch_all(&r).await; // on the run held since the first batch
-    assert_eq!(balance(&r, &b).await, 5000 - 170 - 1000);
+    assert_eq!(balance(&r, &b).await, 5000 - 170);
+    let status = r[0]
+        .batcher
+        .state
+        .lock()
+        .unwrap()
+        .ledger
+        .withdrawal(&id(9))
+        .map(|w| w.status);
+    assert_eq!(status, Some(crate::ledger::WithdrawalStatus::Refused));
     let next = held(&r[0]);
     assert!(next.is_some() && next != first, "used, then replaced");
 }

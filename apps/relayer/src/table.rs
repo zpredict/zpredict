@@ -20,7 +20,7 @@
 //! *burned* here, every batch gets a fresh random share for it, and nobody can use the
 //! row again. That loses the row (denial of service) instead of handing it over.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use zpredict_core::{ACCOUNT_LEN, Account, BALANCE_LEN, KEY_LEN, Key};
 
@@ -40,6 +40,8 @@ pub struct Table {
     pending: Vec<u64>,
     /// This relayer's key share per account id; `None` = burned (two different shares).
     keys: HashMap<u64, Option<Key>>,
+    /// Ids opened by a judge claim (mock credit): never withdrawable on chain (#104).
+    mock: HashSet<u64>,
 }
 
 impl Table {
@@ -56,6 +58,27 @@ impl Table {
     /// Whether `share` is this relayer's (unburned) key share for `id`.
     pub fn key_matches(&self, id: u64, share: &Key) -> bool {
         self.keys.get(&id) == Some(&Some(*share))
+    }
+
+    /// Marks `id` as a judge-mode account: the circuit refuses its withdrawals.
+    pub fn mark_mock(&mut self, id: u64) {
+        self.mock.insert(id);
+    }
+
+    pub fn is_mock(&self, id: u64) -> bool {
+        self.mock.contains(&id)
+    }
+
+    /// Whether each of the first `n` rows is a judge-mode account, padded with `false`.
+    pub fn mock_flags(&self, n: usize, len: usize) -> Vec<bool> {
+        let mut out: Vec<bool> = self
+            .rows
+            .iter()
+            .take(n)
+            .map(|r| self.is_mock(r.id))
+            .collect();
+        out.resize(len.max(out.len()), false);
+        out
     }
 
     pub fn has_key(&self, id: u64) -> bool {

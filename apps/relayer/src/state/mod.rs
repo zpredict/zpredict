@@ -93,6 +93,9 @@ pub struct State {
     orders: HashMap<String, Order>,
     /// This relayer's shares of the balance table (`table.rs`).
     pub table: Table,
+    /// The last payout round failed (e.g. the escrow can't cover it); it is retried with
+    /// backoff, and `GET /withdrawals` says so for debited requests (#104).
+    pub payout_retrying: bool,
     /// Deposits, withdrawals and resolved markets (`ledger.rs`).
     pub ledger: Ledger,
     /// Market id → public clearing prices in cents (YES side), oldest first.
@@ -115,6 +118,7 @@ impl State {
             markets,
             orders: HashMap::new(),
             table: Table::default(),
+            payout_retrying: false,
             ledger: Ledger::default(),
             history: HashMap::new(),
             view: VecDeque::new(),
@@ -197,6 +201,7 @@ impl State {
         if self.table.len() >= rows {
             return Ok(Claim::Full);
         }
+        self.record(Event::Mock { id })?;
         let share = hex::encode(share);
         self.record(Event::Key { id, share })?;
         if self.index == 0 {

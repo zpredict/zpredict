@@ -65,7 +65,9 @@ pub async fn post(State(api): State<Api>, body: Bytes) -> Response {
     }
 }
 
-/// `{status: pending|refused|debited|paying|paid, txid?}`.
+/// `{status: pending|refused|debited|paying|paid, txid?, payout?: "retrying"}`. A request
+/// from a judge-mode account is `refused` like one its balance doesn't cover: the circuit
+/// never debits mock credit, and no relayer learns whose request it was.
 pub async fn get(State(api): State<Api>, Path(id): Path<String>) -> Response {
     let s = api.state.lock().expect("state lock");
     let Some(w) = s.ledger.withdrawal(&id).filter(|_| is_hex(&id, 32)) else {
@@ -74,6 +76,9 @@ pub async fn get(State(api): State<Api>, Path(id): Path<String>) -> Response {
     let mut body = json!({ "status": w.status });
     if let Some(txid) = &w.txid {
         body["txid"] = json!(txid);
+    }
+    if w.status == crate::ledger::WithdrawalStatus::Debited && s.payout_retrying {
+        body["payout"] = json!("retrying"); // the escrow payout failed; retried with backoff
     }
     Json(body).into_response()
 }

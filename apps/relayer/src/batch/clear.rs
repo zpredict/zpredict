@@ -63,6 +63,7 @@ impl<M: Matcher> Batcher<M> {
                 accounts: &table,
                 keys: shares.keys,
                 withdrawals: if k == 0 { shares.withdrawals } else { &no_keys },
+                mock: shares.mock,
             };
             let out = self
                 .matcher

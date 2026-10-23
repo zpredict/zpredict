@@ -82,6 +82,8 @@ pub enum Event {
     /// This relayer's share (hex32) of account `id`'s key, from a deposit memo or a judge
     /// claim (see `table.rs`: a different second share burns the key).
     Key { id: u64, share: String },
+    /// Account `id` was opened by a judge claim: mock credit, never withdrawable (#104).
+    Mock { id: u64 },
     /// Relayers 1 and 2: zero-share rows appended for ids relayer 0 announced.
     Rows { ids: Vec<u64> },
     /// Relayer 0: the first `rows` table rows entered a batch; credit them via new rows.

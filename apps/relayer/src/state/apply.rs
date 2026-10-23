@@ -73,7 +73,13 @@ impl State {
                 }
                 self.batch = self.batch.max(batch + 1);
             }
-            Event::Credit { id, amount } => self.table.credit(id, amount),
+            // Only judge claims record credits (deposits go through the circuit), so a
+            // credited id is a judge account, also in logs from before `Mock` existed.
+            Event::Credit { id, amount } => {
+                self.table.mark_mock(id);
+                self.table.credit(id, amount);
+            }
+            Event::Mock { id } => self.table.mark_mock(id),
             Event::Key { id, share } => {
                 self.table.register(id, hex_array(&share));
             }
