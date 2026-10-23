@@ -59,7 +59,7 @@ function getOrder(i, id, url, res) {
 	const token = url.searchParams.get("token");
 	if (!o?.shares[i] || !token || o.tokens[i] !== token)
 		return send(res, 404, { error: "unknown order" });
-	if (o.status === "pending") return send(res, 200, { status: "pending" });
+	if (o.status !== "filled") return send(res, 200, { status: o.status });
 	send(res, 200, { status: o.status, fillShare: hex(o.fillShares[i]) });
 }
 
