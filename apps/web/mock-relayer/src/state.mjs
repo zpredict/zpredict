@@ -6,11 +6,15 @@ import { randomBytes } from "node:crypto";
 import { viewDigest } from "@zpredict/sdk";
 import { PORTS, START_HEIGHT, VIEW_KEEP } from "./config.mjs";
 import { MARKET_DEFS } from "./markets.mjs";
-import { roll, SIGNED } from "./rolling.mjs";
+import { roll, SIGNED, SIGNED_MIRRORED } from "./rolling.mjs";
 
 export const chain = { batch: 1, height: START_HEIGHT };
 /** Public market objects (`GET /markets`); the bots' fair value stays private. */
-export const markets = [...MARKET_DEFS.map(({ fair: _fair, ...m }) => m), ...SIGNED];
+export const markets = [
+	...MARKET_DEFS.map(({ fair: _fair, ...m }) => m),
+	...SIGNED,
+	...SIGNED_MIRRORED,
+];
 roll(markets, chain.height);
 
 /** orderId -> { shares: [Buffer|null x3], tokens: [string|null x3], status, fillShares, born } */

@@ -1,11 +1,12 @@
 import type { Market } from "@zpredict/sdk";
 import Link from "next/link";
-import { category, chance, heightLabel } from "@/lib/markets";
+import { category, chance, heightLabel, isMirrored } from "@/lib/markets";
 import Chance from "./Chance";
 import Countdown from "./Countdown";
 import PriceButtons from "./PriceButtons";
 import PrivacyChips from "./PrivacyChips";
 import ProbabilityBar from "./ProbabilityBar";
+import Reference from "./Reference";
 import Sparkline from "./Sparkline";
 
 /**
@@ -17,7 +18,11 @@ export default function MarketCard({ market: m, tip }: { market: Market; tip: nu
 		<article className="mcard">
 			<header className="mcard__top">
 				<span>{category(m)}</span>
-				<span className="num">Block {heightLabel(m.resolveHeight)}</span>
+				<span className="num">
+					{isMirrored(m)
+						? `Closes block ${heightLabel(m.closeHeight)}`
+						: `Block ${heightLabel(m.resolveHeight)}`}
+				</span>
 			</header>
 			<h3 className="mcard__q">
 				<Link href={`/trade/?m=${m.id}`}>{m.question}</Link>
@@ -29,7 +34,8 @@ export default function MarketCard({ market: m, tip }: { market: Market; tip: nu
 			</div>
 			<ProbabilityBar yes={chance(m)} />
 			<PriceButtons market={m} />
-			<PrivacyChips />
+			<Reference market={m} />
+			<PrivacyChips market={m} />
 		</article>
 	);
 }

@@ -1,6 +1,6 @@
 import { type Market, verifyOutcome } from "@zpredict/sdk";
 import Badge from "@/components/ui/Badge";
-import { heightLabel, shortHash } from "@/lib/markets";
+import { heightLabel, isMirrored, shortHash } from "@/lib/markets";
 
 /**
  * A resolved market's outcome and what backs it: the FROST 2-of-3 signature, checked here in
@@ -15,11 +15,16 @@ export default function OutcomeProof({
 }) {
 	if (m.status !== "resolved" || !m.outcome) return null;
 	const signed = groupKey !== null && verifyOutcome(m, groupKey);
+	const mirrored = isMirrored(m);
 	const sig = signed
-		? "Signed by 2-of-3 relayers ✓"
+		? mirrored
+			? "Resolved per Polymarket, signed 2-of-3 ✓"
+			: "Signed by 2-of-3 relayers ✓"
 		: m.outcomeSig
 			? "Signature not verified"
-			: "Resolved (unsigned)";
+			: mirrored
+				? "Resolved per Polymarket (unsigned)"
+				: "Resolved (unsigned)";
 	return (
 		<div className="proof">
 			<div className="proof__row">

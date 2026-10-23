@@ -40,13 +40,34 @@ function rolling(k, n) {
 
 /** Resolved, signed history from the vectors. */
 export const SIGNED = vectors.cases
-	.filter((c) => c.valid)
+	.filter((c) => c.valid && c.height !== undefined)
 	.map((c) => ({
 		...rolling(c.market - BASE, 31),
 		status: "resolved",
 		outcome: c.outcome,
 		blockHeight: c.height,
 		blockHash: c.blockHash,
+		outcomeSig: c.sig,
+	}));
+
+/** A mirrored market that resolved per Polymarket, signed over source and conditionId (vectors). */
+export const SIGNED_MIRRORED = vectors.cases
+	.filter((c) => c.valid && c.source)
+	.map((c) => ({
+		id: c.market,
+		question: "Will the highest temperature in Warsaw be 16°C on October 21?",
+		plugin: "polymarket",
+		params: {
+			conditionId: c.conditionId,
+			slug: "highest-temperature-in-warsaw-on-october-21-2026-16c",
+		},
+		closeHeight: 3_526_000,
+		resolveHeight: 3_526_000,
+		status: "resolved",
+		category: "Weather",
+		outcome: c.outcome,
+		source: c.source,
+		conditionId: c.conditionId,
 		outcomeSig: c.sig,
 	}));
 
