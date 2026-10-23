@@ -140,6 +140,7 @@ associated data, so one sealed secret can't be passed off as another.
 | Account tag (the account's credential) | the trader's browser | `localStorage` only | Never outside the browser. Relayer `i` gets only `sᵢ` (memo slot, judge claim, balance query) and fresh XOR shares inside orders and withdrawals |
 | Order shares and read tokens | the trader's browser | `localStorage` (with the order) | Share *i* and token *i* go only to relayer *i* |
 | Account key shares (`sᵢ` per id) | relayer `i` | its event log (`key` events) | In memory while the relayer runs |
+| Judge-mode flags (ids opened by a judge claim) | every relayer that received the claim | its event log (`mock` events) | The claim already shows the id. The flags only make the circuit refuse withdrawals of mock credit, and a refusal looks like any other (#104) |
 
 `scripts/settle-e2e.sh` checks that every file under `$RUN_DIR/frost` is sealed and that no
 unsealed escrow wallet is left behind.
