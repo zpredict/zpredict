@@ -45,6 +45,11 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
     let (slots, rows) = (c.batch_size, c.table_rows);
     let markets = markets::load(&c.data_dir, c.markets.clone());
     let state = State::open(c.index, markets, &c.data_dir)?.shared();
+    if c.index == 0 {
+        // Operator log only (#99): the count from the replayed log, before the compile.
+        let used = state.lock().expect("state lock").table.len();
+        eprintln!("table: {used} of {rows} rows used at startup");
+    }
     // Outcomes are signed with the escrow's key share: `frost_share_file`, or else the
     // `[settlement]` one, so turning settlement on also signs outcomes.
     let settlement_share = c.settlement.as_ref().map(|s| s.key_share.as_path());
