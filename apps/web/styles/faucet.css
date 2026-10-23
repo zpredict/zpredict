@@ -1,0 +1,61 @@
+/* /faucet: one dark pane, the threat model's type scale. */
+.faucet {
+	display: grid;
+	gap: 20px;
+	max-width: 880px;
+	padding: calc(var(--header-space) + 48px) var(--zp-gutter) 120px;
+}
+
+.faucet__eyebrow {
+	color: var(--zp-lime);
+}
+
+.faucet__title {
+	font-size: clamp(32px, 3.4vw, 48px);
+	line-height: 1.1;
+}
+
+.faucet__status {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	gap: 8px 24px;
+	margin: 0;
+	padding: 16px;
+	border: 1px solid var(--line);
+}
+
+.faucet__status dt {
+	color: var(--zp-muted);
+}
+
+.faucet__status dd {
+	margin: 0;
+}
+
+.faucet__progress ol {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 24px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	color: var(--zp-muted);
+}
+
+.faucet__progress li.is-done {
+	color: var(--zp-lime);
+}
+
+.faucet__progress code {
+	overflow-wrap: anywhere;
+}
+
+.faucet__error {
+	color: var(--zp-text);
+	border-left: 2px solid var(--zp-lime);
+	padding-left: 12px;
+}
+
+.faucet a {
+	color: var(--zp-lime);
+}

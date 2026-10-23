@@ -9,8 +9,9 @@
 
 :8080 {
 	root * /srv
+	# Content-Security-Policy, written by prepare.mjs (per route where a route needs more).
+	import /etc/caddy/csp.caddy
 	header {
-		import /etc/caddy/csp.caddy
 		Referrer-Policy no-referrer
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY

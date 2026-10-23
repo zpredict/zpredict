@@ -24,7 +24,14 @@ export const DOCS_URL = "https://docs.zpredict.site";
  */
 export const ESCROW_UA = process.env.NEXT_PUBLIC_ESCROW_UA?.trim() || null;
 
+/** The testnet faucet's API origin (apps/faucet), baked in from NEXT_PUBLIC_FAUCET. */
+export const FAUCET_URL = process.env.NEXT_PUBLIC_FAUCET?.trim() || "https://faucet.zpredict.site";
+
+/** Cloudflare Turnstile site key (public) for the faucet; null = the faucet doesn't ask. */
+export const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || null;
+
 export const POLL_MS = {
+	faucet: 8000,
 	balance: 2500,
 	fills: 1500,
 	view: 900,
