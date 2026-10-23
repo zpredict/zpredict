@@ -53,12 +53,11 @@ services:
       peers: { ipv4_address: 10.0.250.10 }
   # Relayer 0's escrow wallet (holds the viewing key) lives only in this tmpfs volume:
   # the sidecar opens the sealed copy into it and stays up so it survives r0 restarts.
+  # Same image as the relayers (built by r0 in this deploy), so nothing it needs can have
+  # been pruned since an earlier one (#124).
   escrow-wallet:
-    build:
-      context: ../..
-      dockerfile: deploy/production/relayer.Dockerfile
-      target: ceremony
-    image: zpredict-ceremony:local
+    image: zpredict-relayer:local
+    pull_policy: never
     restart: unless-stopped
     entrypoint: ["escrow-wallet.sh"]
     environment:

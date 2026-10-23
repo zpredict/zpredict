@@ -1,6 +1,6 @@
 #!/bin/bash
 # Escrow key ceremony for the hosted relayers (#78). Runs once, inside a throwaway
-# `ceremony` container on the VPS with /work on tmpfs and the three relayer data volumes
+# container of the relayer image on the VPS with /work on tmpfs and the three relayer data volumes
 # mounted at /r0 /r1 /r2 (see deploy/README.md "Key ceremony").
 #
 # stdin: three lines, the store keys of r0, r1, r2 (64 hex each; also Coolify secrets
