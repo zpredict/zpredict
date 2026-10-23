@@ -30,6 +30,26 @@ async fn unfunded_orders_never_fill_and_top_ups_land_in_the_same_row() {
     }
 }
 
+/// The demo counterparty (#103): one account's order and its exact opposite in the same
+/// batch fill each other, and the account pays exactly one unit per contract (it gets
+/// that back at resolution, whichever side wins).
+#[tokio::test(flavor = "multi_thread")]
+async fn a_self_cross_fills_in_one_batch() {
+    let r = relayers("selfcross", 4, || InsecureLocalMatcher, false);
+    let a = funded(&r).await;
+    submit(&r, &id(1), order(1, Side::Yes, 60, 3, a), &[0, 1, 2]).await;
+    submit(&r, &id(2), order(1, Side::No, 40, 3, a), &[0, 1, 2]).await;
+    batch_all(&r).await;
+    for n in [1, 2] {
+        assert_eq!(
+            fill(&r, &id(n)).await.map(|f| f[9]),
+            Some(1),
+            "order {n} filled"
+        );
+    }
+    assert_eq!(balance(&r, &a).await, 5000 - 3 * 200);
+}
+
 /// The real polytune MPC (with balance checks) over our Noise channel. ~1 min even
 /// with opt-level 3: `cargo test -p zpredict-relayer -- --ignored`.
 #[tokio::test(flavor = "multi_thread")]
