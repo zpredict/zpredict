@@ -1,22 +1,25 @@
 // Privacy gate: the static export must make zero third-party requests.
-// Scans every text file in out/ for absolute URLs and fails on any real host
-// that is not ours. Run after `next build` (the `build` script does).
+// Scans every text file in out/ (or the directory given, e.g. the landing's dist/) for
+// absolute URLs and fails on any real host that is not ours. Run after `next build` (the
+// `build` script does; the landing's build runs it on its dist/).
 // One exception, route-scoped: Cloudflare Turnstile on /faucet (#133). Its origin may
 // appear only in files that belong to the faucet route alone: out/faucet/* and the build
 // assets out/faucet/index.{html,txt} reference and no other page does.
 // Usage: node privacy.mjs [out dir]
 import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
-const OUT = (process.argv[2] ?? new URL("../out/", import.meta.url).pathname).replace(/\/?$/, "/");
+const OUT = process.argv[2]
+	? `${resolve(process.argv[2])}/`
+	: new URL("../out/", import.meta.url).pathname;
 const FAUCET_ONLY = "challenges.cloudflare.com";
 
 // Hosts the app may reference: our relayers and dev mocks.
 const OURS = /^(([a-z0-9-]+\.)*zpredict\.site|localhost)$/;
 // Inert strings that are never fetched: XML namespaces, the core-js license banner in
 // Next's polyfills, doc links inside React/Next error messages, a paper citation in a
-// GLSL comment of Three.js (lazy hero chunk from @zpredict/ascii), and a plain link on
-// /faucet to an external faucet (fetched only if the user clicks it).
+// GLSL comment of Three.js (lazy hero chunk from @zpredict/ascii), plain links to our repo,
+// and a plain link on /faucet to an external faucet (fetched only if the user clicks it).
 const INERT = [
 	/^https:\/\/jcgt\.org\/published\//,
 	/^http:\/\/www\.w3\.org\//,
@@ -24,6 +27,7 @@ const INERT = [
 	/^https:\/\/nextjs\.org\/docs\//,
 	/^https:\/\/react\.dev\/errors\//,
 	/^https:\/\/zecfaucet\.com\/$/,
+	/^https:\/\/github\.com\/zpredict\//,
 ];
 
 const files = [];
@@ -71,7 +75,7 @@ for (const file of files) {
 }
 
 if (bad.length) {
-	console.error(`privacy: ${bad.length} third-party URL(s) in out/\n${bad.join("\n")}`);
+	console.error(`privacy: ${bad.length} third-party URL(s) in ${OUT}\n${bad.join("\n")}`);
 	process.exit(1);
 }
-console.log("privacy: no third-party URLs in out/");
+console.log(`privacy: no third-party URLs in ${OUT}`);
