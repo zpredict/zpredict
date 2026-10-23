@@ -4,6 +4,7 @@ import {
 	payoutZats,
 	WITHDRAWAL_FEE,
 	type WithdrawalStatus,
+	withdrawalAddressProblem,
 } from "@zpredict/sdk";
 import { useState } from "react";
 import NumberField from "@/components/order-ticket/NumberField";
@@ -18,6 +19,11 @@ const statusText = (s: WithdrawalStatus) =>
 		: s.status === "refused"
 			? "Refused: the balance doesn't cover it."
 			: s.status;
+
+const addressHint = (address: string) =>
+	address
+		? "Address OK: testnet, with an Ironwood receiver and no transparent one."
+		: "Shielded only: the payout goes to the address's Ironwood (Orchard) receiver.";
 
 /** Withdraw to a fresh shielded address. Each relayer gets only a share of the account. */
 export default function WithdrawForm() {
@@ -40,6 +46,8 @@ export default function WithdrawForm() {
 	const halfTicks = BigInt(Number.isNaN(amount) ? 0 : amount) * HALF_TICKS_PER_UNIT;
 	const max = Number((balance ?? 0n) / HALF_TICKS_PER_UNIT);
 	const zec = (Number(halfTicks > WITHDRAWAL_FEE ? payoutZats(halfTicks) : 0n) / 1e8).toFixed(4);
+	// Shown once something is typed: testnet unified address, Ironwood receiver, nothing transparent.
+	const problem = address ? withdrawalAddressProblem(address, "test") : null;
 
 	return (
 		<details className="deposit">
@@ -60,9 +68,11 @@ export default function WithdrawForm() {
 				value={amount}
 			/>
 			<label className="field" htmlFor="withdraw-address">
-				<span className="field__label">Fresh shielded address</span>
-				<span className="field__box">
+				<span className="field__label">Fresh testnet unified address (utest1…)</span>
+				<span className={`field__box${problem ? " is-bad" : ""}`}>
 					<input
+						aria-describedby="withdraw-address-check"
+						aria-invalid={problem !== null}
 						autoComplete="off"
 						id="withdraw-address"
 						onChange={(e) => setAddress(e.target.value.trim())}
@@ -71,11 +81,16 @@ export default function WithdrawForm() {
 					/>
 				</span>
 			</label>
+			<p aria-live="polite" className={problem ? "ticket__err" : "dim"} id="withdraw-address-check">
+				{problem ?? addressHint(address)}
+			</p>
 			<p className="dim">
 				You receive {zec} ZEC: the amount less a {units(WITHDRAWAL_FEE)}-unit network fee.
 			</p>
 			<Button
-				disabled={pending || !address || halfTicks <= WITHDRAWAL_FEE || amount > max}
+				disabled={
+					pending || !address || problem !== null || halfTicks <= WITHDRAWAL_FEE || amount > max
+				}
 				onClick={() => submit(halfTicks, address)}
 			>
 				Withdraw

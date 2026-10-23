@@ -16,6 +16,7 @@ import "@/styles/threat-model.css";
 import "@/styles/detail.css";
 import "@/styles/detail-sections.css";
 import "@/styles/chart.css";
+import "@/styles/wallet.css";
 import type { Metadata, Viewport } from "next";
 import Footer from "@/components/layout/Footer";
 import Providers from "@/components/layout/Providers";
