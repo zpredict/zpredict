@@ -1,5 +1,6 @@
 "use client";
 import { type Denomination, unitsToZec } from "@zpredict/sdk";
+import Link from "next/link";
 import { useState } from "react";
 import DenominationPicker from "@/components/order-ticket/DenominationPicker";
 import Badge from "@/components/ui/Badge";
@@ -69,6 +70,10 @@ export default function DepositInfo({ open = false }: { open?: boolean }) {
 				<li>
 					After 10 confirmations each relayer credits your balance.
 					{request && <DepositStatus />}
+				</li>
+				<li>
+					No testnet wallet? The <Link href="/faucet/">faucet</Link> sends 1 unit straight into this
+					account.
 				</li>
 			</ol>
 			{!escrowReady && (

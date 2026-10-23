@@ -1,26 +1,58 @@
 // Privacy gate: the static export must make zero third-party requests.
 // Scans every text file in out/ for absolute URLs and fails on any real host
 // that is not ours. Run after `next build` (the `build` script does).
+// One exception, route-scoped: Cloudflare Turnstile on /faucet (#133). Its origin may
+// appear only in files that belong to the faucet route alone: out/faucet/* and the build
+// assets out/faucet/index.{html,txt} reference and no other page does.
+// Usage: node privacy.mjs [out dir]
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const OUT = new URL("../out/", import.meta.url).pathname;
+const OUT = (process.argv[2] ?? new URL("../out/", import.meta.url).pathname).replace(/\/?$/, "/");
+const FAUCET_ONLY = "challenges.cloudflare.com";
 
 // Hosts the app may reference: our relayers and dev mocks.
 const OURS = /^(([a-z0-9-]+\.)*zpredict\.site|localhost)$/;
 // Inert strings that are never fetched: XML namespaces, the core-js license banner in
-// Next's polyfills, doc links inside React/Next error messages, and a paper citation in a
-// GLSL comment of Three.js (lazy hero chunk from @zpredict/ascii).
+// Next's polyfills, doc links inside React/Next error messages, a paper citation in a
+// GLSL comment of Three.js (lazy hero chunk from @zpredict/ascii), and a plain link on
+// /faucet to an external faucet (fetched only if the user clicks it).
 const INERT = [
 	/^https:\/\/jcgt\.org\/published\//,
 	/^http:\/\/www\.w3\.org\//,
 	/^https:\/\/github\.com\/zloirock\/core-js/,
 	/^https:\/\/nextjs\.org\/docs\//,
 	/^https:\/\/react\.dev\/errors\//,
+	/^https:\/\/zecfaucet\.com\/$/,
 ];
 
+const files = [];
+(function walk(dir) {
+	for (const e of readdirSync(dir, { withFileTypes: true })) {
+		const p = join(dir, e.name);
+		if (e.isDirectory()) walk(p);
+		else if (/\.(html|js|css|txt|json|webmanifest)$/.test(e.name)) files.push(p);
+	}
+})(OUT);
+
+// Build assets a page (its html or RSC payload) references.
+const refs = (f) =>
+	Array.from(
+		readFileSync(f, "utf8").matchAll(/\/(_next\/static\/[^"'\\\s)]+)/g),
+		(m) => OUT + m[1],
+	);
+const pages = files.filter((f) => /\.(html|txt)$/.test(f));
+const isFaucet = (f) => f.startsWith(`${OUT}faucet/`);
+const elsewhere = new Set(pages.filter((f) => !isFaucet(f)).flatMap(refs));
+const faucetOnly = new Set(
+	pages
+		.filter(isFaucet)
+		.flatMap(refs)
+		.filter((r) => !elsewhere.has(r)),
+);
+
 const bad = [];
-function scan(file) {
+for (const file of files) {
 	const text = readFileSync(file, "utf8");
 	for (const [url] of text.matchAll(/https?:\/\/[^\s"'`)<>\\,]+/g)) {
 		let host;
@@ -33,19 +65,11 @@ function scan(file) {
 		// polyfills, not resolvable third-party hosts.
 		if (!host.includes(".") && host !== "localhost") continue;
 		if (OURS.test(host) || INERT.some((r) => r.test(url))) continue;
+		if (host === FAUCET_ONLY && (isFaucet(file) || faucetOnly.has(file))) continue;
 		bad.push(`${file.slice(OUT.length)}: ${url}`);
 	}
 }
 
-function walk(dir) {
-	for (const e of readdirSync(dir, { withFileTypes: true })) {
-		const p = join(dir, e.name);
-		if (e.isDirectory()) walk(p);
-		else if (/\.(html|js|css|txt|json|webmanifest)$/.test(e.name)) scan(p);
-	}
-}
-
-walk(OUT);
 if (bad.length) {
 	console.error(`privacy: ${bad.length} third-party URL(s) in out/\n${bad.join("\n")}`);
 	process.exit(1);

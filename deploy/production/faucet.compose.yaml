@@ -1,0 +1,33 @@
+# The testnet faucet (#133) as a Coolify "Docker Compose" resource. Published on loopback
+# only; host nginx (nginx.conf) serves it as https://faucet.zpredict.site.
+#
+# Wallet: the demo zcash-devtool wallet on the VPS, ~/.cache/zpredict-demo-wallet
+# (`wallet/` and the age identity `age.txt` its mnemonic is encrypted to), bind-mounted
+# and owned by the VPS user (uid 1001). Testnet funds only.
+# Secret: TURNSTILE_SECRET_KEY, set in Coolify (Environment Variables), never in git.
+
+services:
+  faucet:
+    build:
+      context: ../..
+      dockerfile: deploy/production/faucet.Dockerfile
+    pull_policy: build
+    restart: unless-stopped
+    user: "1001:1001"
+    # Proving one Orchard transfer next to the wallet sync.
+    mem_limit: 768m
+    memswap_limit: 768m
+    cpus: 1
+    read_only: true
+    environment:
+      FAUCET_ESCROW_UA: utest18yg3cneyjgxxknjm0j9020hmx5jp2wm67qn2p3rfmflct9hwlt363gzl50qeu3ms2u044hq8jzuzkl2tq8xa4m0ukzvlpqgtvu96ffyy
+      FAUCET_SERVER: zecrocks
+      FAUCET_ORIGINS: https://app.zpredict.site
+      FAUCET_APP_URL: https://app.zpredict.site/faucet/
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?set in Coolify}
+    volumes:
+      - /home/cuyvps/.cache/zpredict-demo-wallet:/wallet
+    tmpfs:
+      - /tmp
+    ports:
+      - "127.0.0.1:3176:8080"

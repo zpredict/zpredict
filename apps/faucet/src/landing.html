@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1" name="viewport" >
+<meta content="no-referrer" name="referrer" >
+<title>zPredict faucet</title>
+<link href="/faucet.css" rel="stylesheet" >
+</head>
+<body>
+<main>
+<p class="eyebrow">[ zPredict / testnet faucet ]</p>
+<h1>1 unit of testnet ZEC, straight into a zPredict account.</h1>
+<p>This faucet sends one fixed 0.01 TAZ shielded deposit to the zPredict escrow, tagged with a memo your browser builds for its own account. The relayers credit it like any deposit, and you can trade with it or withdraw it to your own shielded wallet. Testnet only: TAZ has no value.</p>
+<dl>
+<dt>Faucet balance</dt><dd>{balance} TAZ</dd>
+<dt>Status</dt><dd>{state}</dd>
+<dt>Drops left today</dt><dd>{left}</dd>
+</dl>
+<p><a class="btn" href="{app}">Open in app &rarr;</a></p>
+<p class="dim">The request starts in the app, because only the app holds your account tag (in that browser's storage). The faucet never sees the tag: it checks the memo's shape and passes it through. Anti-abuse: Cloudflare Turnstile, which sees your IP when you request a drop in the app, a proof of work, one drop at a time and a daily cap. This server keeps no IPs and no request logs.</p>
+<h2>Have your own wallet?</h2>
+<p>Get testnet ZEC to your own wallet from an external faucet such as <a href="https://zecfaucet.com/" rel="noreferrer">zecfaucet.com</a> (not run by zPredict), then deposit from your wallet in the app.</p>
+</main>
+</body>
+</html>
