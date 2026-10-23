@@ -183,6 +183,8 @@ export interface AccountShare {
 	/** Whether the account has a balance-table row its orders can use: `waiting` means
 	 * the table is full and its orders can't fill yet; `none`, no row yet. */
 	seat?: Seat;
+	/** Opened by a judge claim: mock credit, which can never be withdrawn on chain. */
+	mock?: boolean;
 }
 
 export type Seat = "seated" | "waiting" | "none";
@@ -285,7 +287,7 @@ export async function getAccount(relayers: Relayers, tag: string) {
 		relayers.map((u, i) => call<AccountShare>(at(u, `/accounts/${id}?key=${toHex(shares[i])}`))),
 	);
 	const balance = decodeBalance(combine(res.map((r) => fromHex(r.balanceShare))));
-	return { balance, seat: res[0].seat ?? ("seated" as Seat) };
+	return { balance, seat: res[0].seat ?? ("seated" as Seat), mock: res[0].mock ?? false };
 }
 
 /** Judge mode: opens account `tag` with the relayers' mock credit, sending relayer i only
