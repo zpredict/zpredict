@@ -15,8 +15,8 @@ export default function ThreatTable() {
 					{THREATS.map((t) => (
 						<tr key={t.observer}>
 							<th scope="row">{t.observer}</th>
-							<td>{t.learns}</td>
-							<td>{t.not}</td>
+							<td data-label="Learns">{t.learns}</td>
+							<td data-label="Doesn't learn">{t.not}</td>
 						</tr>
 					))}
 				</tbody>

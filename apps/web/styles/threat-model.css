@@ -32,6 +32,11 @@
 	letter-spacing: -0.04em;
 }
 
+.tm__source {
+	color: var(--zp-ink-2);
+	font-size: 12px;
+}
+
 .tm__statement {
 	max-width: 34ch;
 	color: var(--zp-ink-2);
@@ -130,5 +135,39 @@
 	}
 	.tm--lime {
 		padding-top: calc(var(--header-space) + 24px);
+	}
+}
+
+/* Phones: each row becomes a stacked block with inline labels, like the landing. */
+@media (max-width: 599.98px) {
+	.ttable table {
+		min-width: 0;
+	}
+	.ttable thead {
+		display: none;
+	}
+	.ttable tr {
+		display: block;
+		padding: 16px 0;
+		border-bottom: 1px solid var(--ink-line);
+	}
+	.ttable th,
+	.ttable td {
+		display: block;
+		padding: 0;
+		border: 0;
+	}
+	.ttable tbody th {
+		white-space: normal;
+	}
+	.ttable td {
+		margin-top: 8px;
+	}
+	.ttable td::before {
+		content: attr(data-label);
+		display: block;
+		font-size: 10px;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
 	}
 }
