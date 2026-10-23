@@ -19,6 +19,7 @@ for (const [path, doc] of [
 ]) {
 	test(`${path} renders its title, note, date and every section`, () => {
 		const page = read(DIST, path);
+		assert.ok(page.includes(`<title>${doc.title} | zPredict</title>`), "title: <Doc> | zPredict");
 		for (const s of [
 			doc.title,
 			NOTE,
