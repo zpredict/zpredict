@@ -28,14 +28,16 @@
 
 .rview__legend {
 	display: flex;
-	align-items: center;
+	grid-column: 1 / -1;
+	align-items: flex-start;
 	gap: 8px;
 	color: var(--zp-muted);
 	font-size: 12px;
-	white-space: nowrap;
 }
 
 .swatch {
+	flex: none;
+	margin-top: 4px;
 	width: 10px;
 	height: 10px;
 	background: var(--zp-lime);
@@ -93,6 +95,8 @@
 
 .rpanel__foot {
 	justify-content: space-between;
+	flex-wrap: wrap;
+	white-space: normal;
 	margin-top: auto;
 	border-top: 1px solid var(--line);
 	overflow: hidden;
@@ -139,6 +143,12 @@
 	gap: 6px;
 	overflow: hidden;
 	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.pinned__line > * {
+	min-width: 0;
+	overflow: hidden;
 	text-overflow: ellipsis;
 }
 

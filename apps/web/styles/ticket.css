@@ -104,6 +104,7 @@
 
 .field input {
 	flex: 1;
+	width: 0;
 	min-width: 0;
 	height: 100%;
 	padding: 0 14px;

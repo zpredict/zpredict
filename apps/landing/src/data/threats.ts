@@ -1,4 +1,4 @@
-/** Rows of the DESIGN.md threat model. `{ em }` segments render in bold. */
+/** Rows of PRIVACY.md "Who learns what"; change both together. `{ em }` segments are highlighted. */
 export type Segment = string | { em: string };
 
 export interface ThreatRow {
@@ -15,28 +15,43 @@ export const thresholds = [
 export const threats: ThreatRow[] = [
 	{
 		observer: "Chain observer",
-		learns: ["The escrow exists and makes batched shielded transactions"],
-		hidden: "Who bet, which side, how much, who won",
-	},
-	{
-		observer: "Any single relayer",
-		learns: ["“A 5-unit deposit arrived”"],
-		hidden: "Orders, sides, prices, positions, deposit→payout links",
-	},
-	{
-		observer: "2 colluding relayers",
-		learns: ["Same as one for orders, and ", { em: "can move escrow funds" }, " (2-of-3)"],
-		hidden: "Orders: MPC needs all 3 to collude",
-	},
-	{ observer: "All 3 colluding", learns: ["Everything"], hidden: "—" },
-	{
-		observer: "Counterparty",
-		learns: ["That a fill happened at the midpoint"],
-		hidden: "Who you are, your size beyond the fill",
+		learns: ["That shielded Ironwood transactions happen"],
+		hidden: "Which ones are the escrow's, who bet, which side, how much, who won",
 	},
 	{
 		observer: "Network observer",
-		learns: ["That someone talks to a zPredict relayer"],
+		learns: ["That your IP talks to *.zpredict.site, and when"],
 		hidden: "Contents (TLS); your IP if you use Tor",
+	},
+	{
+		observer: "Cloudflare (as deployed)",
+		learns: [
+			{ em: "Everything sent to the relayers" },
+			", and your IP: TLS ends at Cloudflare until the relayers move to DNS-only (#88)",
+		],
+		hidden: "—",
+	},
+	{
+		observer: "VM operator (demo)",
+		learns: [{ em: "Everything" }, ": all three relayers run on one VM in this demo"],
+		hidden: "—",
+	},
+	{
+		observer: "One relayer",
+		learns: [
+			"Deposit amounts, times and account ids; withdrawal amounts, addresses and times; its own share of each order",
+		],
+		hidden: "Orders, sides, prices, sizes, positions, balances, your account tag",
+	},
+	{
+		observer: "2 colluding relayers",
+		learns: ["As one, and they ", { em: "can move escrow funds" }, " (2-of-3)"],
+		hidden: "Orders: the third share is missing",
+	},
+	{ observer: "All 3 relayers", learns: ["Everything"], hidden: "—" },
+	{
+		observer: "Counterparty",
+		learns: ["Its own fill at the midpoint"],
+		hidden: "Who you are, your size beyond the fill",
 	},
 ];

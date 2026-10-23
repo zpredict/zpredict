@@ -70,7 +70,7 @@ const SEGMENTS = [
 	},
 	{
 		clip: "resolved",
-		label: "live market · outcome not yet FROST-signed in production",
+		label: "live market · outcome FROST-signed 2-of-3",
 		lines: [
 			"Markets resolve from Zcash chain data.",
 			"This block decided the outcome. Anyone can check it.",

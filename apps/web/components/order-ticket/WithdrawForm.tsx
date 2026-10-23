@@ -9,11 +9,22 @@ import { units } from "@/lib/format";
 
 /** Withdraw to a fresh shielded address. Each relayer gets only a share of the account. */
 export default function WithdrawForm() {
-	const { tag, balance } = useAccount();
+	const { tag, balance, judge } = useAccount();
 	const [amount, setAmount] = useState(1);
 	const [address, setAddress] = useState("");
 	const { submit, status, error, pending } = useWithdraw(tag);
 	if (!tag) return null;
+	if (judge)
+		return (
+			<details className="deposit">
+				<summary>Withdraw</summary>
+				<p className="dim">
+					Mock: judge-mode credits are demo collateral, not escrow funds, so they can&apos;t be
+					withdrawn as testnet ZEC. A real withdrawal needs an account funded by a real deposit:
+					under Deposit, forget this account, create your own tag and send a testnet deposit to it.
+				</p>
+			</details>
+		);
 	const halfTicks = BigInt(Number.isNaN(amount) ? 0 : amount) * HALF_TICKS_PER_UNIT;
 	const max = Number((balance ?? 0n) / HALF_TICKS_PER_UNIT);
 	const zec = (Number(halfTicks > WITHDRAWAL_FEE ? payoutZats(halfTicks) : 0n) / 1e8).toFixed(4);
@@ -23,8 +34,9 @@ export default function WithdrawForm() {
 			<summary>Withdraw</summary>
 			<p className="dim">
 				Paid from the escrow in one batched shielded transaction, to a fresh unified address with an
-				Ironwood (Orchard) receiver. The relayers see the amount and the address, never which
-				account it came from. Balance: {units(balance ?? 0n)} units.
+				Ironwood (Orchard) receiver. The relayers see the amount, the address and the time, but not
+				which account it came from, except through request metadata and amount and timing (see the
+				threat model). Balance: {units(balance ?? 0n)} units.
 			</p>
 			<NumberField
 				id="withdraw-units"

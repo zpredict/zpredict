@@ -54,7 +54,7 @@ export const steps: Step[] = [
 	},
 	{
 		title: "Resolved and paid.",
-		text: "At the resolve height each relayer reads its own node and signs the outcome with FROST. One batched Ironwood transaction pays every winner to a fresh address.",
+		text: "At the resolve height each relayer reads the block and signs the outcome with FROST. One batched Ironwood transaction pays every winner to a fresh address.",
 		panel: [
 			"block 3,543,405  NU7 active → **YES**",
 			"",
@@ -64,7 +64,7 @@ export const steps: Step[] = [
 			"  → fresh address   ••••••",
 			"  → fresh address   ••••••",
 			"",
-			"links deposit → payout   **none**",
+			"on-chain deposit → payout link   **none**",
 		],
 	},
 ];

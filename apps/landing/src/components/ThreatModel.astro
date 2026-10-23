@@ -1,4 +1,5 @@
 ---
+import { site } from "../data/site";
 import { threats, thresholds } from "../data/threats";
 import Section from "./ui/Section.astro";
 import Title from "./ui/Title.astro";
@@ -8,7 +9,10 @@ import Title from "./ui/Title.astro";
 	<div class="layout">
 		<div class="intro">
 			<Title lines={["Threat", "model."]} />
-			<p class="muted lede">What each party can and can't learn, stated up front.</p>
+			<p class="muted lede">
+				What each party can and can't learn, stated up front, including the limits of this hosted demo.
+				Evidence for every row is in <a href={`${site.repoUrl}/blob/main/PRIVACY.md`}>PRIVACY.md</a>.
+			</p>
 			<div class="stats">
 				{
 					thresholds.map((t) => (
@@ -54,6 +58,10 @@ import Title from "./ui/Title.astro";
 	}
 	.lede {
 		margin-top: 24px;
+	}
+	.lede a {
+		text-decoration: underline;
+		text-underline-offset: 3px;
 	}
 	.stats {
 		display: grid;

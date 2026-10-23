@@ -18,6 +18,15 @@
 	pointer-events: auto;
 }
 
+/* The trade page scrolls dense content under the bar: give the bar the page background. */
+body:has(.trade) .topbar::before {
+	content: "";
+	position: absolute;
+	z-index: -1;
+	inset: calc(-1 * var(--header-top)) calc(-1 * var(--zp-gutter)) -12px;
+	background: var(--zp-bg);
+}
+
 .brand {
 	display: flex;
 	align-items: center;

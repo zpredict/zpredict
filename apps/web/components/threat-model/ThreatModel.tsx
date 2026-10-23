@@ -18,12 +18,15 @@ export default function ThreatModel() {
 						lines={["Who learns", "what."]}
 					/>
 					<p className="tm__statement">{SPLIT_STATEMENT}</p>
+					<p className="tm__source">
+						Source and evidence for every row: PRIVACY.md in the repository.
+					</p>
 				</div>
 				<ThreatTable />
 			</Pane>
 			<Pane aria-label="Checklists" className="tm tm--paper" variant="paper">
 				<BulletCard items={LEAK_CHECKLIST} title="Leak checklist." />
-				<BulletCard items={MOCKS} title="What is mocked in this build." />
+				<BulletCard items={MOCKS} title="Demo limits." />
 			</Pane>
 		</>
 	);
