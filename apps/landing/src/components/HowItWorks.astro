@@ -7,6 +7,7 @@
 import { steps } from "../data/steps";
 import Section from "./ui/Section.astro";
 import Title from "./ui/Title.astro";
+import ZecIcon from "./ui/ZecIcon.astro";
 
 /** `**x**` → lime. */
 const segments = (line: string) => line.split("**").map((text, i) => ({ text, hot: i % 2 === 1 }));
@@ -28,7 +29,19 @@ const segments = (line: string) => line.split("**").map((text, i) => ({ text, ho
 							>
 								<span class="marker" aria-hidden="true" />
 								<span>
-									<span class="step-title">{step.title}</span>
+									<span class="step-title">
+										{step.title.split("ZEC").map((part, k) => (
+											<>
+												{k > 0 && (
+													<>
+														<ZecIcon />
+														ZEC
+													</>
+												)}
+												{part}
+											</>
+										))}
+									</span>
 									<span class="copy">{step.text}</span>
 								</span>
 							</button>

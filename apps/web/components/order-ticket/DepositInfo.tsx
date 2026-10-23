@@ -5,6 +5,7 @@ import DenominationPicker from "@/components/order-ticket/DenominationPicker";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import CopyButton from "@/components/ui/CopyButton";
+import ZecIcon from "@/components/ui/ZecIcon";
 import DepositQr from "@/components/wallet/DepositQr";
 import DepositStatus from "@/components/wallet/DepositStatus";
 import { useAccount } from "@/hooks/useAccount";
@@ -44,10 +45,13 @@ export default function DepositInfo({ open = false }: { open?: boolean }) {
 					)}
 				</li>
 				<li>
-					From a shielded testnet wallet, send exactly <strong>{zec} ZEC</strong> with this payment
-					request. It pays the escrow&apos;s unified address (Ironwood receiver only, FROST 2-of-3)
-					and carries a memo giving each relayer only its own share of your tag. Don&apos;t edit the
-					amount or the memo.
+					From a shielded testnet wallet, send exactly{" "}
+					<strong>
+						<ZecIcon /> {zec} testnet ZEC
+					</strong>{" "}
+					with this payment request. It pays the escrow&apos;s unified address (Ironwood receiver
+					only, FROST 2-of-3) and carries a memo giving each relayer only its own share of your tag.
+					Don&apos;t edit the amount or the memo.
 					{request && (
 						<>
 							<DepositQr uri={request.uri} />

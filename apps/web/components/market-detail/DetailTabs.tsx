@@ -6,6 +6,8 @@ import DepositInfo from "@/components/order-ticket/DepositInfo";
 import OrderList from "@/components/order-ticket/OrderList";
 import WithdrawForm from "@/components/order-ticket/WithdrawForm";
 import RelayerView from "@/components/relayer-view/RelayerView";
+import Amount from "@/components/ui/Amount";
+import { useAccount } from "@/hooks/useAccount";
 import type { MyOrder } from "@/hooks/useOrders";
 import { useRelayerView } from "@/hooks/useRelayerView";
 import { digestsOf } from "@/lib/shares";
@@ -27,6 +29,7 @@ interface Props {
  */
 export default function DetailTabs({ market, mine, orders, latest }: Props) {
 	const [tab, setTab] = useState(0);
+	const { balance } = useAccount();
 	const { views, online } = useRelayerView();
 	const digests = useMemo(() => digestsOf(orders), [orders]);
 	const onKey = (e: KeyboardEvent) => {
@@ -69,6 +72,11 @@ export default function DetailTabs({ market, mine, orders, latest }: Props) {
 					Only this browser knows your orders and fills. The relayers hold random shares of them.
 				</p>
 				{mine.length === 0 && <p className="dim">No orders on this market yet.</p>}
+				{balance !== null && (
+					<p className="dim">
+						Balance: <Amount halfTicks={balance} />
+					</p>
+				)}
 				<OrderList orders={mine} />
 				<Link className="dtabs__wallet" href="/wallet/">
 					Deposit or withdraw with your own wallet →

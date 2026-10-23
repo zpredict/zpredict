@@ -1,0 +1,24 @@
+---
+/**
+ * The ZEC token icon from packages/brand/zec/zec.svg, inlined (no request). Decorative: it
+ * always sits beside the word "ZEC". Marks the currency only; not affiliated with ECC or ZF.
+ */
+import svg from "@zpredict/brand/zec/zec.svg?raw";
+---
+
+<span class="zec" aria-hidden="true" set:html={svg} />
+
+<style>
+	.zec {
+		display: inline-block;
+		width: 0.9em;
+		height: 0.9em;
+		margin: 0 0.15em;
+		vertical-align: -0.08em;
+	}
+	.zec :global(svg) {
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+</style>

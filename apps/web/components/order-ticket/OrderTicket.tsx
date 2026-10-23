@@ -1,6 +1,7 @@
 "use client";
 import type { Market, Side } from "@zpredict/sdk";
 import JudgeButton from "@/components/judge/JudgeButton";
+import Amount from "@/components/ui/Amount";
 import Card from "@/components/ui/Card";
 import Cta from "@/components/ui/Cta";
 import { useOrderTicket } from "@/hooks/useOrderTicket";
@@ -67,9 +68,13 @@ export default function OrderTicket({ market, initialSide }: Props) {
 				<dt>Last {t.side === 0 ? "YES" : "NO"} price</dt>
 				<dd className="num">{t.last === null ? "no trades yet" : `${t.last}¢`}</dd>
 				<dt>Worst-case cost{t.counterparty ? " (pair)" : ""}</dt>
-				<dd className="num">{t.cost} units</dd>
+				<dd>
+					<Amount halfTicks={t.cost} />
+				</dd>
 				<dt>Pays if {t.side === 0 ? "YES" : "NO"}</dt>
-				<dd className="num">{t.payout} units</dd>
+				<dd>
+					<Amount halfTicks={t.payout} />
+				</dd>
 			</dl>
 			{t.hasAccount ? (
 				<Cta disabled={!t.canSubmit} onClick={t.submit}>
