@@ -11,6 +11,8 @@ mod judge;
 mod orders;
 #[cfg(test)]
 pub(crate) mod tests;
+#[cfg(test)]
+mod withdrawal_tests;
 mod withdrawals;
 
 use std::sync::Arc;

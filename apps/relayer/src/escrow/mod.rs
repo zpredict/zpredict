@@ -64,4 +64,20 @@ impl Escrow {
     pub fn memo_key(&self) -> MemoKey {
         MemoKey::from_bytes(self.memo)
     }
+
+    /// Relayer `index`'s escrow from a test DKG, on regtest, without a devtool: every
+    /// payout round fails at relayer 0, as on a host that can't reach the escrow wallet.
+    #[cfg(test)]
+    pub(crate) fn for_tests(index: usize, share: KeyShare, fvk: FullViewingKey) -> Self {
+        Self {
+            index,
+            params: Params::parse("regtest").unwrap(),
+            fvk,
+            memo: [index as u8 + 1; 32],
+            share,
+            start_height: 1,
+            confirmations: 1,
+            devtool: None,
+        }
+    }
 }
