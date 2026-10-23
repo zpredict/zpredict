@@ -6,7 +6,9 @@ Shielded prediction market on Zcash. Nobody learns that you bet, which side, or 
 
 FROST 2-of-3 escrow · orders secret-shared across 3 relayers · YES/NO matched in MPC · batched Ironwood payouts.
 
-Design and threat model: [DESIGN.md](DESIGN.md).
+Design and threat model: [DESIGN.md](DESIGN.md). Privacy audit: [PRIVACY.md](PRIVACY.md).
+
+Pitch video (2 min): https://zpredict.site/pitch/ ([MP4](https://zpredict.site/pitch.mp4)). Rebuild it with `scripts/video/` (headless Chrome + ffmpeg, no dependencies).
 
 ```sh
 cargo test
