@@ -2,7 +2,7 @@
 import type { Market } from "@zpredict/sdk";
 import Link from "next/link";
 import { type ReactNode, useState } from "react";
-import { category, chance, groupItems, type Item, topic } from "@/lib/markets";
+import { chance, groupItems, type Item, outcomeLabel, topicLine } from "@/lib/markets";
 import Glyph from "./Glyph";
 import PrivacyChips from "./PrivacyChips";
 import ProbabilityBar from "./ProbabilityBar";
@@ -23,7 +23,7 @@ function rows(it: Item) {
 	if (it.kind === "event")
 		return it.markets.map((m) => ({
 			key: m.id,
-			label: m.event?.outcome ?? "",
+			label: outcomeLabel(m, it.markets),
 			pct: chance(m),
 			id: m.id,
 		}));
@@ -58,7 +58,7 @@ export default function Featured({
 					{it && first ? (
 						<>
 							<p className="feat__cat">
-								<Glyph market={first} /> {topic(first)} · {category(first)}
+								<Glyph market={first} /> {topicLine(first)}
 							</p>
 							<h2 className="feat__title">
 								<Link href={`/trade/?m=${first.id}`}>
@@ -76,7 +76,7 @@ export default function Featured({
 								))}
 							</ul>
 							{it.kind === "market" && <ProbabilityBar yes={chance(it.market)} />}
-							<PrivacyChips source={first.plugin === "polymarket" ? "Polymarket" : "chain data"} />
+							<PrivacyChips market={first} />
 						</>
 					) : (
 						<p className="note">{markets ? "No open market right now." : "Loading markets…"}</p>

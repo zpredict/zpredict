@@ -1,7 +1,7 @@
 import type { Market } from "@zpredict/sdk";
 import Link from "next/link";
 import ReferencePrice from "@/components/markets/ReferencePrice";
-import { chance, sideCents } from "@/lib/markets";
+import { chance, outcomeLabel, sideCents } from "@/lib/markets";
 
 const cents = (c: number | null) => (c === null ? "—" : `${c}¢`);
 
@@ -20,8 +20,8 @@ export default function OutcomeRows({ group, selected }: { group: Market[]; sele
 				return (
 					<div className={`orows__row${m.id === selected.id ? " is-selected" : ""}`} key={m.id}>
 						<div className="orows__label">
-							<span>{m.event?.outcome ?? "Yes"}</span>
-							{m.reference && <ReferencePrice reference={m.reference} />}
+							<span>{outcomeLabel(m, group)}</span>
+							<ReferencePrice market={m} />
 						</div>
 						<span className="orows__pct num">{pct === null ? "—" : `${pct}%`}</span>
 						{open ? (

@@ -13,7 +13,7 @@ export default function CardFoot({ market: m, tip }: { market: Market; tip: numb
 	return (
 		<footer className="mcard__foot">
 			<span title="Bettors and sizes are never published">Bettors · sizes hidden</span>
-			{m.reference ? <ReferencePrice reference={m.reference} /> : left && <span>{left}</span>}
+			{m.reference ? <ReferencePrice market={m} /> : left && <span>{left}</span>}
 		</footer>
 	);
 }

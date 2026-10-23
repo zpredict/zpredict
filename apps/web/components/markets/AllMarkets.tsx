@@ -9,10 +9,7 @@ const GHOSTS = ["a", "b", "c", "d"];
 
 const itemTopic = (it: Item) => topic(it.kind === "event" ? it.markets[0] : it.market);
 const itemText = (it: Item) =>
-	(it.kind === "event"
-		? [it.title, ...it.markets.map((m) => m.event?.outcome ?? "")]
-		: [it.market.question]
-	)
+	(it.kind === "event" ? [it.title, ...it.markets.map((m) => m.question)] : [it.market.question])
 		.join(" ")
 		.toLowerCase();
 

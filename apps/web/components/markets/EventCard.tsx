@@ -1,6 +1,6 @@
 import type { Market } from "@zpredict/sdk";
 import Link from "next/link";
-import { chance } from "@/lib/markets";
+import { chance, outcomeLabel } from "@/lib/markets";
 import CardFoot from "./CardFoot";
 import Glyph from "./Glyph";
 
@@ -31,7 +31,7 @@ export default function EventCard({
 					return (
 						<li className="mcard__row" key={m.id}>
 							<Link className="mcard__label" href={`/trade/?m=${m.id}`}>
-								{m.event?.outcome ?? m.question}
+								{outcomeLabel(m, markets)}
 							</Link>
 							<span className="mcard__pct num">{pct === null ? "—" : `${pct}%`}</span>
 							<Link

@@ -11,7 +11,7 @@
 		"build": "next build && node scripts/privacy.mjs",
 		"mock": "pnpm --filter @zpredict/sdk build && node mock-relayer/src/server.mjs",
 		"dev:mock": "pnpm prepare:deps && node scripts/dev-mock.mjs",
-		"test": "pnpm --filter @zpredict/sdk build && node --test mock-relayer/src/clearing.test.mjs lib/chart.test.ts"
+		"test": "pnpm --filter @zpredict/sdk build && node --test mock-relayer/src/clearing.test.mjs lib/chart.test.ts lib/markets.test.ts"
 	},
 	"dependencies": {
 		"@fontsource/jetbrains-mono": "^5.3.0",

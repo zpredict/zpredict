@@ -3,7 +3,7 @@ import Link from "next/link";
 import Glyph from "@/components/markets/Glyph";
 import PrivacyChips from "@/components/markets/PrivacyChips";
 import Badge from "@/components/ui/Badge";
-import { category, topic } from "@/lib/markets";
+import { topicLine } from "@/lib/markets";
 
 /** Category line, title (the event's, for a grouped market), status and what stays hidden. */
 export default function DetailHeader({ market: m, group }: { market: Market; group: Market[] }) {
@@ -13,7 +13,7 @@ export default function DetailHeader({ market: m, group }: { market: Market; gro
 			<Glyph market={m} size="lg" />
 			<div className="dhead__text">
 				<p className="dhead__cat">
-					<Link href="/">Markets</Link> · {topic(m)} · {category(m)}
+					<Link href="/">Markets</Link> · {topicLine(m)}
 				</p>
 				<h1 className="dhead__title">{title}</h1>
 				{group.length > 1 && <p className="dhead__sub">{m.question}</p>}

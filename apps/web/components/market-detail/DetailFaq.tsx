@@ -1,4 +1,5 @@
 import type { Market } from "@zpredict/sdk";
+import { isMirrored } from "@/lib/markets";
 
 /** Frequently asked questions, answered for this market. */
 export default function DetailFaq({ market: m }: { market: Market }) {
@@ -18,7 +19,7 @@ export default function DetailFaq({ market: m }: { market: Market }) {
 		],
 		[
 			"How is it resolved?",
-			m.plugin === "polymarket"
+			isMirrored(m)
 				? "From Polymarket's public result, fetched by each relayer on its own and signed by 2 of 3 relayers once all three agree."
 				: "From Zcash mainnet block data, read by each relayer on its own and signed by 2 of 3 relayers once all three agree. Your browser checks the signature.",
 		],

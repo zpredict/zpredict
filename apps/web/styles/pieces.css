@@ -198,3 +198,26 @@
 	background: var(--zp-lime);
 	vertical-align: 1px;
 }
+
+/* Mirrored markets: Polymarket's price beside ours, and the attribution. */
+.ref {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	font-size: 12px;
+}
+
+.ref__price a {
+	text-decoration: underline dotted;
+	text-underline-offset: 3px;
+}
+
+.ref__price a:hover {
+	color: var(--zp-lime);
+}
+
+.ref__note {
+	color: var(--zp-muted);
+	font-size: 10px;
+	letter-spacing: 0.04em;
+}

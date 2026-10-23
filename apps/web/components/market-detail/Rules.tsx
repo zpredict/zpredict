@@ -2,9 +2,10 @@
 import type { Market } from "@zpredict/sdk";
 import Countdown from "@/components/markets/Countdown";
 import OutcomeProof from "@/components/markets/OutcomeProof";
+import Reference from "@/components/markets/Reference";
 import { useGroupKey } from "@/hooks/useGroupKey";
 import { useTip } from "@/hooks/useTip";
-import { heightLabel } from "@/lib/markets";
+import { heightLabel, isMirrored } from "@/lib/markets";
 
 const n = (v: unknown) => (typeof v === "number" ? v.toLocaleString("en-US") : "?");
 
@@ -20,7 +21,7 @@ function rule(m: Market): string {
 		case "shielded-actions":
 			return `Resolves YES if mainnet block ${at} contains at least ${n(p.minActions)} shielded actions (Sapling spends and outputs, Orchard and Ironwood actions), otherwise NO.`;
 		case "polymarket":
-			return "Mirrors a Polymarket market: resolves the way Polymarket resolves it (UMA's oracle). Trading here is private; the two books are separate.";
+			return "Mirrors the Polymarket market of the same question: YES if Polymarket settles it Yes once UMA's answer is final, otherwise NO (a 50-50 settlement is NO). Trading here is private, on zPredict's own book.";
 		default:
 			return `Resolved by the ${m.plugin} plugin at block ${at}.`;
 	}
@@ -31,16 +32,17 @@ export default function Rules({ market: m }: { market: Market }) {
 	const tip = useTip();
 	const groupKey = useGroupKey();
 	const first = m.historyAt?.[0];
-	const mirrored = m.plugin === "polymarket";
+	const mirrored = isMirrored(m);
 	return (
 		<section aria-labelledby="rules-title" className="rules">
 			<h2 className="dsec__title" id="rules-title">
 				Rules
 			</h2>
-			<p>{rule(m)}</p>
+			<p>{m.rules ?? rule(m)}</p>
+			<Reference market={m} />
 			<p className="dim">
 				{mirrored
-					? "Each relayer fetches Polymarket's public result on its own; the outcome is published only when all three agree, signed by 2 of 3 (FROST), and your browser checks the signature. Market data from Polymarket; not affiliated."
+					? "Each relayer reads Polymarket's public result on its own; the outcome is published only when all three agree, signed by 2 of 3 (FROST), and your browser checks the signature. Polymarket (UMA) is this market's oracle."
 					: "Each relayer reads the block from Zcash mainnet on its own; the outcome is published only when all three agree, signed by 2 of 3 (FROST), and your browser checks the signature."}
 			</p>
 			<dl className="rules__facts">
@@ -50,6 +52,12 @@ export default function Rules({ market: m }: { market: Market }) {
 				<dd className="num">
 					{mirrored ? "When Polymarket resolves" : `Block ${heightLabel(m.resolveHeight)}`}
 				</dd>
+				{m.opensAt && (
+					<>
+						<dt>Market opened</dt>
+						<dd className="num">{new Date(m.opensAt).toLocaleString("en-US")}</dd>
+					</>
+				)}
 				{first !== undefined && (
 					<>
 						<dt>First cross</dt>

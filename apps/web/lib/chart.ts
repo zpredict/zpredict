@@ -32,11 +32,12 @@ export const timed = (m: Market) => !!m.history?.length && m.historyAt?.length =
 const TONES: Tone[] = ["lime", "white"];
 
 /**
- * One series per market (an event has several), lime then white then grey. Hook for #114: a
- * relayer-served Polymarket reference series would be appended here as one more grey series.
+ * One series per market (an event has several), lime then white then grey. A single mirrored
+ * market with a time axis also gets Polymarket's hourly reference prices (served by the
+ * relayers, #114) as a grey "Polymarket" series.
  */
 export function seriesOf(markets: Market[], labelOf: (m: Market) => string, useTime: boolean) {
-	return markets.map(
+	const own = markets.map(
 		(m, i): Series => ({
 			key: String(m.id),
 			label: labelOf(m),
@@ -44,6 +45,10 @@ export function seriesOf(markets: Market[], labelOf: (m: Market) => string, useT
 			points: (m.history ?? []).map((p, k) => ({ t: useTime ? (m.historyAt?.[k] ?? k) : k, p })),
 		}),
 	);
+	const ref = markets.length === 1 && useTime ? markets[0].reference?.history : undefined;
+	if (!ref?.length) return own;
+	const points = ref.map((h) => ({ t: h.t, p: h.price }));
+	return [...own, { key: "ref", label: "Polymarket", tone: "grey" as const, points }];
 }
 
 /** The points inside [end - span, end], led by the last earlier point so the line starts at the edge. */

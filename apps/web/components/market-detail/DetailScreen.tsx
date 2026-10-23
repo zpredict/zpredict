@@ -6,7 +6,7 @@ import ShareXor from "@/components/trade/ShareXor";
 import { useMarkets } from "@/hooks/useMarkets";
 import { useOrders } from "@/hooks/useOrders";
 import { seriesOf, timed } from "@/lib/chart";
-import { eventOf } from "@/lib/markets";
+import { eventOf, outcomeLabel } from "@/lib/markets";
 import DetailFaq from "./DetailFaq";
 import DetailHeader from "./DetailHeader";
 import DetailTabs from "./DetailTabs";
@@ -34,7 +34,7 @@ export default function DetailScreen() {
 
 	const group = eventOf(market, markets);
 	const useTime = group.every(timed);
-	const series = seriesOf(group, (m) => (m.event ? m.event.outcome : "Yes"), useTime);
+	const series = seriesOf(group, (m) => outcomeLabel(m, group), useTime);
 	const mine = orders.filter((o) => o.market === market.id);
 	// The trader's own latest order; a demo counter-order is shown under it, never as the result.
 	const latest = mine.find((o) => !o.counterOf);
