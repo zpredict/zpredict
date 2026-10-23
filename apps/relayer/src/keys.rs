@@ -30,3 +30,34 @@ pub fn read_key(path: &Path) -> Result<[u8; 32]> {
         .map_err(|_| Error::Config(format!("{} is not a 32-byte hex key", path.display())))?;
     Ok(k)
 }
+
+#[cfg(test)]
+mod tests {
+    use std::os::unix::fs::PermissionsExt;
+
+    use super::*;
+
+    #[test]
+    fn keygen_is_private_and_never_overwrites() {
+        let dir = crate::store::tests::temp_dir("keygen");
+        std::fs::create_dir_all(&dir).unwrap();
+        let prefix = dir.join("r0");
+        let public = keygen(&prefix).unwrap();
+        let key = prefix.with_extension("key");
+        assert_eq!(
+            std::fs::metadata(&key).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        assert_eq!(
+            hex::encode(read_key(&prefix.with_extension("pub")).unwrap()),
+            public
+        );
+        read_key(&key).unwrap();
+        assert!(
+            keygen(&prefix).is_err(),
+            "an existing key is never replaced"
+        );
+        std::fs::write(dir.join("bad"), "zz").unwrap();
+        assert!(read_key(&dir.join("bad")).is_err());
+    }
+}
