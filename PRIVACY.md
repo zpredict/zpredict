@@ -25,6 +25,7 @@ everything", which is already true of the single demo VM (see Accepted limitatio
 | All three relayers | Everything | — |
 | Counterparty | Its own fill at the midpoint. When a single pair crossed, the midpoint and its own limit give your limit price | Who you are, your size beyond the fill |
 | lightwalletd operators (`zec.rocks`, `testnet.zec.rocks`) | The relayer VM's IP syncing the escrow and broadcasting payouts | Users |
+| Polymarket (`gamma-api`, `clob`) | The relayer VM's IP fetching public market records and price history for the mirrored markets, about once per market per 5 min | Users, orders, anything about zPredict's book. The browser never contacts Polymarket |
 
 ## Data flows
 
@@ -39,6 +40,7 @@ everything", which is already true of the single demo VM (see Accepted limitatio
 | 7 | Wallet → chain (deposit) | Fixed denomination to the escrow's Ironwood-only UA; 512-byte memo with three slots, each sealed to one relayer's X25519 key and holding `id ‖ sᵢ` | Your wallet's lightwalletd sees your IP; the chain sees a shielded tx |
 | 8 | Relayer ↔ relayer | Batch handshake, MPC (polytune), FROST rounds, payout PCZT. Noise KK on an internal Docker network | Nobody (internal network on one VM) |
 | 9 | Relayer → `zec.rocks` (mainnet) | Compact blocks for market resolution | Operator sees the VM IP |
+| 9b | Relayer → `gamma-api.polymarket.com`, `clob.polymarket.com` (#114) | Public GETs only, no auth or cookies: each mirrored market's record by slug (outcome, Yes price) and a week of hourly prices. Cached 5 min (Gamma's own `max-age`), 10 s timeout, no retries. Served on as `reference` in `/markets` | Polymarket and its CDN see the VM IP and which markets we mirror (public in our config anyway) |
 | 10 | Relayer → `testnet.zec.rocks` | Escrow scan (viewing key stays local), payout broadcast by relayer 0 | Operator sees the VM IP and the escrow's tx |
 | 11 | Relayer → disk | Event log of its own shares; sealed key share, viewing key and memo key ([Secrets on disk](#secrets-on-disk)) | Host operator |
 | 12 | Logs (relayer stderr → Docker/Coolify; nginx; Caddy) | Relayer: start-up lines and errors that name a market or a failing step, never an order, share, account or address (`grep -rn eprintln apps/relayer/src`). nginx: `access_log off`, `error_log /dev/null`. Caddy: no `log` directive | — |
@@ -58,7 +60,7 @@ everything", which is already true of the single demo VM (see Accepted limitatio
 | ✅ | One relayer can't collect fill shares | **Fixed in #15**: `GET /orders/:id` needs that relayer's random read token (`apps/relayer/src/api/orders.rs`) |
 | ✅ | One relayer can't read balances or act as an account | `?key=sᵢ` gate; the circuit checks the 128-bit key (`a_relayer_cannot_act_as_an_account`) |
 | ⚠️ | TLS ends at each relayer | Cloudflare terminates TLS for all three (#88) |
-| ✅ | No third-party requests from the frontends | Self-only CSP (`deploy/static/prepare.mjs`); build gate `apps/web/scripts/privacy.mjs`; Chrome net log on 2026-10-23 shows only `*.zpredict.site` |
+| ✅ | No third-party requests from the frontends | Self-only CSP (`deploy/static/prepare.mjs`); build gate `apps/web/scripts/privacy.mjs`; Chrome net log on 2026-10-23 shows only `*.zpredict.site`. Mirrored markets (#114): the Polymarket price comes from our relayers; the only Polymarket URL in the app is a plain outbound link (`rel="noopener noreferrer"`, built from relayer data and checked to be `https://polymarket.com/…`), so nothing loads unless clicked, and no logos or images are embedded |
 | ⚠️ | No analytics | We ship none, but Cloudflare injects a Web Analytics beacon into HTML (CSP blocks it, no request is made) and sends NEL headers (#89) |
 | ✅ | No IP logs | nginx/Caddy settings above; **fixed in #15**: nginx now strips `CF-Connecting-IP`/`X-Forwarded-For`, which it used to pass to the containers |
 | ⚠️ | Request metadata doesn't link actions to an account | Timing reduced in #15 (no balance read on fill, ±50% poll jitter); connection-level linkage stays open (#90) |
@@ -91,6 +93,7 @@ everything", which is already true of the single demo VM (see Accepted limitatio
 - **Public price per market** per crossing batch, and order arrival counts and times through `/view`.
 - **Two relayers can move escrow funds** (FROST 2-of-3), while order privacy needs all three.
 - **Not quantum-recoverable** escrow notes (ZIP 2005; DESIGN.md).
+- **Mirrored markets trust Polymarket.** For the markets that mirror Polymarket (#114), the oracle is Polymarket and its UMA resolution, not chain data: the relayers attest what Polymarket published (each fetches it on its own, and the outcome is signed only if all three read the same result), but nobody can recompute it from a block. A wrong or disputed Polymarket resolution is our resolution. Trading on zPredict stays exactly as private as on any other market.
 
 ## Verify it yourself
 

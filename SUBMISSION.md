@@ -21,7 +21,7 @@ HOW
 - Matching: three relayers cross YES/NO at the midpoint inside 3-party MPC (polytune), checking balances in-circuit. Only fills and a public clearing price come out.
 - Accounts: your account secret never leaves the browser whole; the circuit checks it, so no relayer can spend for you.
 - Escrow: FROST 2-of-3 Ironwood address from a DKG; batched withdrawals, each signer re-derives the sighash.
-- Resolution: from Zcash mainnet block data (incl. hourly rolling markets); outcomes FROST-signed, checkable in the browser.
+- Resolution: from Zcash mainnet block data (incl. hourly markets) or per Polymarket for mirrored midterm markets; outcomes FROST-signed, checkable in the browser.
 
 WHY IT DOES NOT LEAK
 - Chain: shielded (Ironwood) only; no transparent address in any path.
