@@ -16,7 +16,7 @@
 
 .xor__row {
 	display: grid;
-	grid-template-columns: 28px 1fr;
+	grid-template-columns: 28px minmax(0, 1fr);
 	align-items: start;
 	color: var(--zp-glyph);
 	transition: color 450ms ease;
@@ -41,6 +41,8 @@
 .hexbytes {
 	display: flex;
 	flex-wrap: wrap;
+	min-width: 0;
+	overflow-wrap: anywhere;
 	gap: 2px 1.6ch;
 	font-size: 12px;
 	line-height: 18px;

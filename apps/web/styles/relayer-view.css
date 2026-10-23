@@ -32,10 +32,10 @@
 	gap: 8px;
 	color: var(--zp-muted);
 	font-size: 12px;
-	white-space: nowrap;
 }
 
 .swatch {
+	flex: none;
 	width: 10px;
 	height: 10px;
 	background: var(--zp-lime);
@@ -93,6 +93,8 @@
 
 .rpanel__foot {
 	justify-content: space-between;
+	flex-wrap: wrap;
+	white-space: normal;
 	margin-top: auto;
 	border-top: 1px solid var(--line);
 	overflow: hidden;

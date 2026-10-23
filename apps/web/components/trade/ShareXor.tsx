@@ -38,7 +38,7 @@ export default function ShareXor({ order }: Props) {
 			</div>
 			<p className="xor__decoded">
 				{opened
-					? `market ${opened.market} · ${sideName(opened.side)} · ${opened.price}¢ · ${opened.size} contracts`
+					? `market ${opened.market} · ${sideName(opened.side)} · ${opened.price}¢ · ${opened.size} contract${opened.size === 1 ? "" : "s"}`
 					: "Waiting for the shares to land at all three relayers…"}
 			</p>
 			<p className={`xor__fill${fill?.filled ? " is-filled" : ""}`} role="status">
