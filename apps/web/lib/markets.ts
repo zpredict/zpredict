@@ -27,6 +27,67 @@ export function referenceUrl(m: Market): string | null {
 	}
 }
 
+/** The "All markets" tab a market sits under: the relayers' `category`, else derived. */
+export const topic = (m: Market) =>
+	m.category ?? (m.rolling ? "Rolling" : isMirrored(m) ? "Polymarket" : "Zcash network");
+
+/** "Politics" or "Zcash network · Ironwood pool": the topic, then the category if it adds anything. */
+export const topicLine = (m: Market) =>
+	topic(m) === category(m) ? topic(m) : `${topic(m)} · ${category(m)}`;
+
+/** A card in the grid: one binary market, or several grouped by their `event`. */
+export type Item =
+	| { kind: "market"; key: string; market: Market }
+	| { kind: "event"; key: string; title: string; markets: Market[] };
+
+/** Groups markets sharing an `event.id` into one item, in order of first appearance. */
+export function groupItems(markets: Market[]): Item[] {
+	const items: Item[] = [];
+	const events = new Map<string, Extract<Item, { kind: "event" }>>();
+	for (const m of markets) {
+		if (!m.event) {
+			items.push({ kind: "market", key: `m${m.id}`, market: m });
+			continue;
+		}
+		const e = events.get(m.event.id);
+		if (e) e.markets.push(m);
+		else {
+			const item = {
+				kind: "event" as const,
+				key: `e${m.event.id}`,
+				title: m.event.title,
+				markets: [m],
+			};
+			events.set(m.event.id, item);
+			items.push(item);
+		}
+	}
+	return items;
+}
+
+/** The other markets of `m`'s event (itself included), or just `m`. */
+export const eventOf = (m: Market, all: Market[]) =>
+	m.event ? all.filter((x) => x.event?.id === m.event?.id) : [m];
+
+/**
+ * A market's row label inside its event: `event.outcome`, else the words where its question
+ * differs from the event's other questions ("Democratic" from "Will the Democratic Party
+ * control…" next to "Will the Republican Party control…"). "Yes" outside an event.
+ */
+export function outcomeLabel(m: Market, all: Market[]): string {
+	if (!m.event) return "Yes";
+	if (m.event.outcome) return m.event.outcome;
+	const others = eventOf(m, all).map((x) => x.question.split(" "));
+	const mine = m.question.split(" ");
+	if (others.length < 2) return m.question;
+	let a = 0;
+	while (a < mine.length && others.every((q) => q[a] === mine[a])) a++;
+	let b = 0;
+	const same = (q: string[]) => q[q.length - 1 - b] === mine[mine.length - 1 - b];
+	while (b < mine.length - a && others.every(same)) b++;
+	return mine.slice(a, mine.length - b).join(" ") || m.question;
+}
+
 /** YES chance in whole percent from the public last price; null before the first cross. */
 export const chance = (m: Market) => (m.lastPrice === undefined ? null : Math.round(m.lastPrice));
 

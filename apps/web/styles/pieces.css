@@ -1,0 +1,223 @@
+/* Shared market pieces: glyph, chance ring, Yes/No chips and prices, reference price,
+   ASCII probability bar, privacy chips. */
+
+.chip {
+	display: inline-grid;
+	place-items: center;
+	min-width: 40px;
+	height: 26px;
+	padding: 0 8px;
+	border: 1px solid var(--line-strong);
+	font-size: 11px;
+	text-transform: uppercase;
+}
+
+.chip--yes {
+	border-color: var(--zp-lime);
+	color: var(--zp-lime);
+}
+
+.chip--yes:hover {
+	background: var(--zp-lime);
+	color: var(--zp-ink);
+}
+
+.chip--no:hover {
+	border-color: var(--zp-text);
+	background: var(--zp-text);
+	color: var(--zp-ink);
+}
+
+/* Square ASCII stand-in for a market image. */
+.glyph {
+	display: inline-grid;
+	flex: none;
+	place-items: center;
+	width: 32px;
+	height: 32px;
+	background: var(--zp-lime);
+	color: var(--zp-ink);
+	font-size: 15px;
+}
+
+.glyph--lg {
+	width: 56px;
+	height: 56px;
+	font-size: 26px;
+}
+
+.feat__cat .glyph {
+	width: 22px;
+	height: 22px;
+	font-size: 12px;
+}
+
+/* Chance ring: square caps, lime on a dim track. */
+.ring {
+	position: relative;
+	width: 52px;
+	height: 52px;
+}
+
+.ring__svg {
+	width: 100%;
+	height: 100%;
+}
+
+.ring__track,
+.ring__val {
+	fill: none;
+	stroke-width: 4;
+}
+
+.ring__track {
+	stroke: var(--zp-panel);
+}
+
+.ring__val {
+	stroke: var(--zp-lime);
+	stroke-linecap: butt;
+}
+
+.ring__text {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-content: center;
+	text-align: center;
+	line-height: 1.1;
+}
+
+.ring__pct {
+	font-size: 12px;
+}
+
+.ring__label {
+	color: var(--zp-muted);
+	font-size: 8px;
+	text-transform: uppercase;
+}
+
+.refprice {
+	color: var(--zp-muted);
+	font-size: 10px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.refprice:hover {
+	color: var(--zp-text);
+}
+
+.refprice .num {
+	color: var(--zp-text);
+}
+
+/* ASCII probability bar: one cell per character. */
+.pbar {
+	display: grid;
+	grid-template-columns: repeat(24, 1fr);
+	color: var(--zp-glyph);
+	font-size: 13px;
+	line-height: 1;
+	text-align: center;
+}
+
+.pbar .is-yes {
+	color: var(--zp-lime);
+}
+
+.prices {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 6px;
+}
+
+.price {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	height: 44px;
+	padding: 0 14px;
+	border: 1px solid var(--zp-lime);
+	font-size: 13px;
+	text-transform: uppercase;
+	transition:
+		background-color 250ms ease,
+		color 250ms ease;
+}
+
+.price--yes {
+	background: var(--zp-lime);
+	color: var(--zp-ink);
+}
+
+.price--yes:hover {
+	background: transparent;
+	color: var(--zp-lime);
+}
+
+.price--no {
+	border-color: var(--line-strong);
+}
+
+.price--no:hover {
+	border-color: var(--zp-text);
+	background: var(--zp-text);
+	color: var(--zp-ink);
+}
+
+.mmeta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 12px;
+	color: var(--zp-muted);
+	font-size: 10px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.mmeta__chip::before {
+	content: "[ ";
+}
+
+.mmeta__chip::after {
+	content: " ]";
+}
+
+.mmeta__badge {
+	margin-left: auto;
+}
+
+.mmeta__badge::before {
+	content: "";
+	display: inline-block;
+	width: 6px;
+	height: 6px;
+	margin-right: 6px;
+	background: var(--zp-lime);
+	vertical-align: 1px;
+}
+
+/* Mirrored markets: Polymarket's price beside ours, and the attribution. */
+.ref {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	font-size: 12px;
+}
+
+.ref__price a {
+	text-decoration: underline dotted;
+	text-underline-offset: 3px;
+}
+
+.ref__price a:hover {
+	color: var(--zp-lime);
+}
+
+.ref__note {
+	color: var(--zp-muted);
+	font-size: 10px;
+	letter-spacing: 0.04em;
+}

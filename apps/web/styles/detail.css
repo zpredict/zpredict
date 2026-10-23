@@ -1,0 +1,179 @@
+/* Market detail: main column (header, chart, outcomes, rules, tabs, FAQ) and a sticky trade
+   column. On narrow screens the trade column follows the outcome rows. */
+
+.detail {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 380px;
+	align-content: start;
+	gap: 28px 40px;
+	min-height: 100svh;
+	padding: var(--header-space) var(--zp-gutter) 72px;
+}
+
+/* Everything stacks in column 1; the trade column spans all rows of column 2. */
+.detail > * {
+	grid-column: 1;
+	min-width: 0;
+}
+
+.detail > .note,
+.detail > .down {
+	grid-column: 1 / -1;
+}
+
+.trade__intro {
+	display: none;
+}
+
+.dhead {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	gap: 8px 16px;
+	align-items: center;
+}
+
+.dhead__cat {
+	color: var(--zp-muted);
+	font-size: 12px;
+}
+
+.dhead__cat a:hover {
+	color: var(--zp-lime);
+}
+
+.dhead__title {
+	font-size: clamp(22px, 2.2vw, 32px);
+	line-height: 1.2;
+	letter-spacing: -0.04em;
+	text-wrap: balance;
+}
+
+.dhead__sub {
+	margin-top: 4px;
+	color: var(--zp-muted);
+	font-size: 13px;
+}
+
+.dhead__meta {
+	grid-column: 1 / -1;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 16px;
+}
+
+.dhead__meta .mmeta {
+	flex: 1;
+}
+
+.orows {
+	display: grid;
+	border-top: 1px solid var(--line);
+}
+
+.orows__head,
+.orows__row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 72px minmax(0, 300px);
+	align-items: center;
+	gap: 16px;
+}
+
+.orows__head {
+	padding: 10px 0;
+	color: var(--zp-muted);
+	font-size: 10px;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.orows__row {
+	padding: 14px 10px;
+	border-top: 1px solid var(--line);
+}
+
+.orows__row.is-selected {
+	background: #ffffff08;
+	box-shadow: inset 2px 0 var(--zp-lime);
+}
+
+.orows__label {
+	display: grid;
+	gap: 4px;
+	font-size: 15px;
+}
+
+.orows__pct {
+	color: var(--zp-lime);
+	font-size: 26px;
+	letter-spacing: -0.04em;
+}
+
+.orows__buy {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 6px;
+}
+
+.orows__closed {
+	color: var(--zp-muted);
+	text-transform: uppercase;
+}
+
+.detail__side {
+	grid-column: 2;
+	grid-row: 1 / span 9;
+	position: sticky;
+	top: var(--header-space);
+	align-self: start;
+	display: grid;
+	gap: 12px;
+	max-height: calc(100svh - var(--header-space) - 16px);
+	overflow-y: auto;
+	scrollbar-width: thin;
+}
+
+@media (max-width: 1099.98px) {
+	.detail {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.detail__side {
+		grid-column: 1;
+		grid-row: auto;
+		position: static;
+		max-height: none;
+		overflow: visible;
+	}
+}
+
+@media (max-width: 699.98px) {
+	.detail {
+		gap: 22px;
+		padding-inline: 12px;
+	}
+	.trade__intro {
+		display: block;
+		font-size: 20px;
+		line-height: 1.4;
+		letter-spacing: -0.04em;
+	}
+	.glyph--lg {
+		width: 40px;
+		height: 40px;
+		font-size: 18px;
+	}
+	.orows__head,
+	.orows__row {
+		grid-template-columns: minmax(0, 1fr) auto;
+	}
+	.orows__head span:last-child {
+		text-align: right;
+	}
+	.orows__buy,
+	.orows__closed {
+		grid-column: 1 / -1;
+	}
+	.dtabs .rpanel {
+		height: 360px;
+	}
+}

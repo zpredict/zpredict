@@ -171,6 +171,35 @@
 	content: "! ";
 }
 
+.ticket__quick {
+	display: flex;
+	justify-content: flex-end;
+	gap: 6px;
+}
+
+.ticket__add {
+	height: 30px;
+	padding: 0 10px;
+	border: 1px solid var(--line-strong);
+	font-size: 12px;
+}
+
+.ticket__add:hover {
+	border-color: var(--zp-lime);
+	color: var(--zp-lime);
+}
+
+.ticket__market {
+	color: var(--zp-muted);
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+.ticket__market strong {
+	color: var(--zp-text);
+	font-weight: inherit;
+}
+
 /* DEMO counterparty (#103): a labelled self-trade toggle. */
 .counter {
 	display: grid;

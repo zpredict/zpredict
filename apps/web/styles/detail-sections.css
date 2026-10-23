@@ -1,0 +1,151 @@
+/* Market detail sections: rules, tabs, price table, FAQ, related markets. */
+
+.dsec__title {
+	margin-bottom: 12px;
+	font-size: 16px;
+	text-transform: uppercase;
+}
+
+.rules {
+	display: grid;
+	gap: 12px;
+	font-size: 13px;
+	line-height: 1.6;
+}
+
+.rules__facts {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 6px 20px;
+	margin: 0;
+}
+
+.rules__facts dt {
+	color: var(--zp-muted);
+}
+
+.rules__facts dd {
+	margin: 0;
+}
+
+.dtabs {
+	display: grid;
+	gap: 18px;
+}
+
+.dtabs__list {
+	display: flex;
+	gap: 20px;
+	border-bottom: 1px solid var(--line);
+	overflow-x: auto;
+	scrollbar-width: none;
+}
+
+.dtabs__tab {
+	flex: none;
+	padding: 10px 0;
+	border-bottom: 2px solid transparent;
+	color: var(--zp-muted);
+	font-size: 13px;
+}
+
+.dtabs__tab[aria-selected="true"] {
+	border-color: var(--zp-lime);
+	color: var(--zp-text);
+}
+
+.dtabs__pos {
+	display: grid;
+	gap: 12px;
+}
+
+.dtabs__pos[hidden] {
+	display: none;
+}
+
+.dtabs .rpanel {
+	height: 460px;
+}
+
+.ptable {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
+}
+
+.ptable caption {
+	padding-bottom: 10px;
+	text-align: left;
+}
+
+.ptable th,
+.ptable td {
+	padding: 8px 0;
+	border-bottom: 1px solid var(--line);
+	text-align: left;
+}
+
+.ptable th {
+	color: var(--zp-muted);
+	font-size: 10px;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.dfaq__item {
+	border-bottom: 1px solid var(--line);
+}
+
+.dfaq__item summary {
+	padding: 14px 0;
+	font-size: 14px;
+	cursor: pointer;
+}
+
+.dfaq__item p {
+	padding-bottom: 14px;
+	color: var(--zp-muted);
+	font-size: 13px;
+	line-height: 1.6;
+}
+
+.related {
+	padding: 14px 16px;
+	border: 1px solid var(--line);
+}
+
+.related__title {
+	margin-bottom: 6px;
+	font-size: 12px;
+	text-transform: uppercase;
+}
+
+.related ul {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.related__row {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	gap: 10px;
+	align-items: center;
+	padding: 8px 0;
+	font-size: 12px;
+}
+
+.related__q {
+	display: -webkit-box;
+	overflow: hidden;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
+.related__pct {
+	color: var(--zp-lime);
+}
+
+.related__row:hover .related__q {
+	color: var(--zp-lime);
+}
