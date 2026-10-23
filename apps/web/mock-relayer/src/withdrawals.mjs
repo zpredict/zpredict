@@ -6,8 +6,9 @@ import { hex, xor } from "./shares.mjs";
 import { account } from "./state.mjs";
 
 const FEE = 2n;
+const ESCROW_EMPTY = process.env.MOCK_ESCROW_EMPTY === "1";
 const HEX = (n) => new RegExp(`^[0-9a-f]{${n}}$`);
-/** id -> { shares: [Buffer|null x3], amount: bigint, address, status, txid? } */
+/** id -> { shares: [Buffer|null x3], amount: bigint, address, status, txid?, payout? } */
 const withdrawals = new Map();
 
 export async function postWithdrawal(i, req, res, send, readJson) {
@@ -25,10 +26,16 @@ export async function postWithdrawal(i, req, res, send, readJson) {
 	w.shares[i] = Buffer.from(b.share, "hex");
 	if (w.shares.every(Boolean)) {
 		const a = account(hex(xor(...w.shares)));
-		w.status = a.bal >= w.amount ? "paid" : "refused";
-		if (w.status === "paid") {
+		// Judge credit is refused like an uncovered request (the real circuit ORs per-row flags).
+		w.status = !a.mock && a.bal >= w.amount ? "debited" : "refused";
+		if (w.status === "debited") {
 			a.bal -= w.amount;
-			w.txid = hex(randomBytes(32));
+			// MOCK_ESCROW_EMPTY=1: the payout keeps failing, as on an unfunded escrow.
+			if (ESCROW_EMPTY) w.payout = "retrying";
+			else {
+				w.status = "paid";
+				w.txid = hex(randomBytes(32));
+			}
 		}
 	}
 	send(res, 202, {});
@@ -37,5 +44,6 @@ export async function postWithdrawal(i, req, res, send, readJson) {
 export function getWithdrawal(id, res, send) {
 	const w = withdrawals.get(id);
 	if (!w) return send(res, 404, { error: "unknown withdrawal" });
-	send(res, 200, w.txid ? { status: w.status, txid: w.txid } : { status: w.status });
+	const { status, txid, payout } = w;
+	send(res, 200, { status, txid, payout });
 }

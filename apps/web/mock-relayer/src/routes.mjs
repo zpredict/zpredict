@@ -71,7 +71,7 @@ function getAccount(i, id, url, res) {
 	const zero = { bal: 0n, mask: [u64le(0n), u64le(0n)] };
 	const a = k?.every(Boolean) ? account(hex(xor(...k))) : zero;
 	const share = i < 2 ? a.mask[i] : xor(u64le(a.bal), ...a.mask);
-	send(res, 200, { balanceShare: hex(share) });
+	send(res, 200, { balanceShare: hex(share), mock: a.mock === true });
 }
 
 function getView(i, url, res) {
@@ -99,7 +99,11 @@ async function judgeClaim(i, req, res) {
 	}
 	k[i] = Buffer.from(b.keyShare, "hex");
 	keys.set(b.account, k);
-	if (k.every(Boolean)) account(hex(xor(...k))).bal += JUDGE_CREDIT;
+	if (k.every(Boolean)) {
+		const a = account(hex(xor(...k)));
+		a.bal += JUDGE_CREDIT;
+		a.mock = true; // judge credit: never withdrawable (#104)
+	}
 	send(res, 200, {});
 }
 

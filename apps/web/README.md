@@ -19,7 +19,7 @@ Other scripts:
 
 | Command | What |
 |---|---|
-| `pnpm --filter @zpredict/web mock` | only the mock relayers (`MOCK_PORTS`, `MOCK_BATCH_MS`, `MOCK_BOT_MS`) |
+| `pnpm --filter @zpredict/web mock` | only the mock relayers (`MOCK_PORTS`, `MOCK_BATCH_MS`, `MOCK_BOT_MS`; `MOCK_ESCROW_EMPTY=1` keeps payouts `retrying`) |
 | `pnpm --filter @zpredict/web build` | static export to `out/`, then the privacy gate |
 | `pnpm --filter @zpredict/web test` | mock clearing rule against `packages/core` test vectors |
 
