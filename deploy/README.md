@@ -71,7 +71,7 @@ Coolify UI → resource → **Deployments** → pick an earlier build → **Rede
 
 ### Key ceremony and testnet escrow (#78)
 
-Ran once on 2026-10-23 on the VPS, inside a throwaway container from the `ceremony` target of `production/relayer.Dockerfile` (settle, settle-payout, zcash-devtool), with `/work` on tmpfs and the three relayer volumes mounted. `production/ceremony.sh`:
+Ran once on 2026-10-23 on the VPS, inside a throwaway container of the relayer image (`production/relayer.Dockerfile`, which also carries settle, settle-payout and zcash-devtool; until #124 this was a separate `ceremony` target), with `/work` on tmpfs and the three relayer volumes mounted. `production/ceremony.sh`:
 
 1. `settle-payout dkg test`: 2-of-3 FROST (RedPallas) DKG; shares and the escrow UFVK are sealed as they are made, under a key that lives only in that process.
 2. Reseals each relayer's share and the UFVK under that relayer's own store key (read from stdin, also stored as the Coolify secret `RN_STORE_KEY`) into its volume, `/data/escrow/{share,ufvk}.sealed`; makes one memo key per relayer (`memo.sealed`, public half `memo.pub`, served at `/memo-key`).
@@ -80,7 +80,7 @@ Ran once on 2026-10-23 on the VPS, inside a throwaway container from the `ceremo
 Plaintext keys only ever existed in that container's memory, its tmpfs and pipes (the UFVK is briefly on zcash-devtool's command line inside it). At runtime the `escrow-wallet` sidecar opens r0's wallet into a tmpfs volume; nothing secret is on disk unsealed.
 
 - **Escrow address (testnet, public):** `utest18yg3cneyjgxxknjm0j9020hmx5jp2wm67qn2p3rfmflct9hwlt363gzl50qeu3ms2u044hq8jzuzkl2tq8xa4m0ukzvlpqgtvu96ffyy`, baked into the web build (`NEXT_PUBLIC_ESCROW_UA` in `apps/web/Dockerfile`). FROST group key (`ak`): `a0cff44d86411e03d1ae3a76982d38bf0aac73db9568a2496324167486dbc534`, served by all three at `/group-key`.
-- **Re-run:** `docker build --target ceremony -t zpredict-ceremony:local -f deploy/production/relayer.Dockerfile .` on the VPS, then pipe three fresh store keys (set the same values as `R{0,1,2}_STORE_KEY` in Coolify first) into `docker run --rm -i --user 65532:65532 --tmpfs /work:mode=0700,uid=65532,size=64m -v <uuid>_r0-data:/r0 -v …r1… -v …r2… --entrypoint ceremony.sh zpredict-ceremony:local`. It refuses to overwrite an existing `/rN/escrow`.
+- **Re-run:** on the VPS, with the `zpredict-relayer:local` image the relayers run, pipe three fresh store keys (set the same values as `R{0,1,2}_STORE_KEY` in Coolify first) into `docker run --rm -i --user 65532:65532 --tmpfs /work:mode=0700,uid=65532,size=64m -v <uuid>_r0-data:/r0 -v …r1… -v …r2… --entrypoint ceremony.sh zpredict-relayer:local`. It refuses to overwrite an existing `/rN/escrow`.
 - **Lost share or store key / rotation:** 2-of-3 still signs with one share lost, but the next step is a new ceremony: move `/data/escrow` aside in all three volumes, run the ceremony (new escrow address and group key), rebuild web with the new address, then have the old group sweep the old escrow's notes to the new address with one payout (2 of the old shares). Outcomes signed by the old group stay verifiable against the old group key. Losing two shares (or two store keys) loses the escrow funds: on testnet that is the accepted risk; a mainnet deployment needs per-operator backups.
 
 lightwalletd: the oracle reads mainnet (`zec.rocks:443`), the escrow testnet (`testnet.zec.rocks:443`). No local Zebra: not enough disk or RAM on this VM.

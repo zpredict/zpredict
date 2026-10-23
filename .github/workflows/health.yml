@@ -1,0 +1,51 @@
+name: Relayer health
+
+# Pings the three hosted relayers every 10 minutes (#124). On failure it opens an issue
+# labelled `incident` (once: while one is open, a failing run only fails), so an outage
+# reaches everyone who watches the repo. Close the issue when it is fixed. Only public
+# endpoints; no secrets.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+concurrency:
+  group: relayer-health
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: GET /health on r0-r2
+        id: ping
+        run: |
+          down=""
+          for i in 0 1 2; do
+            # Two tries a minute apart, so one slow window or a redeploy blip doesn't page.
+            ok=""
+            for _ in 1 2; do
+              body=$(curl -sf -m 15 "https://r$i.zpredict.site/health") \
+                && jq -e '.peers | all' <<<"$body" >/dev/null && { ok=1; break; }
+              sleep 60
+            done
+            [ -n "$ok" ] || down="$down r$i"
+          done
+          echo "down=${down# }" >>"$GITHUB_OUTPUT"
+      - name: Open or update the incident issue
+        if: steps.ping.outputs.down != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DOWN: ${{ steps.ping.outputs.down }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create incident --color B60205 --description "Hosted demo down" -R "$GITHUB_REPOSITORY" 2>/dev/null || true
+          msg="Relayer health check failed at $(date -u +%FT%TZ): $DOWN (no 200 with all peers up, twice). Run: $RUN"
+          open=$(gh issue list -R "$GITHUB_REPOSITORY" -l incident -s open --json number -q '.[0].number')
+          if [ -z "$open" ]; then
+            gh issue create -R "$GITHUB_REPOSITORY" -l incident -t "Hosted relayers down: $DOWN" -b "$msg"
+          fi
+          exit 1
