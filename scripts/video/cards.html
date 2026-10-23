@@ -1,0 +1,132 @@
+<!doctype html>
+<!-- Local scenes for the pitch video (title, regtest terminal, threat table, end card), in the
+     ASCII Studio style. shots.mjs opens this file and calls show(scene, data). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>zPredict video cards</title>
+<style>
+	@font-face {
+		font-family: "JetBrains Mono";
+		font-weight: 400;
+		src: url("../../apps/landing/node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2");
+	}
+	@font-face {
+		font-family: "JetBrains Mono";
+		font-weight: 700;
+		src: url("../../apps/landing/node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-700-normal.woff2");
+	}
+	:root {
+		--bg: #050505;
+		--lime: #d2fc52;
+		--ink: #080a04;
+		--text: #deded6;
+		--muted: #a4a69e;
+		--rule: #30312e;
+	}
+	* { box-sizing: border-box; margin: 0; }
+	html, body { background: var(--bg); color: var(--text); font: 500 22px/1.45 "JetBrains Mono", monospace; }
+	body { min-height: 1080px; padding: 96px 120px; }
+	.eyebrow { color: var(--muted); letter-spacing: 0.12em; text-transform: uppercase; font-size: 20px; margin-bottom: 40px; }
+	.strip { display: inline-block; background: var(--lime); color: var(--ink); padding: 4px 16px; margin: 6px 0; }
+	.big { font-size: 76px; line-height: 1.2; }
+	.center { min-height: 888px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
+	.fade { opacity: 0; transition: opacity 600ms ease; }
+	.fade.on { opacity: 1; }
+	/* terminal */
+	.term { margin-top: -48px; border: 1px solid var(--rule); background: #0b0c0a; }
+	.term__bar { display: flex; gap: 24px; padding: 14px 24px; border-bottom: 1px solid var(--rule); color: var(--muted); font-size: 18px; }
+	.term__bar b { color: var(--ink); background: var(--lime); padding: 0 10px; font-weight: 700; }
+	.term pre { font: inherit; font-size: 25px; line-height: 1.5; padding: 24px 32px; min-height: 700px; white-space: pre-wrap; }
+	.c { color: var(--muted); }
+	.h { color: var(--lime); }
+	.cursor { display: inline-block; width: 0.6em; height: 1.1em; background: var(--lime); vertical-align: -0.2em; }
+	/* threat table */
+	table { border-collapse: collapse; width: 100%; font-size: 21px; }
+	th, td { text-align: left; vertical-align: top; padding: 18px 20px; border-top: 1px solid var(--rule); }
+	thead th { color: var(--ink); background: var(--lime); border: 0; text-transform: uppercase; letter-spacing: 0.08em; font-size: 18px; }
+	tbody th { width: 22%; font-weight: 700; }
+	tbody td:nth-child(2) { width: 46%; }
+	tr.warn th { color: var(--lime); }
+	.src { margin-top: 28px; color: var(--muted); font-size: 18px; }
+</style>
+</head>
+<body>
+<main id="scene"></main>
+<script>
+	const $ = (html) => {
+		document.getElementById("scene").innerHTML = html;
+	};
+	const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+	const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+
+	// Reveals the .fade children one after another.
+	async function reveal(step) {
+		for (const el of document.querySelectorAll(".fade")) {
+			el.classList.add("on");
+			await wait(step);
+		}
+	}
+
+	async function typeLines(out, data) {
+		for (const line of data.lines) {
+			const span = document.createElement("span");
+			span.className = line.startsWith("#") ? "c" : /refused|txid|Balance/.test(line) ? "h" : "";
+			out.append(span);
+			// Commands and comments are typed; output lines appear at once.
+			const typed = line.startsWith("$") || line.startsWith("#");
+			for (const ch of typed ? line : []) {
+				span.textContent += ch;
+				await wait(data.typeMs);
+			}
+			if (!typed) span.textContent = line;
+			out.append("\n");
+			await wait(data.lineMs);
+		}
+		const c = document.createElement("span");
+		c.className = "cursor";
+		out.append(c);
+	}
+
+	const strip = (l) => `<div class="fade"><span class="strip big">${esc(l)}</span></div>`;
+	const row = (r) =>
+		`<tr class="${r[0].includes("⚠") ? "warn" : ""}"><th>${esc(r[0])}</th><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`;
+
+	const scenes = {
+		title(data) {
+			$(`<div class="center"><p class="eyebrow fade">The problem</p>${data.lines.map(strip).join("")}</div>`);
+			return reveal(900);
+		},
+		end() {
+			$(`<div class="center">
+				<p class="eyebrow fade">Built for Zecathon 2026 · MIT</p>
+				${["zPredict", "Price public.", "Participants private."].map(strip).join("")}
+				<p class="fade" style="margin-top:48px;font-size:32px">zpredict.site · github.com/zpredict/zpredict</p>
+			</div>`);
+			return reveal(300);
+		},
+		terminal(data) {
+			$(`<div class="term">
+				<div class="term__bar"><b>regtest</b><span>${esc(data.title)}</span></div>
+				<pre id="out"></pre>
+			</div>`);
+			return typeLines(document.getElementById("out"), data);
+		},
+		threat(data) {
+			$(`<p class="eyebrow">PRIVACY.md · Who learns what</p>
+				<table>
+					<thead><tr><th>Party</th><th>Learns</th><th>Never learns</th></tr></thead>
+					<tbody>${data.rows.map(row).join("")}</tbody>
+				</table>
+				<p class="src">⚠ = open or accepted limitation, tracked in the repo. Full audit: github.com/zpredict/zpredict/blob/main/PRIVACY.md</p>`);
+		},
+	};
+
+	/** Called by shots.mjs. */
+	window.show = (scene, data) => {
+		window.scrollTo(0, 0);
+		return scenes[scene](data);
+	};
+</script>
+</body>
+</html>

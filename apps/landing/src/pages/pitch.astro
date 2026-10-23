@@ -1,0 +1,48 @@
+---
+import CtaButton from "../components/ui/CtaButton.astro";
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="The 2-min pitch · zPredict">
+	<main class="pitch">
+		<h1 class="heading"><span>zPredict in two minutes.</span></h1>
+		<!-- Self-hosted, never autoplays, and nothing loads until it is played. -->
+		<video controls preload="none" poster="/pitch-poster.jpg" width="1920" height="1080">
+			<source src="/pitch.mp4" type="video/mp4" />
+			<a href="/pitch.mp4">Download the video (MP4)</a>
+		</video>
+		<p class="note">
+			Draft voiceover (macOS speech), captions burned in. Settlement is shown from the regtest end-to-end
+			run; the testnet transaction follows.
+		</p>
+		<CtaButton href="/" label="Back to zPredict" />
+	</main>
+</Base>
+
+<style>
+	.pitch {
+		display: grid;
+		justify-items: center;
+		align-content: center;
+		gap: 28px;
+		min-height: 100svh;
+		padding: 40px var(--zp-gutter);
+		text-align: center;
+	}
+	.heading span {
+		padding: 0 7px;
+		background: var(--zp-lime);
+		color: var(--zp-bg);
+		font-size: 26px;
+	}
+	video {
+		width: min(100%, 1280px);
+		height: auto;
+		background: #000;
+	}
+	.note {
+		max-width: 60ch;
+		color: var(--zp-muted);
+		font-size: 13px;
+	}
+</style>
