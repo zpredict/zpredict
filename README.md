@@ -2,16 +2,36 @@
 
 [![CI](https://github.com/zpredict/zpredict/actions/workflows/deploy.yml/badge.svg?branch=main)](https://github.com/zpredict/zpredict/actions/workflows/deploy.yml)
 
-Shielded prediction market on Zcash. Nobody learns that you bet, which side, or how much.
+Shielded prediction market on Zcash. Price public, participants private: nobody learns that you bet, which side, or how much.
 
-FROST 2-of-3 escrow · orders secret-shared across 3 relayers · YES/NO matched in MPC · batched Ironwood payouts.
+**[Try it](https://app.zpredict.site)** (Judge mode) · [Pitch video](https://zpredict.site/pitch/) · [Site](https://zpredict.site) · [Design](DESIGN.md) · [Privacy audit](PRIVACY.md)
 
-Design and threat model: [DESIGN.md](DESIGN.md). Privacy audit: [PRIVACY.md](PRIVACY.md).
+## How it works
 
-Pitch video (2 min): https://zpredict.site/pitch/ ([MP4](https://zpredict.site/pitch.mp4)). Rebuild it with `scripts/video/` (headless Chrome + ffmpeg, no dependencies).
+1. Your browser splits each order into three XOR shares and sends one to each relayer.
+2. The relayers cross YES/NO at the midpoint inside 3-party MPC (polytune), checking balances and your account credential in-circuit. Only fills and a public clearing price come out.
+3. Collateral sits in a FROST 2-of-3 Ironwood escrow; withdrawals are batched and every signer re-derives the sighash before signing.
+4. Markets resolve from Zcash mainnet block data; outcomes are FROST-signed and verified in the browser.
+
+Reading orders needs all three relayers; moving funds needs two. Demo limits (one VM, Cloudflare, judge-mode credits) are in [PRIVACY.md](PRIVACY.md).
+
+## Repository
+
+| Path | What |
+|---|---|
+| `apps/relayer` | Relayer: HTTP API, Noise peer links, MPC party, deposits, payouts |
+| `apps/web`, `apps/landing` | Next.js app, Astro site |
+| `packages/core`, `circuit` | Order/balance encodings and the clearing rule; the Garble circuits |
+| `packages/settle`, `oracle`, `plugins` | Escrow scan and FROST payouts; market resolution |
+| `packages/sdk`, `ascii`, `brand` | Browser client, ASCII renderer, design tokens |
+
+## Run it
 
 ```sh
-cargo test
+pnpm install && pnpm test && cargo test --workspace
+pnpm --filter @zpredict/web dev:mock     # app + three mock relayers on :3000
+apps/relayer/scripts/dev.sh              # three real relayers with MPC
+scripts/relayer-e2e.sh                   # regtest: deposit → trade → resolve → withdraw
 ```
 
-MIT · Built for [Zecathon 2026](https://thezecathon.com/).
+MIT · Built for ZECATHON 2026.

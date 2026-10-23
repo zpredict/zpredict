@@ -1,46 +1,10 @@
 # zPredict — the first shielded prediction market on Zcash
 
-> Working name. Track: **Private Markets** (Zecathon 2026). Target: track prize + Grand Prize.
-> Engine inspired by [Renegade](https://github.com/renegade-fi/renegade)'s MPC dark pool. No Renegade code is used: the repo has no license, and Zecathon rules require all code to be written during the build window.
-> Research behind every decision here: `reports/Riset ide proyek Zecathon.md` (kept local).
+> Built for ZECATHON 2026, Private Markets track. Engine inspired by [Renegade](https://github.com/renegade-fi/renegade)'s MPC dark pool; no Renegade code is used. Privacy audit and how to verify each claim: [PRIVACY.md](PRIVACY.md).
 
 ## One line
 
 Bet on an outcome without anyone learning that you bet, which side you took, or how much. Collateral sits in a FROST 2-of-3 shielded escrow that no single operator controls. Orders are secret-shared across three relayers and crossed inside MPC. Winners are paid in one batched, threshold-signed Ironwood transaction to fresh shielded addresses.
-
-## Why this, and not a dark pool
-
-| | Dark pool (previous plan) | Prediction market (this plan) |
-|---|---|---|
-| Prior art on Zcash | A "Zcash Dark Pool" repo appeared Oct 21 | **None** — GitHub search for "zcash prediction market" is empty |
-| Demand | OTC desks | Polymarket traders getting doxxed; Zcash community already bets on grant outcomes on Seer (not private) |
-| Second asset needed | USDC via NEAR Intents: transparent-only ZEC, no testnet, refund address public → **disqualification risk** | **None** — ZEC-only collateral, no transparent hop anywhere |
-| Oracle | Price feeds | Markets resolved from **Zcash chain data**, which judges can verify themselves |
-
-The engine (FROST escrow + secret-shared orders + MPC crossing + batched settlement) is the same; only the matching module changes. The dark pool stays a 1-day switch until Oct 25.
-
-## How we win
-
-Judges see four things — the description (read first), the repo, a demo they can open, a 2-minute video — and score Privacy (pass/fail), Usefulness, Execution, Originality.
-
-| Criterion | What judges must see | Our deliverable |
-|---|---|---|
-| **Privacy** (a leak = disqualified) | Zero leaks, and proof we looked | No transparent address anywhere in the product · `PRIVACY.md` with every data flow and the leak checklist below · static frontend, no third-party requests, no analytics, no IP logs |
-| **Usefulness** | Someone uses it Monday | The Polymarket doxxing story; first markets are ones the Zcash community actually argues about (NU7 activation, Ironwood pool size, grant votes) |
-| **Execution** ("working beats ambitious") | It runs, in their browser, now | Hosted testnet relayers on 3 separate hosts + **judge mode** with prefunded testnet wallets; fill in under a minute, no install |
-| **Originality** | Not repackaged | First prediction market on Zcash; first 3-party MPC + FROST-Ironwood settlement engine in the ecosystem |
-
-**The winning moment** (the 20 seconds judges remember): a split screen. Left: the trader buys YES. Right: the three relayers, each showing only random-looking shares, and the block explorer showing one shielded transaction with nothing readable. "None of these machines knows what you bet."
-
-### Ways we lose (and the guard)
-
-| Loss | Guard |
-|---|---|
-| A judge finds a leak → DQ | Leak checklist below; self red-team on Oct 27; threat-model table in the README and the video |
-| Demo dead during judging (Oct 29 – Nov 22) | 3 hosts, health page, auto-restart, testnet top-up script |
-| FROST signing broken on post-NU7 testnet | Decided fallback: Zebra regtest with Ironwood active (see ladder) |
-| Judges can't tell what's real | "Real / Mock" section in the description |
-| Saved as draft, not submitted | Submit Oct 28 by 12:00 UTC; screenshot "Project submitted" |
 
 ## Protocol
 
@@ -123,47 +87,16 @@ Encodings (all little-endian, identical in `zpredict-core` and `@zpredict/sdk`; 
 | 2 colluding relayers | Same as one for orders; **can move escrow funds** (FROST 2-of-3) | Orders (polytune needs all 3 to collude); account tags (the third share is a PRF of the tag) |
 | All 3 colluding | Everything | — |
 | Counterparty | That a fill happened at the midpoint | Who you are, your size beyond the fill |
-| Network observer | That someone talks to an zPredict relayer | Contents (TLS); your IP if you use Tor |
+| Network observer | That someone talks to a zPredict relayer | Contents (TLS); your IP if you use Tor |
+| Cloudflare (as deployed, until #88) | Everything the three relayers receive, in clear (TLS ends at Cloudflare), plus client IPs: in effect all three relayers colluding | — once the relayer hostnames are DNS-only |
+| Demo VM operator | Everything: all three relayers and the DKG ran on one machine | — in production, three independent operators |
 
-**Stated up front:** funds are 2-of-3, order privacy is 3-of-3. A judge should read this in our README before they work it out.
+**Stated up front:** funds are 2-of-3, order privacy is 3-of-3. The demo deployment concentrates all three on one VM behind Cloudflare; the protocol's guarantees assume independent operators. Live status of every leak-checklist item, with evidence: [PRIVACY.md](PRIVACY.md#leak-checklist).
 
 **Accounts have a credential no relayer sees (#85).** A relayer knows each account's public id and its own share of the tag, never the tag. Orders and withdrawals carry the tag only as fresh XOR shares, and the circuit uses a row only for a request whose shares rebuild that row's key, so a relayer posing as a browser with what it knows (its share, the id) gets a dummy order or a refused withdrawal (`a_relayer_cannot_act_as_an_account` in `packages/circuit`, and the forged withdrawals in `scripts/relayer-e2e.sh`). Balance reads are gated the same way: relayer `i` serves an account's balance share only to a caller holding `sᵢ`.
 A dishonest relayer could still try to *choose* the other relayers' shares for an id it learned (from its memo slot or the mempool): a judge claim or a deposit memo of its own for that id, sent before the victim's arrives, would let it know the whole key. Honest shares are deterministic in the tag, so the victim's later deposit or claim shows a different share for a known id; that relayer then **burns** the key (fresh random share every batch). The row is lost, never handed over: the same denial of service a relayer can always cause by aborting the MPC. A relayer altering its own stored share likewise only locks that row.
 
 **Not quantum-recoverable (ZIP 2005).** The escrow's spend authority `ak` is the FROST group key, so its viewing key cannot be derived from a seed. Its `nk` and `rivk` are random, generated once at the DKG (the same construction as `zcash-sign generate`). Escrow notes therefore don't use the ZIP 2005 derivation, which would let a key holder recover them after a quantum break of discrete log. For a hackathon escrow that holds collateral for days, this is acceptable. A production escrow would need a FROST-compatible ZIP 2005 derivation, or would have to sweep to a recoverable key before such a break.
-
-### Leak checklist (from the research)
-Status and evidence for each item, plus the #15 audit findings: [PRIVACY.md](PRIVACY.md#leak-checklist).
-- [ ] No transparent address in any product path (deposits, payouts, refunds, change).
-- [ ] Deposits only in fixed denominations; never reveal order size.
-- [ ] Payouts batched per epoch to fresh diversified, shielded-only addresses: no deposit→payout timing or amount link.
-- [ ] Wallet-default fee (ZIP 317) and expiry (ZIP 315); padded actions.
-- [ ] Memos carry no order data and never the account tag: each relayer gets one share of it.
-- [ ] Browser shares orders; each share goes straight to its own relayer on its own host.
-- [ ] Frontend is static and self-hosted: no CDN, no fonts from third parties, no analytics. Relayers log no IPs.
-- [ ] Viewing keys never leave the relayers; never shown in the UI or logs.
-
-## Fallback ladder (decided now, not on Oct 27)
-
-| Component | If it fails | Fall back to |
-|---|---|---|
-| FROST spend on post-NU7 testnet (deadline: end of Oct 23) | Pinned `zcash-sign` can't build valid v6 txs | Zebra regtest with NU6.3/Ironwood active; testnet only for deposits |
-| polytune at N = 16 | Too slow | N = 8, then a coarser tick grid. **Never** a single-server match: that kills the privacy story |
-| A relayer aborts | MPC needs all three | Timeout and re-run; signing still works 2-of-3 |
-| Judges lack testnet funds | — | Judge mode with prefunded wallets |
-| Live run fails on video day | — | Golden-path transaction IDs saved from earlier runs |
-
-## Build plan
-
-| Day | Date | Protocol | Judge-facing |
-|---|---|---|---|
-| 0 | Oct 22 | Public repo, workspace, pin crate versions | README skeleton, `SUBMISSION.md` |
-| 1 | Oct 23 | Testnet coins; **prove the FROST/PCZT Ironwood spend**; polytune 3-party example running | Provision 3 relayer hosts |
-| 2 | Oct 24 | Clearing circuit (Garble); relayer service; browser sharing | Trade page skeleton |
-| 3 | Oct 25 | Deposit scanning + shared balances; settlement batcher → **end-to-end fill and payout** (demo is safe from here) | Relayer View |
-| 4 | Oct 26 | Chain-data oracle + FROST-signed outcomes | Judge mode, health page, top-up script |
-| 5 | Oct 27 | Freeze features; leak red-team against the checklist | `PRIVACY.md`, video recorded, description final |
-| 6 | Oct 28 | Buffer only | **SUBMIT before 12:00 UTC** + screenshot |
 
 ## Monorepo
 
@@ -201,18 +134,14 @@ zpredict/
 - Rust crates as above
 - librustzcash release of 2026-10-21 (`pczt` 0.10, `orchard` 0.16 with the Ironwood pool, `zcash_primitives` 0.31, `zcash_client_backend` 0.25); `zcash-devtool` `0b3436bb` for wallets, proving and broadcast
 - ZF `frost-core` 2.2 / `frost-rerandomized` 2.1 via frost-zcash-demo `53df99c` (RedPallas from `reddsa` at `ed49e9c`): `frost-core` runs as a library for both the DKG and signing, plus our PCZT signer glue (`packages/settle`). frost-client and frostd are no longer used
-- `polytune` (3-party MPC, Garble language)
-- Network: Zcash testnet via `testnet.zec.rocks:443`; Zebra regtest as the fallback
-- Landing: Astro (static), MotionSites template, self-hosted fonts and media
-- Web app: Next.js (static export, no server-side logging), MotionSites template, self-hosted assets
+- `polytune` (3-party MPC, Garble language), vendored from `sine-fdn/polytune` rev `47dc378` (MIT) with one change: preprocessing split from the online phase (`vendor/polytune`)
+- Network: escrow and settlement on Zcash testnet (`testnet.zec.rocks:443`); market resolution from mainnet (`zec.rocks:443`); Zebra regtest for end-to-end tests (`scripts/relayer-e2e.sh`)
+- Landing: Astro (static), MotionSites ASCII Studio design, `@zpredict/ascii` (Three.js, bundled), self-hosted fonts and media
+- Web app: Next.js (static export, no server-side logging), same design, self-hosted assets
 
-## Open questions (answer on Oct 23)
+## Demo deployment
 
-1. Does the pinned `zcash-sign` produce valid v6 transactions on testnet since NU7 activated there (~Oct 4)?
-2. How long does polytune take for N = 16 on three small VMs?
-3. Is polytune's setup distributed, or does it need a trusted dealer? (affects the threat-model wording)
-4. Where do we get testnet ZEC (no confirmed public faucet)?
-
-## After the hackathon
-
-Payout risk is real: the organizer's prize split is marked "PLACEHOLDER", and no judges or terms are published. The engine — FROST escrow + MPC crossing + batched shielded settlement — is what every Zcash market idea needs. Plan to continue as a Zcash Community Grants application framed around one concrete app, with answers to the three gaps ZCG has rejected FROST proposals for: secure messaging, key-share backup, lost-participant recovery.
+- Three relayers on one VPS (Coolify), each with its own sealed key share and store key; testnet escrow from a FROST DKG run once in a throwaway container. See [deploy/README.md](deploy/README.md).
+- Markets: headline markets plus an hourly rolling market, resolved from mainnet block data (lightwalletd `zec.rocks`); collateral and settlement on testnet (`testnet.zec.rocks`).
+- MPC per batch: 8 order slots, 48 account rows, up to 4 markets. polytune preprocessing runs between batches, so a fill takes one online pass (~25 s live, mostly waiting for the window).
+- Judge mode credits mock testnet collateral without a deposit and cannot be withdrawn on-chain.
