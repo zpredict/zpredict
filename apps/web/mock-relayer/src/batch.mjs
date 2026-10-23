@@ -39,21 +39,22 @@ function fund(ready) {
 }
 
 /** Public price: YES cents at the batch's latest cross (half-ticks / 2). Nothing else leaves. */
-function publishPrice(m, fills) {
+function publishPrice(m, fills, at) {
 	const last = fills.at(-1);
 	if (!last) return;
 	m.lastPrice = last.yesCost / 2;
 	m.history = [...(m.history ?? []), m.lastPrice].slice(-HISTORY_KEEP);
+	m.historyAt = [...(m.historyAt ?? []), Math.floor(at / 1000)].slice(-HISTORY_KEEP);
 }
 
 /** One 10-byte fill record per order (all zero if unfilled), cleared market by market. */
-function records(live) {
+function records(live, at) {
 	const out = live.map(() => new Uint8Array(10));
 	for (const m of markets) {
 		const idx = live.flatMap((d, k) => (d?.market === m.id ? [k] : []));
 		const sub = idx.map((k) => live[k]);
 		const fills = clear(sub);
-		publishPrice(m, fills);
+		publishPrice(m, fills, at);
 		fillRecords(sub, fills).forEach((r, j) => {
 			out[idx[j]] = r;
 		});
@@ -61,9 +62,10 @@ function records(live) {
 	return out;
 }
 
-export function runBatch() {
+/** One batch at `at` (ms): the time stamped on any price it publishes. */
+export function runBatch(at = Date.now()) {
 	const ready = collect();
-	const recs = records(fund(ready));
+	const recs = records(fund(ready), at);
 	ready.forEach(({ o, order }, k) => {
 		const fill = Buffer.from(recs[k]);
 		const filled = fill[9] === 1;

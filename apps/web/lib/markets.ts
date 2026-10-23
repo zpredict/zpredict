@@ -27,6 +27,48 @@ export function referenceUrl(m: Market): string | null {
 	}
 }
 
+/** The "All markets" tab a market sits under: the relayers' `category`, else derived. */
+export const topic = (m: Market) =>
+	m.category ??
+	(m.rolling ? "Rolling" : m.plugin === "polymarket" ? "Polymarket" : "Zcash network");
+
+/** A card in the grid: one binary market, or several grouped by their `event`. */
+export type Item =
+	| { kind: "market"; key: string; market: Market }
+	| { kind: "event"; key: string; title: string; markets: Market[] };
+
+/** Groups markets sharing an `event.id` into one item, in order of first appearance. */
+export function groupItems(markets: Market[]): Item[] {
+	const items: Item[] = [];
+	const events = new Map<string, Extract<Item, { kind: "event" }>>();
+	for (const m of markets) {
+		if (!m.event) {
+			items.push({ kind: "market", key: `m${m.id}`, market: m });
+			continue;
+		}
+		const e = events.get(m.event.id);
+		if (e) e.markets.push(m);
+		else {
+			const item = {
+				kind: "event" as const,
+				key: `e${m.event.id}`,
+				title: m.event.title,
+				markets: [m],
+			};
+			events.set(m.event.id, item);
+			items.push(item);
+		}
+	}
+	return items;
+}
+
+/** The other markets of `m`'s event (itself included), or just `m`. */
+export const eventOf = (m: Market, all: Market[]) =>
+	m.event ? all.filter((x) => x.event?.id === m.event?.id) : [m];
+
+/** Row label of a market inside an event card, else "Yes". */
+export const outcomeLabel = (m: Market) => m.event?.outcome ?? m.question;
+
 /** YES chance in whole percent from the public last price; null before the first cross. */
 export const chance = (m: Market) => (m.lastPrice === undefined ? null : Math.round(m.lastPrice));
 

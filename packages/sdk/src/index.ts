@@ -155,8 +155,11 @@ export interface Market {
 	rolling?: boolean;
 	/** Display only, from the relayer config: e.g. "Zcash network", "Rolling", "Politics". */
 	category?: string;
-	/** Groups binary markets shown as one multi-outcome event, one row per market. */
-	event?: { id: string; title: string };
+	/**
+	 * Groups binary markets shown as one multi-outcome event, one row per market. `outcome`, if
+	 * set, labels this market's row; else the app uses what differs between the questions.
+	 */
+	event?: { id: string; title: string; outcome?: string };
 	/** When trading opened (RFC 3339). */
 	opensAt?: string;
 	/** Plain-text resolution rules. */
@@ -170,6 +173,8 @@ export interface Market {
 	lastPrice?: number;
 	/** The last N clearing prices (same unit as `lastPrice`), oldest first, one per batch that crossed. */
 	history?: number[];
+	/** Unix seconds of each `history` entry (the batch's time), if the relayer serves them (#117). */
+	historyAt?: number[];
 }
 
 /**

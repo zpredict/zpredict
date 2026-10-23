@@ -9,11 +9,13 @@ import { botOrders } from "./bots.mjs";
 import { BATCH_MS, BOT_MS, PORTS, WARMUP_BATCHES } from "./config.mjs";
 import { handler } from "./routes.mjs";
 
-// Warm-up: real batches of bot orders, so markets have a price and history on first load.
+// Warm-up: real batches of bot orders, so markets have a price and history on first load,
+// back-dated across the last 30 days so the price chart has a time axis to show.
+const DAY_MS = 86_400_000;
 for (let b = 0; b < WARMUP_BATCHES; b++) {
 	botOrders();
 	botOrders();
-	runBatch();
+	runBatch(Date.now() - ((WARMUP_BATCHES - b) * 30 * DAY_MS) / WARMUP_BATCHES);
 }
 
 PORTS.forEach((port, i) => {
