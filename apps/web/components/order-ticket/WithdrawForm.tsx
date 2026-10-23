@@ -8,7 +8,9 @@ import {
 } from "@zpredict/sdk";
 import { useState } from "react";
 import NumberField from "@/components/order-ticket/NumberField";
+import Amount from "@/components/ui/Amount";
 import Button from "@/components/ui/Button";
+import ZecIcon from "@/components/ui/ZecIcon";
 import { useAccount } from "@/hooks/useAccount";
 import { useWithdraw } from "@/hooks/useWithdraw";
 import { units } from "@/lib/format";
@@ -56,7 +58,7 @@ export default function WithdrawForm() {
 				Paid from the escrow in one batched shielded transaction, to a fresh unified address with an
 				Ironwood (Orchard) receiver. The relayers see the amount, the address and the time, but not
 				which account it came from, except through request metadata and amount and timing (see the
-				threat model). Balance: {units(balance ?? 0n)} units.
+				threat model). Balance: <Amount halfTicks={balance ?? 0n} />.
 			</p>
 			<NumberField
 				id="withdraw-units"
@@ -85,7 +87,8 @@ export default function WithdrawForm() {
 				{problem ?? addressHint(address)}
 			</p>
 			<p className="dim">
-				You receive {zec} ZEC: the amount less a {units(WITHDRAWAL_FEE)}-unit network fee.
+				You receive <ZecIcon /> {zec} testnet ZEC: the amount less a {units(WITHDRAWAL_FEE)}-unit
+				network fee.
 			</p>
 			<Button
 				disabled={

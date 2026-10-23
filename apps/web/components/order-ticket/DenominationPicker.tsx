@@ -1,4 +1,5 @@
 import { DENOMINATIONS, type Denomination, unitsToZec } from "@zpredict/sdk";
+import ZecIcon from "@/components/ui/ZecIcon";
 
 interface Props {
 	units: Denomination;
@@ -20,7 +21,9 @@ export default function DenominationPicker({ units, onChange }: Props) {
 						value={d}
 					/>
 					{d} unit{d > 1 ? "s" : ""}
-					<span className="dim">{unitsToZec(d)} ZEC</span>
+					<span className="dim">
+						<ZecIcon /> {unitsToZec(d)} ZEC
+					</span>
 				</label>
 			))}
 		</fieldset>

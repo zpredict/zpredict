@@ -1,12 +1,19 @@
 "use client";
 import { MAX_SIZE, type Market, type Side } from "@zpredict/sdk";
 import { useEffect, useState } from "react";
-import { maxCost } from "@/lib/format";
 import { defaultPrice, sideCents } from "@/lib/markets";
 import { useAccount } from "./useAccount";
 import { useOrders } from "./useOrders";
 
 const isInt = (v: number, lo: number, hi: number) => Number.isInteger(v) && v >= lo && v <= hi;
+
+/** Why the ticket can't be sent, or "". */
+function ticketProblem(seat: string | null, valid: boolean, affordable: boolean): string {
+	if (seat === "waiting")
+		return "The relayers' balance table is full, so this account's orders can't fill until a row frees up.";
+	if (!valid) return "Price 1–99¢, size a whole number of contracts";
+	return affordable ? "" : "Worst-case cost exceeds your balance";
+}
 
 /**
  * Order ticket state, validation and submit for one market. The limit price starts at or just above
@@ -35,19 +42,11 @@ export function useOrderTicket(market: Market, initialSide: Side = 0) {
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reset only on the toggle
 	useEffect(() => setPrice(defaultPrice(market, side, edge)), [counterparty]);
 
-	// With the counterparty the pair costs one unit per contract: size × 200 half-ticks.
-	const cost = counterparty ? maxCost(size, 100) : maxCost(size, price);
-	const halfTicks = counterparty ? size * 200 : size * price * 2;
-	const affordable = balance === null || BigInt(halfTicks) <= balance;
 	const valid = isInt(price, 1, 99) && isInt(size, 1, MAX_SIZE);
-	const problem =
-		seat === "waiting"
-			? "The relayers' balance table is full, so this account's orders can't fill until a row frees up."
-			: !valid
-				? "Price 1–99¢, size a whole number of contracts"
-				: !affordable
-					? "Worst-case cost exceeds your balance"
-					: "";
+	// Worst case in half-ticks; with the counterparty the pair costs one unit per contract
+	// (size × 200). Zero while a field is empty or invalid (BigInt(NaN) would throw).
+	const cost = !valid ? 0 : counterparty ? size * 200 : size * price * 2;
+	const problem = ticketProblem(seat, valid, balance === null || BigInt(cost) <= balance);
 
 	const submit = async () => {
 		if (problem || !tag) return;
@@ -71,7 +70,8 @@ export function useOrderTicket(market: Market, initialSide: Side = 0) {
 		setSize,
 		cost,
 		last: sideCents(market, side),
-		payout: size.toFixed(2),
+		/** Half-ticks paid if the chosen side wins: one unit per contract. */
+		payout: valid ? size * 200 : 0,
 		busy,
 		error: error || problem,
 		canSubmit: Boolean(tag) && !problem && !busy,

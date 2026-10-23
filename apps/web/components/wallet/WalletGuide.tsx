@@ -2,8 +2,8 @@
 import Link from "next/link";
 import DepositInfo from "@/components/order-ticket/DepositInfo";
 import WithdrawForm from "@/components/order-ticket/WithdrawForm";
+import Amount from "@/components/ui/Amount";
 import { useAccount } from "@/hooks/useAccount";
-import { units } from "@/lib/format";
 import KeyBackup from "./KeyBackup";
 
 /**
@@ -26,7 +26,7 @@ export default function WalletGuide() {
 				{tag && (
 					<p className="dim">
 						{mock ? "This browser holds a judge account (mock credit). " : ""}
-						Balance: {balance === null ? "…" : `${units(balance)} units`}
+						Balance: {balance === null ? "…" : <Amount halfTicks={balance} />}
 					</p>
 				)}
 			</header>
