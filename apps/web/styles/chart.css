@@ -1,0 +1,171 @@
+/* Price chart: dotted grid, step lines, crosshair. Lime / white series, greys beyond two. */
+
+.pchart {
+	display: grid;
+	gap: 10px;
+}
+
+.pchart__legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 20px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-size: 12px;
+}
+
+.pchart__legend li {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	color: var(--zp-muted);
+}
+
+.pchart__legend li::before {
+	content: "";
+	width: 10px;
+	height: 10px;
+	background: var(--tone);
+}
+
+.pchart__legend .num {
+	color: var(--tone);
+}
+
+.pchart__plot {
+	position: relative;
+	height: 300px;
+	touch-action: pan-y;
+	cursor: crosshair;
+	user-select: none;
+}
+
+.pchart__plot:focus-visible {
+	outline: 1px solid var(--zp-lime);
+	outline-offset: 4px;
+}
+
+.pchart__plot svg {
+	display: block;
+	overflow: visible;
+	font-family: inherit;
+}
+
+.pchart__empty {
+	display: grid;
+	place-items: center;
+	height: 100%;
+	border: 1px dashed var(--line-strong);
+	color: var(--zp-muted);
+	font-size: 13px;
+}
+
+.pchart__grid {
+	stroke: var(--line-strong);
+	stroke-dasharray: 1 5;
+}
+
+.pchart__ylab,
+.pchart__xlab {
+	fill: var(--zp-muted);
+	font-size: 11px;
+}
+
+.pchart__ylab {
+	text-anchor: end;
+}
+
+.pchart__xlab {
+	text-anchor: middle;
+}
+
+.pchart__line {
+	fill: none;
+	stroke-width: 2;
+	stroke-linejoin: miter;
+}
+
+.pchart__line.is-dim {
+	stroke: #3a3b38;
+}
+
+.tone-lime {
+	--tone: var(--zp-lime);
+}
+
+.tone-white {
+	--tone: var(--zp-text);
+}
+
+.tone-grey {
+	--tone: var(--zp-glyph);
+}
+
+.pchart__line[class*="tone-"] {
+	stroke: var(--tone);
+}
+
+.pchart__cross {
+	stroke: var(--zp-muted);
+	stroke-width: 1;
+}
+
+.pchart__time {
+	fill: var(--zp-text);
+	font-size: 12px;
+}
+
+.pchart__dot {
+	fill: var(--tone);
+}
+
+.pchart__name {
+	fill: var(--tone);
+	font-size: 13px;
+}
+
+.pchart__pct {
+	fill: var(--tone);
+	font-size: 30px;
+	letter-spacing: -0.04em;
+}
+
+.pchart__ranges {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px;
+}
+
+.pchart__ranges button {
+	min-width: 40px;
+	height: 28px;
+	padding: 0 8px;
+	color: var(--zp-muted);
+	font-size: 11px;
+}
+
+.pchart__ranges button:hover {
+	color: var(--zp-text);
+}
+
+.pchart__ranges button[aria-pressed="true"] {
+	background: var(--zp-panel);
+	color: var(--zp-text);
+}
+
+.pchart__note {
+	margin-left: 8px;
+	color: var(--zp-muted);
+	font-size: 11px;
+}
+
+@media (max-width: 699.98px) {
+	.pchart__plot {
+		height: 240px;
+	}
+	.pchart__pct {
+		font-size: 22px;
+	}
+}
