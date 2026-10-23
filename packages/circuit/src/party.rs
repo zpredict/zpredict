@@ -77,10 +77,12 @@ pub async fn run_party_with(
     if !(2..=crate::MAX_SLOTS).contains(&slots)
         || public.credits.len() != rows
         || shares.keys.len() != rows
+        || shares.mock.len() != rows
         || public.withdrawals.len() != shares.withdrawals.len()
     {
         return Err(Error::Circuit(
-            "need 2..=21 order slots, a credit and a key per row, a share per withdrawal".into(),
+            "need 2..=21 order slots, a credit, key and mock flag per row, a share per withdrawal"
+                .into(),
         ));
     }
     let prg = shape(public, shares);

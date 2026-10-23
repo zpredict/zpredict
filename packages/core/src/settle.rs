@@ -17,12 +17,14 @@ pub struct Withdrawal {
 
 /// Adds `credits[r]` to row `r` (deposits are public to every relayer anyway), then, in
 /// slot order, takes each withdrawal from the first row with its key only if that row
-/// covers it. Returns the new table and, per slot, whether the withdrawal went through.
-/// Relayers learn amounts and the `ok` bits, never whose withdrawal it was.
+/// covers it and is not `mock` (judge-mode credit, which never pays out on chain).
+/// Returns the new table and, per slot, whether the withdrawal went through. Relayers
+/// learn amounts and the `ok` bits, never whose withdrawal it was.
 pub fn apply_flows(
     accounts: &[Account],
     credits: &[u64],
     withdrawals: &[Withdrawal],
+    mock: &[bool],
 ) -> (Vec<Account>, Vec<bool>) {
     let mut table: Vec<Account> = (accounts.iter().zip(credits))
         .map(|(a, c)| Account {
@@ -35,7 +37,7 @@ pub fn apply_flows(
         .map(|w| {
             let row = table.iter().position(|a| a.key == w.key);
             match row {
-                Some(r) if w.amount > 0 && table[r].balance >= w.amount => {
+                Some(r) if w.amount > 0 && table[r].balance >= w.amount && !mock[r] => {
                     table[r].balance -= w.amount;
                     true
                 }
@@ -89,10 +91,13 @@ mod tests {
         let accts = [acct(1, 100), acct(2, 100), acct(3, 0)];
         // Account 3 withdraws twice: the second no longer fits; 9 has no row; 0 is unused.
         let ws = [w(1, 100), w(2, 151), w(3, 6), w(3, 6), w(9, 1), w(1, 0)];
-        let (after, ok) = apply_flows(&accts, &[0, 50, 10], &ws);
+        let (after, ok) = apply_flows(&accts, &[0, 50, 10], &ws, &[false; 3]);
         assert_eq!(ok, vec![true, false, true, false, false, false]);
         let b: Vec<u64> = after.iter().map(|a| a.balance).collect();
         assert_eq!(b, vec![0, 150, 4], "a refused withdrawal leaves the credit");
+        // A judge-mode (mock) row never pays out, however much it holds.
+        let (after, ok) = apply_flows(&accts, &[0, 0, 0], &ws[..1], &[true, false, false]);
+        assert_eq!((ok, after[0].balance), (vec![false], 100));
     }
 
     #[test]

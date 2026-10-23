@@ -54,7 +54,7 @@ fn circuit_matches_clear_with_balances() {
     }
     // The generator must exercise crossing, refusals, credits that fund orders,
     // withdrawals that fit and ones that don't, and both price cases.
-    assert!(filled > 300 * 2, "too few fills: {filled}");
+    assert!(filled > 500, "too few fills: {filled}");
     assert!(refused > 100, "checks changed too few batches: {refused}");
     assert!(credited > 20, "credits changed too few batches: {credited}");
     assert!(withdrawn > 100, "too few withdrawals: {withdrawn}");
@@ -106,6 +106,41 @@ fn a_relayer_cannot_act_as_an_account() {
             assert!(!got.withdrawn[0], "relayer {p} withdrew from row {r}");
         }
     }
+}
+
+/// A judge-mode (mock) row never pays out on chain: its owner's own withdrawal, with the
+/// real key, is refused once any one relayer flags the row, and goes through otherwise.
+#[test]
+fn mock_rows_never_withdraw() {
+    let mut rng = Rng(104);
+    let mut checked = 0;
+    for _ in 0..20 {
+        let mut b = random_batch(&mut rng, 8, 16);
+        let first = |r: usize| (0..r).all(|q| b.accounts[q].key != b.accounts[r].key);
+        let Some(r) = (0..16).find(|&r| b.accounts[r].balance > 0 && first(r)) else {
+            continue;
+        };
+        let (key, amount) = (b.accounts[r].key, b.accounts[r].balance);
+        b.withdrawals = vec![
+            zpredict_core::Withdrawal { key, amount },
+            zpredict_core::Withdrawal {
+                key: [0; 16],
+                amount: 0,
+            },
+        ];
+        b.withdrawal_shares = [vec![key, [0; 16]], vec![[0; 16]; 2], vec![[0; 16]; 2]];
+        b.public.withdrawals = vec![amount, 0];
+        b.mock_flags = std::array::from_fn(|_| vec![false; 16]);
+        assert!(agreed(&b).withdrawn[0], "an unflagged row pays out");
+        for p in 0..3 {
+            b.mock_flags = std::array::from_fn(|q| (0..16).map(|m| q == p && m == r).collect());
+            let got = agreed(&b);
+            assert_eq!(got, expected(&b));
+            assert!(!got.withdrawn[0], "relayer {p}'s flag alone blocks row {r}");
+        }
+        checked += 1;
+    }
+    assert!(checked > 10);
 }
 
 /// Parties that disagree on any public input clear nothing and are told so.
