@@ -147,6 +147,7 @@ async fn orders_contract() {
         credits: vec![],
         deposits: vec![],
         withdrawals: vec![],
+        at: 1_792_700_000,
     };
     state.lock().unwrap().record(ev).unwrap();
     let want = json!({"status": "filled", "fillShare": fill});
@@ -177,6 +178,7 @@ async fn orders_contract() {
     let (_, markets) = call(&app, "GET", "/markets", None).await;
     assert_eq!(markets[0]["lastPrice"], json!(57.5));
     assert_eq!(markets[0]["history"], json!([57.5]));
+    assert_eq!(markets[0]["historyAt"], json!([1_792_700_000u64]));
     assert!(markets[1].get("lastPrice").is_none());
 }
 

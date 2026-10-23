@@ -50,6 +50,10 @@ pub enum Event {
         /// Withdrawal ids that took a slot, and whether each went through.
         #[serde(default)]
         withdrawals: Vec<(String, bool)>,
+        /// When this relayer recorded the batch (unix seconds): the time of its prices
+        /// (`Market.historyAt`, #121). 0 in logs from before it was kept.
+        #[serde(default)]
+        at: u64,
     },
     /// This relayer's scanner found a confirmed deposit of `amount` half-ticks for
     /// `account` in escrow note `note` (`<txid>-<action>`). A `Key` event for its memo
@@ -164,5 +168,14 @@ pub(crate) mod tests {
         assert_eq!(got, vec![e.clone()]);
         s.append(&e).unwrap();
         assert_eq!(Store::open(&dir).unwrap().1, vec![e.clone(), e]);
+    }
+
+    #[test]
+    fn batches_logged_before_their_time_was_kept_replay_as_zero() {
+        let old = r#"{"kind":"batch","batch":3,"ids":[],"fills":[],"balances":[],"prices":[[1,115]],"expired":[]}"#;
+        let Event::Batch { at, prices, .. } = serde_json::from_str(old).unwrap() else {
+            panic!("not a batch");
+        };
+        assert_eq!((at, prices), (0, vec![(1, 115)]));
     }
 }

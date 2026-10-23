@@ -37,6 +37,7 @@ impl State {
                 credits,
                 deposits,
                 withdrawals,
+                at,
             } => {
                 self.table.applied(&credits);
                 self.ledger.apply_deposits(&deposits);
@@ -61,7 +62,7 @@ impl State {
                 }
                 for (market, half_ticks) in prices {
                     let h = self.history.entry(market).or_default();
-                    h.push(f64::from(half_ticks) / 2.0);
+                    h.push((f64::from(half_ticks) / 2.0, at));
                     if h.len() > HISTORY_KEEP {
                         h.remove(0);
                     }
