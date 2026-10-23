@@ -2,7 +2,10 @@
 #   docker build -f apps/web/Dockerfile [--build-arg NEXT_PUBLIC_RELAYERS=a,b,c] .
 FROM node:24.19.0-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df AS build
 ARG NEXT_PUBLIC_RELAYERS=https://r0.zpredict.site,https://r1.zpredict.site,https://r2.zpredict.site
-ENV HUSKY=0 NEXT_TELEMETRY_DISABLED=1 NEXT_PUBLIC_RELAYERS=$NEXT_PUBLIC_RELAYERS
+# The testnet escrow's Ironwood address from the key ceremony (#78); public by design.
+ARG NEXT_PUBLIC_ESCROW_UA=utest18yg3cneyjgxxknjm0j9020hmx5jp2wm67qn2p3rfmflct9hwlt363gzl50qeu3ms2u044hq8jzuzkl2tq8xa4m0ukzvlpqgtvu96ffyy
+ENV HUSKY=0 NEXT_TELEMETRY_DISABLED=1 NEXT_PUBLIC_RELAYERS=$NEXT_PUBLIC_RELAYERS \
+	NEXT_PUBLIC_ESCROW_UA=$NEXT_PUBLIC_ESCROW_UA
 RUN corepack enable
 WORKDIR /repo
 COPY . .
