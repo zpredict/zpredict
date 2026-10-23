@@ -1,0 +1,41 @@
+---
+title: Introduction
+description: A prediction market on Zcash where nobody learns that you bet, which side you took, or how much. Price public, participants private.
+---
+
+zPredict is a shielded prediction market on Zcash, built for ZECATHON 2026 (Private Markets track). Everyone sees the odds. Nobody sees who bet.
+
+- **Orders** are split in your browser into three XOR shares, one per relayer. A single share is uniformly random.
+- **Matching** happens inside 3-party MPC ([polytune](https://github.com/sine-fdn/polytune)): the relayers cross YES against NO at the midpoint and check your balance and your account credential in-circuit. Only your fill (to you) and one public clearing price per market come out.
+- **Collateral** sits in a FROST 2-of-3 escrow on Zcash's Ironwood shielded pool. Withdrawals are batched into one shielded transaction, and every signer re-derives what it signs.
+- **Outcomes** come from Zcash mainnet block data (or, for mirrored markets, from Polymarket), are FROST-signed by the relayers, and are verified in your browser.
+
+Reading orders needs all three relayers to collude; moving funds needs two. The hosted demo runs all three on one VM behind Cloudflare, so read it as a working protocol, not a working trust split. See [Privacy](/docs/privacy) and [Status](/docs/status).
+
+## Try it
+
+1. Open [app.zpredict.site](https://app.zpredict.site) and press **Judge mode**. You get mock testnet collateral without a deposit (it can never be withdrawn).
+2. Pick a market and place an order. Trading alone? Tick **Take the other side (demo)** to add a labelled self-trade, so you see a fill.
+3. Open the **Relayer View** (`/trade/`): three panels of noise, with your own shares lit.
+
+## Where to go next
+
+| If you want to | Read |
+|---|---|
+| Understand the flow end to end | [How it works](/docs/how-it-works) |
+| Know what each party can learn | [Privacy](/docs/privacy), [Threat model](/docs/threat-model) |
+| Build against the relayers | [Relayer API](/docs/relayer-api), [SDK](/docs/sdk) |
+| Run the stack yourself | [Run a relayer](/docs/run-a-relayer) |
+| Check the claims | [Evidence](/docs/evidence) |
+
+## Source
+
+Everything is in one MIT-licensed monorepo, [zpredict/zpredict](https://github.com/zpredict/zpredict). The protocol is specified in [DESIGN.md](https://github.com/zpredict/zpredict/blob/main/DESIGN.md) and audited in [PRIVACY.md](https://github.com/zpredict/zpredict/blob/main/PRIVACY.md); these pages are written from them and from the code, and link to both.
+
+| Path | What |
+|---|---|
+| [`apps/relayer`](https://github.com/zpredict/zpredict/tree/main/apps/relayer) | Relayer: HTTP API, Noise peer links, MPC party, deposits, payouts |
+| [`apps/web`](https://github.com/zpredict/zpredict/tree/main/apps/web), [`apps/landing`](https://github.com/zpredict/zpredict/tree/main/apps/landing), [`apps/docs`](https://github.com/zpredict/zpredict/tree/main/apps/docs) | The app, the site, these docs |
+| [`packages/core`](https://github.com/zpredict/zpredict/tree/main/packages/core), [`packages/circuit`](https://github.com/zpredict/zpredict/tree/main/packages/circuit) | Encodings and the clearing rule; the Garble circuits |
+| [`packages/settle`](https://github.com/zpredict/zpredict/tree/main/packages/settle), [`packages/oracle`](https://github.com/zpredict/zpredict/tree/main/packages/oracle), [`packages/plugins`](https://github.com/zpredict/zpredict/tree/main/packages/plugins) | Escrow scan and FROST payouts; market resolution |
+| [`packages/sdk`](https://github.com/zpredict/zpredict/tree/main/packages/sdk) | The browser client |

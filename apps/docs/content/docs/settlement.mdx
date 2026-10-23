@@ -1,0 +1,62 @@
+---
+title: Settlement & FROST
+description: The FROST 2-of-3 key generation, batched Ironwood payouts, verify-then-sign, and how every relayer secret is sealed at rest.
+---
+
+[`packages/settle`](https://github.com/zpredict/zpredict/tree/main/packages/settle) scans the escrow, builds batched payouts and signs them. It uses Zcash Foundation's `frost-core` 2.2 (RedPallas from `reddsa` at `ed49e9c`) **as a library** for both the DKG and signing, on the librustzcash release of 2026-10-21 (`pczt` 0.10, `orchard` 0.16 with the Ironwood pool, `zcash_primitives` 0.31). Details: [`packages/settle/README.md`](https://github.com/zpredict/zpredict/blob/main/packages/settle/README.md).
+
+## Key generation (DKG)
+
+`settle-payout dkg` runs a 2-of-3 FROST (RedPallas) DKG for `r0 r1 r2`. Each share and the escrow's UFVK are **sealed as they are made**; no share is ever in a clear file. The escrow's full viewing key is the FROST group key `ak` plus random `nk`/`rivk`, the same construction as `zcash-sign generate`, and its address is Ironwood-only.
+
+The hosted testnet escrow came from one ceremony on 2026-10-23, inside a throwaway container with `/work` on tmpfs ([`ceremony.sh`](https://github.com/zpredict/zpredict/blob/main/deploy/production/ceremony.sh)): DKG, reseal each share under that relayer's own store key into its volume, one memo key per relayer, then relayer 0's watch-only wallet, sealed. Plaintext keys only ever existed in that container's memory, tmpfs and pipes.
+
+<Callout type="warn">
+On the demo the DKG ran all three parties in one process on the one VM. Independent operators would run the DKG rounds between hosts over the Noise channel.
+</Callout>
+
+## Batched payouts
+
+| Step | What happens |
+|---|---|
+| Debit | The clearing circuit takes each withdrawal from its row (or refuses it) |
+| Create | Relayer 0 builds **one PCZT** from the escrow wallet: an Ironwood output per payout, change to the escrow's internal scope, ZIP 317 fee, wallet-default padding |
+| Prove | Relayer 0 proves in the background (zcash-devtool), off the signing path |
+| Sign | Relayers 0 and 1 run one FROST session for every spend, exchanging round messages over the Noise peer links |
+| Broadcast | Relayer 0 records `paying` first (so a crash never pays twice), combines, broadcasts, and tells the others the txid |
+
+## Verify, then sign
+
+Each signer runs `verify_then_sign` on its own copy of the PCZT against its own ledger's payout vector. It refuses unless nothing is transparent, Sapling or Orchard; every output matches its commitment; every payout is present exactly once and decrypts; every other non-zero output goes back to the escrow's internal scope; and the fee is exactly ZIP 317. It then checks that each signing request carries the recomputed sighash and the right randomizer. The e2e script signs against a vector tampered by one zatoshi and requires a refusal:
+
+```
+settle-payout: refused to sign: action 0: 4000000 zats to an address not in the payout vector
+```
+
+## Why a new signer
+
+The planned `zcash-sign` from frost-zcash-demo cannot sign post-NU7 PCZTs (it is pinned to `zcash_protocol` 0.10 / `pczt` 0.8.0-rc.1, where NU7 is a placeholder branch id). `zpredict-settle` computes the shielded sighash with the v6 rule for v6 transactions and takes randomizers from both the Orchard and the Ironwood bundles.
+
+## Secrets at rest
+
+Relayer secrets are sealed with ChaCha20-Poly1305 ([`store.rs`](https://github.com/zpredict/zpredict/blob/main/packages/settle/src/store.rs)) under a 32-byte store key, `ZPREDICT_STORE_KEY`, which only ever exists in the environment (a Coolify secret in production). Each sealed file binds its label as associated data, so one secret can't be passed off as another.
+
+| Secret | Holder | At rest |
+|---|---|---|
+| FROST key share | each relayer | `share.sealed` |
+| Escrow UFVK (shared viewing key) | every relayer | `ufvk.sealed` |
+| Deposit-memo key (X25519) | each relayer | `memo.sealed`; public half at `GET /memo-key` |
+| Escrow wallet | relayer 0 (prover) | `escrow-wallet.sealed`, opened into tmpfs only |
+| Noise key | each relayer | Coolify compose secret under `/run/secrets` |
+| Account tag | your browser | `localStorage` only |
+
+Outcome signatures use the same shares: see [Markets & resolution](/docs/markets#signed-outcomes).
+
+## Run it
+
+```sh
+scripts/settle-e2e.sh    # regtest → sealed DKG → two deposits → one batched payout → mined
+scripts/scan-e2e.sh      # regtest → DKG → a tagged deposit → r0, r1, r2 scan it
+```
+
+Both need Docker, Rust 1.91.1, `uv`, `jq` and `openssl`. See [Run a relayer](/docs/run-a-relayer) and [Evidence](/docs/evidence).

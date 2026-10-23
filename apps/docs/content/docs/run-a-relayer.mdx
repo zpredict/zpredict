@@ -1,0 +1,69 @@
+---
+title: Run a relayer
+description: Three relayers on your machine with real MPC, the full regtest end-to-end run, and how the hosted demo is deployed through Coolify.
+---
+
+The relayer is one Rust binary, [`apps/relayer`](https://github.com/zpredict/zpredict/tree/main/apps/relayer) (`zpredict-relayer`). Its config keys are documented in [`apps/relayer/README.md`](https://github.com/zpredict/zpredict/blob/main/apps/relayer/README.md#config).
+
+## Prerequisites
+
+Node 24 with pnpm 10, Rust 1.91.1. The regtest runs also need Docker, `uv`, `jq` and `openssl`.
+
+```sh
+pnpm install
+cargo test --workspace     # slow real-MPC and live-network tests stay #[ignore]
+```
+
+## 1. App with mock relayers
+
+```sh
+pnpm --filter @zpredict/web dev:mock    # app + three mock relayers on :3000
+```
+
+No Rust needed. The mocks implement the relayer API in one process and combine the shares **in the clear** (with bot orders for liquidity); real relayers never see each other's shares.
+
+## 2. Three real relayers
+
+```sh
+export CARGO_TARGET_DIR=$HOME/.cache/zpredict-target   # optional, shared build cache
+apps/relayer/scripts/dev.sh                            # API :4101-4103, peers :4201-4203, real MPC
+# second terminal
+NEXT_PUBLIC_RELAYERS=http://localhost:4101,http://localhost:4102,http://localhost:4103 \
+  pnpm --filter @zpredict/web dev                      # http://localhost:3000
+```
+
+[`dev.sh`](https://github.com/zpredict/zpredict/blob/main/apps/relayer/scripts/dev.sh) generates Noise keys into `apps/relayer/config/keys/` on first run and keeps state in `config/data/` (both gitignored; delete `data` to start fresh). Startup compiles the circuit (~6 s) and preprocesses the first run (~6 s). Then click **Judge mode** and trade; a fill appears about half a 4 s window plus 0.5 s of MPC later.
+
+`INSECURE=1 apps/relayer/scripts/dev.sh` swaps in the plaintext dev matcher: batches finish instantly and **relayer 0 sees every order**. It exists only behind the `dev-insecure` cargo feature plus `insecure_matcher = true`. Never deploy it.
+
+One relayer by hand: `zpredict-relayer <config.toml>`; a key pair: `zpredict-relayer keygen <prefix>`.
+
+## 3. Regtest end to end
+
+```sh
+scripts/relayer-e2e.sh                # full run
+SKIP_BUILD=1 scripts/relayer-e2e.sh   # reuse built tools
+KEEP=1 scripts/relayer-e2e.sh         # leave regtest and the relayers running
+```
+
+[`relayer-e2e.sh`](https://github.com/zpredict/zpredict/blob/main/scripts/relayer-e2e.sh) starts Zebra regtest and lightwalletd ([`deploy/regtest`](https://github.com/zpredict/zpredict/tree/main/deploy/regtest)), runs the sealed FROST DKG, and makes two tagged 25-unit deposits. Three real relayers (MPC over Noise, settlement on) then scan and credit them; YES 60 × 10 crosses NO 45 × 10 at 57.5¢; every node resolves the market YES and the resolution MPC pays A; **each relayer's forged withdrawal for A is refused**; A withdraws to a fresh address; relayers 0 and 1 verify-then-sign one payout; it is mined as v6, Ironwood only, and the payee holds exactly `(5850 − 2) × 5000` zats. Finally it checks no relayer secret is left unsealed. State lives in `~/.cache/zpredict-run`, wiped every run.
+
+## 4. Production (the hosted demo)
+
+[`deploy/README.md`](https://github.com/zpredict/zpredict/blob/main/deploy/README.md) is the operator's guide. In short:
+
+| URL | Coolify resource (project `zpredict`) | Loopback port |
+|---|---|---|
+| zpredict.site | `landing` ([`apps/landing/Dockerfile`](https://github.com/zpredict/zpredict/blob/main/apps/landing/Dockerfile)) | 3170 |
+| app.zpredict.site | `web` ([`apps/web/Dockerfile`](https://github.com/zpredict/zpredict/blob/main/apps/web/Dockerfile)) | 3171 |
+| r0–r2.zpredict.site | compose `relayers` ([`compose.yaml`](https://github.com/zpredict/zpredict/blob/main/deploy/production/compose.yaml)) | 3172–3174 |
+| docs.zpredict.site | `docs` ([`apps/docs/Dockerfile`](https://github.com/zpredict/zpredict/blob/main/apps/docs/Dockerfile)) | 3175 |
+
+- Request path: browser → Cloudflare → host nginx on the VPS (TLS, [`nginx.conf`](https://github.com/zpredict/zpredict/blob/main/deploy/production/nginx.conf): no access log, client-IP headers stripped) → container on `127.0.0.1:<port>`. Coolify builds the images on the VPS from `main`; nothing goes to a registry.
+- A merge to `main` runs CI, then [`deploy.yml`](https://github.com/zpredict/zpredict/blob/main/.github/workflows/deploy.yml) asks Coolify to deploy every uuid in `COOLIFY_RESOURCES`.
+- The three relayers share one image ([`relayer.Dockerfile`](https://github.com/zpredict/zpredict/blob/main/deploy/production/relayer.Dockerfile), distroless, non-root) and one [`relayer.toml`](https://github.com/zpredict/zpredict/blob/main/deploy/production/relayer.toml); `ZPREDICT_INDEX` picks the party. Noise keys and store keys are Coolify secrets mounted under `/run/secrets`. Each has its own data volume; never delete one while orders are open.
+- Health: `https://rN.zpredict.site/health` (`peers` all `true` once a batch ran).
+
+<Callout type="warn">
+All three relayers run on **one VM**. The security model needs three independent operators on separate hosts; the demo shows the protocol working, not the trust split.
+</Callout>

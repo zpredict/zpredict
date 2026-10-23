@@ -1,0 +1,76 @@
+---
+title: Relayer API
+description: Every HTTP endpoint the three relayers serve, the JSON they take and return, and the byte encodings behind the hex.
+---
+
+Each relayer is its own origin: `https://r0.zpredict.site`, `https://r1.zpredict.site`, `https://r2.zpredict.site`. The browser talks to each one directly; share `i` of anything goes only to relayer `i`. Routes are in [`apps/relayer/src/api/mod.rs`](https://github.com/zpredict/zpredict/blob/main/apps/relayer/src/api/mod.rs); the spec is [DESIGN.md "Relayer API"](https://github.com/zpredict/zpredict/blob/main/DESIGN.md#relayer-api).
+
+## Conventions
+
+- JSON in and out. CORS allows only the web origin. No cookies or auth headers; clients send `credentials: "omit"` and `no-referrer`. Every response is `no-store`; bodies are capped at 1 KiB.
+- No IP logging and no access logs with client addresses.
+- Hex is lowercase; `hexN` means N hex characters.
+- Costs and balances are in **half-ticks**: 1 unit of collateral = 200 half-ticks.
+
+## Endpoints
+
+| Call | Reply |
+|---|---|
+| `GET /health` | `{relayer: 0\|1\|2, height, batch, peers: boolean[]}` |
+| `GET /markets` | `Market[]` (below) |
+| `POST /orders` `{orderId: hex32, share: hex52, token: hex32}` | `202 {batch}`: the batch the share joins. `token` is fresh and random per order and relayer. A second share for the same orderId is `409` |
+| `GET /orders/:orderId?token=hex32` | `{status: "pending"\|"filled"\|"unfilled", fillShare?: hex20}`. A missing or wrong token answers `404` like an unknown order, so one relayer (which knows every orderId) can't collect the other fill shares |
+| `GET /accounts/:id?key=hex32` | `{balanceShare: hex16, seat?: "seated"\|"waiting"\|"none", mock?: boolean}`. `id` is hex16 (u64 LE), `key` this relayer's share of the tag, else `403`; unknown ids hold a zero share |
+| `GET /memo-key` | `{relayer, memoKey: hex64}`: this relayer's X25519 public key for its deposit-memo slot; `404` without one |
+| `GET /group-key` | `{relayer, groupKey: hex64, threshold: 2}`: the escrow's FROST group key, which outcome signatures verify against; `404` while signing is off |
+| `GET /view?after=<seq>` | `{items: [{seq, kind: "order"\|"fill", digest: hex32}]}`: one item per share received, as `BLAKE2b-128(personal "zPredictViewItem", share)`; never the share or orderId. Powers the Relayer View |
+| `POST /judge/claim` `{account: hex16, keyShare: hex32}` | `200 {}`. **Mock, testnet only.** A repeat for the same id and share is `200` with no second credit; a different share for a known id is `409`; a full table is `503` |
+| `POST /withdrawals` `{withdrawalId: hex32, share: hex32, amount: half-ticks, address}` | `202 {}`; only with `[settlement]` on |
+| `GET /withdrawals/:withdrawalId` | `{status: "pending"\|"refused"\|"debited"\|"paying"\|"paid", txid?, payout?: "retrying"}` |
+
+After a batch, **every** batched order is `filled` with a `fillShare`, because a relayer cannot tell a fill from a miss. The owner combines the three shares and reads the record's `filled` flag. `unfilled` only means "expired before batching" (one of the browser's three POSTs never arrived).
+
+## Market
+
+```ts
+{
+  id, question, plugin, params, closeHeight, resolveHeight,
+  status: "open" | "closed" | "resolved",
+  outcome?: "yes" | "no",
+  outcomeSig?: hex128,          // FROST 2-of-3 signature, R ‖ S
+  blockHash?: hex64, blockHeight?: number,       // chain-data markets
+  source?: "polymarket", conditionId?: string,   // mirrored markets
+  rolling?: true,
+  category?, event?: {id, title, outcome?}, opensAt?, rules?,  // display only, never signed
+  lastPrice?: number, history?: number[], historyAt?: number[],
+  reference?: {source: "polymarket", price, url, updatedAt?, history: [{t, price}]},
+}
+```
+
+- `lastPrice` is cents per YES contract at the latest cross (the midpoint, so it can end in .5); `history` the last clearing prices, oldest first. Both are absent until the first fill. They are public by design: the batch reveals that a cross happened and at what price, never who, which orders, how many or what size.
+- `historyAt` is optional: the app falls back to one point per cross when a relayer doesn't serve it ([#121](https://github.com/zpredict/zpredict/issues/121)).
+- `reference` is mirrored markets only, fetched by the relayers, never by the browser.
+
+## Encodings
+
+All little-endian, identical in `zpredict-core` and `@zpredict/sdk`, pinned by [`packages/core/testdata/vectors.json`](https://github.com/zpredict/zpredict/blob/main/packages/core/testdata/vectors.json).
+
+| Value | Bytes | Layout |
+|---|---|---|
+| Order (and each share) | 26 | `market u32 \| side u8 (0 yes, 1 no) \| price u8 (1..=99) \| size u32 \| key [16]`, split as `[r0, r1, order ^ r0 ^ r1]` |
+| Fill record | 10 | `size u32 \| total_cost u32 \| side u8 \| flags u8 (bit0 = filled)`, summed over every match; unfilled is all zero |
+| Balance share | 8 | `u64` half-ticks |
+| Account tag | 16 | Random, browser-made. `id = BLAKE2b-64(personal "zPredictAccount1", tag)`; `sᵢ = BLAKE2b-128(personal "zPredictKeyShare", tag ‖ i)` for i = 0, 1; `s₂ = tag ⊕ s₀ ⊕ s₁` |
+| Deposit memo | 512 | `0xFF \| 0x02 \| epk (32) \| slot₀ \| slot₁ \| slot₂`, zero after byte 154 ([`memo-vectors.json`](https://github.com/zpredict/zpredict/blob/main/packages/settle/testdata/memo-vectors.json)) |
+| orderId | 16 | Random; links the three shares of one order and nothing else |
+| Withdrawal share | 16 | The tag, freshly XOR-split; amount and address are public |
+
+Orders above `MAX_SIZE` (1,000,000 contracts) are rejected, so `total_cost` always fits a `u32`.
+
+## Try it
+
+```sh
+curl -s https://r0.zpredict.site/health
+curl -s https://r0.zpredict.site/markets | jq '.[] | {id, question, status, lastPrice}'
+curl -s https://r0.zpredict.site/group-key
+```

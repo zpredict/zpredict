@@ -1,0 +1,43 @@
+---
+title: Contributing
+description: Issue first, small conventional commits, CI green, and the privacy rules every change keeps.
+---
+
+The rules live in [CONTRIBUTING.md](https://github.com/zpredict/zpredict/blob/main/CONTRIBUTING.md).
+
+## Workflow
+
+1. **Issue first.** Labels: one `type:`, the `area:`s it touches, one `priority:`, plus `privacy` if it changes what anyone can learn.
+2. **Branch** off `main`: `feat/…`, `fix/…`, `refactor/…`, `docs/…`, `chore/…`.
+3. **Small commits**, [Conventional Commits](https://www.conventionalcommits.org/): `feat(core): …`.
+4. **PR** with `Closes #n`, the issue's labels, what changed, and test evidence. Add a comment saying where review should focus.
+5. Merge commits only; branches auto-delete. `main` is protected and requires CI.
+
+## Checks
+
+The Husky pre-commit hook runs Biome on staged files and `cargo fmt --check`. Before you open a PR:
+
+```sh
+cargo fmt --all && cargo clippy --all-targets -- -D warnings && cargo test
+pnpm check && pnpm build && pnpm test
+```
+
+## Privacy rules
+
+A leak disqualifies the project, so every PR keeps to these:
+
+- No transparent addresses anywhere.
+- No third-party requests from the frontends (these docs included).
+- No analytics, no IP logs.
+- Never send two order shares to the same origin.
+- Never commit keys or seeds.
+
+## These docs
+
+Pages are MDX in [`apps/docs/content/docs`](https://github.com/zpredict/zpredict/tree/main/apps/docs/content/docs); the sidebar order is `meta.json`. Every claim must be true of `main`, with a link to the source. Run them locally:
+
+```sh
+pnpm --filter @zpredict/docs dev          # http://localhost:3002
+pnpm --filter @zpredict/docs lint:links   # internal links, anchors and GitHub paths resolve
+pnpm --filter @zpredict/docs build && pnpm --filter @zpredict/docs test
+```

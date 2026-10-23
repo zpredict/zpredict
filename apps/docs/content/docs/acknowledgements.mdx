@@ -1,0 +1,19 @@
+---
+title: Acknowledgements
+description: The open-source work zPredict stands on.
+---
+
+| Project | What we use |
+|---|---|
+| [polytune](https://github.com/sine-fdn/polytune) and [Garble](https://github.com/sine-fdn/garble-lang) by SINE | 3-party MPC (WRK17 authenticated garbling) and the circuit language. Vendored at rev `47dc378` (MIT) with preprocessing split from the online phase |
+| [librustzcash](https://github.com/zcash/librustzcash) and [zcash-devtool](https://github.com/zcash/zcash-devtool) | `pczt`, `orchard` (Ironwood), `zcash_primitives`, `zcash_client_backend`; wallets, proving and broadcast |
+| [Zcash Foundation FROST](https://github.com/ZcashFoundation/frost) and [frost-zcash-demo](https://github.com/ZcashFoundation/frost-zcash-demo) | `frost-core` and RedPallas (`reddsa`) for the DKG and threshold signing |
+| [Zebra](https://github.com/ZcashFoundation/zebra) and [lightwalletd](https://github.com/zcash/lightwalletd) | The regtest chain for end-to-end tests; `zec.rocks` and `testnet.zec.rocks` for the hosted demo |
+| [Renegade](https://github.com/renegade-fi/renegade) | The idea of an MPC dark pool. No Renegade code is used |
+| [noble](https://paulmillr.com/noble/) | `@noble/hashes`, `@noble/ciphers` in the SDK |
+| [Fumadocs](https://fumadocs.dev) | This documentation site (Next.js, MDX, search) |
+| [MotionSites](https://motionsites.ai) | The ASCII Studio design language of the site, the app and these docs |
+| [Polymarket](https://polymarket.com) | Public market data (Gamma and CLOB APIs) for the mirrored markets, fetched by the relayers. zPredict is not affiliated with Polymarket |
+| [JetBrains Mono](https://www.jetbrains.com/lp/mono/) via [Fontsource](https://fontsource.org) | The one typeface, self-hosted |
+
+zPredict is MIT-licensed and was built for ZECATHON 2026.

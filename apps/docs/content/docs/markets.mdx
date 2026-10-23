@@ -1,0 +1,45 @@
+---
+title: Markets & resolution
+description: Chain-data markets, the hourly rolling market, mirrored Polymarket markets and whose word each one trusts.
+---
+
+A market is `{id, question, resolution rule, close height, resolve height}`. Prices are ticks from 1 to 99 cents. A matched YES/NO pair locks exactly 1 unit of collateral and pays 1 unit to the winning side. Each rule is a plugin implementing the `Resolver` trait from [`packages/oracle`](https://github.com/zpredict/zpredict/tree/main/packages/oracle); a new market type is a new plugin.
+
+## Chain-data markets
+
+Resolved from **Zcash mainnet** blocks, read by each relayer from its own lightwalletd connection (`zec.rocks:443` on the demo). Anyone can recompute them.
+
+| Plugin | Question | Rule |
+|---|---|---|
+| [`nu7-activation`](https://github.com/zpredict/zpredict/blob/main/packages/plugins/nu7-activation/src/lib.rs) | Will NU7 activate at height H? | YES iff block H's coinbase carries the NU7 consensus branch ID |
+| [`ironwood-pool`](https://github.com/zpredict/zpredict/blob/main/packages/plugins/ironwood-pool/src/lib.rs) | Will the Ironwood pool hold ≥ N notes at H? | The Ironwood commitment tree size at the end of block H |
+| [`shielded-actions`](https://github.com/zpredict/zpredict/blob/main/packages/plugins/shielded-actions/src/lib.rs) | Will block H contain ≥ N shielded actions? | Sapling spends + outputs + Orchard + Ironwood actions in the compact block |
+
+## Hourly rolling market
+
+[`rolling.rs`](https://github.com/zpredict/zpredict/blob/main/apps/relayer/src/markets/rolling.rs) makes a new market every hour of nominal block time: "Will mainnet block H contain ≥ N shielded actions?", with H one hour ahead (48 blocks at 75 s; 144 blocks at 25 s from NU7 at 3,543,405), trading closing 5 minutes before H, and N the median of the 24 blocks before the window, so YES and NO are about even. Ids are `1,000,000 + window`, derived from heights only, so all three relayers make the same market without talking. Resolved rolling markets stay listed for 24 h.
+
+## Mirrored Polymarket markets
+
+[`packages/plugins/polymarket`](https://github.com/zpredict/zpredict/blob/main/packages/plugins/polymarket/src/lib.rs) mirrors a binary Yes/No Polymarket market: the same question, traded on zPredict's own private book. Each relayer reads `gamma-api.polymarket.com/markets/slug/<slug>` itself, checks the conditionId and that the outcomes are exactly `["Yes","No"]`, and resolves once the market is `closed` **and** `umaResolutionStatus` is `"resolved"`: YES iff the Yes outcome price is exactly 1 (a 50-50 settlement is NO). A proposed or disputed UMA answer leaves it unresolved.
+
+<Callout type="warn">
+**The oracle for these markets is Polymarket (UMA), not chain data.** The relayers attest what Polymarket published (each fetches it on its own, and the outcome is signed only if all three read the same), but nobody can recompute it from a block. A wrong or disputed Polymarket resolution is zPredict's resolution. Trading stays exactly as private as on any other market.
+</Callout>
+
+The relayers also fetch Polymarket's Yes price and a week of hourly history, at most every 5 minutes ([`reference.rs`](https://github.com/zpredict/zpredict/blob/main/apps/relayer/src/reference.rs)), and serve it as `reference` in `/markets`. The browser never contacts Polymarket; the app shows the market page only as a plain outbound link.
+
+## Signed outcomes
+
+Only a resolution all three relayers computed identically is signed, FROST 2-of-3 with the escrow's key shares, as an ordinary RedPallas signature under the group key. The signed bytes are `"zPredict outcome v1\n"` followed by compact JSON:
+
+```json
+{"market":1,"outcome":"yes","height":3543405,"blockHash":"…"}
+{"market":11,"outcome":"no","source":"polymarket","conditionId":"0x…"}
+```
+
+The two forms have disjoint keys, so one can never verify as the other. [`verifyOutcome`](/docs/sdk#verifyoutcome) checks them in the browser; [`outcome-vectors.json`](https://github.com/zpredict/zpredict/blob/main/packages/settle/testdata/outcome-vectors.json) pins the format for Rust and TypeScript. Without a sealed key share a relayer still resolves, and the app shows "Resolved (unsigned)"; nothing is ever signed with a stand-in key.
+
+## Capacity
+
+One clearing run has `DEFAULT_MARKETS = 6` market slots. The demo uses all six: NU7 activation, Ironwood ≥ 900,000 notes, three mirrored markets on the US midterms (two House-control rows of one event and the Texas Senate race), and the hourly rolling market. The rolling generator never opens a market past the cap; a seventh open market would need a second MPC run per window. The live list is in [`deploy/production/relayer.toml`](https://github.com/zpredict/zpredict/blob/main/deploy/production/relayer.toml) and at `GET /markets`.
