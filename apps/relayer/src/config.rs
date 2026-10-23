@@ -47,7 +47,8 @@ pub struct Config {
     /// ~N² AND gates: 8 ≈ 5 s, 16 ≈ 13 s per window on an M4 Pro at 32 rows (#66).
     pub batch_size: usize,
     /// Balance-table rows per batch, i.e. funded accounts the deployment can hold. Each
-    /// row costs ~8k AND gates: 32 ≈ 15 s, 64 ≈ 23 s per market per window (#48).
+    /// row costs ~6k AND gates; preprocessing on an M4 Pro is 5.7 s at 32, 8.0 s at 48,
+    /// 10 s at 64 rows (#99).
     #[serde(default = "default_table_rows")]
     pub table_rows: usize,
     pub window_secs: u64,

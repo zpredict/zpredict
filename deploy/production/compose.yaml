@@ -16,11 +16,12 @@ x-relayer: &relayer
   image: zpredict-relayer:local
   pull_policy: never
   restart: unless-stopped
-  # Peak RSS in a real batch on the VPS (8 slots, 32 rows, account keys, 4 markets; docker
-  # stats, ~2 s samples): r0 694 MiB, r1 421, r2 389. Party 0 does more of the work, so it
-  # gets a larger cap.
-  mem_limit: 640m
-  memswap_limit: 640m
+  # Peak RSS on Linux (VmHWM, 8 slots, 4 markets, a preprocessed run held, #94/#99): at 32
+  # rows r0 728 MiB, r1 423, r2 473; at 48 rows (this deployment) r0 1,061-1,092, r1
+  # 537-559, r2 578-586. Relayer 0, the evaluator, holds the garbled tables, so it gets a
+  # larger cap. The VPS measured 32 rows at r0 694, r1 421, r2 389 (docker stats).
+  mem_limit: 768m
+  memswap_limit: 768m
   cpus: 2
   # No read_only: compose copies env-sourced secrets into the container filesystem.
 
@@ -31,8 +32,8 @@ services:
       context: ../..
       dockerfile: deploy/production/relayer.Dockerfile
     pull_policy: build
-    mem_limit: 1024m
-    memswap_limit: 1024m
+    mem_limit: 1280m
+    memswap_limit: 1280m
     environment:
       ZPREDICT_INDEX: 0
     secrets:
