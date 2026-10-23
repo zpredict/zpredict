@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { LANDING_URL as SITE } from "@/lib/config";
+import { DOCS_URL, LANDING_URL as SITE } from "@/lib/config";
 
 /** Site footer: what zPredict is, where to read more. Only our own origins (privacy gate). */
 export default function Footer() {
@@ -23,11 +23,13 @@ export default function Footer() {
 					<p className="sitefoot__head">Privacy</p>
 					<Link href="/threat-model/">Threat model</Link>
 					<a href={`${SITE}/#how`}>How it works</a>
+					<a href={`${DOCS_URL}/docs/privacy`}>Privacy docs</a>
 				</div>
 				<div>
 					<p className="sitefoot__head">zPredict</p>
 					<a href={`${SITE}/`}>About</a>
 					<a href={`${SITE}/pitch/`}>2-minute pitch</a>
+					<a href={DOCS_URL}>Docs</a>
 				</div>
 			</nav>
 			<p className="sitefoot__fine dim">

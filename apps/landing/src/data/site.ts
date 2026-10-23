@@ -4,6 +4,7 @@ export const site = {
 		"The first shielded prediction market on Zcash. Nobody learns that you bet, which side, or how much.",
 	appUrl: import.meta.env.PUBLIC_APP_URL ?? "https://app.zpredict.site",
 	repoUrl: "https://github.com/zpredict/zpredict",
+	docsUrl: "https://docs.zpredict.site",
 	ogImage: "/media/og.jpg",
 	cta: "Open the app",
 } as const;
@@ -20,6 +21,7 @@ export const navLinks: NavLink[] = [
 	{ label: "Relayer view", href: "#relayer-view" },
 	{ label: "Threat model", href: "#threat-model" },
 	{ label: "Questions", href: "#faq" },
+	{ label: "Docs", href: "https://docs.zpredict.site" },
 ];
 
 /** Hero highlighter strips. Phones drop the last one (components/Journey.astro). */

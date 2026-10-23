@@ -2,13 +2,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef, useState } from "react";
-import { LANDING_URL } from "@/lib/config";
+import { DOCS_URL, LANDING_URL } from "@/lib/config";
 import { motionOk } from "@/lib/scramble";
 
 const NAV = [
 	{ href: "/", label: "Markets" },
 	{ href: "/trade/", label: "Relayer View" },
 	{ href: "/threat-model/", label: "Threat model" },
+	{ href: DOCS_URL, label: "Docs" },
 	{ href: LANDING_URL, label: "Landing" },
 ] as const;
 

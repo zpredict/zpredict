@@ -43,6 +43,8 @@ if (dialog && menuButton) {
 		if (e.target === dialog) close();
 	});
 	for (const link of dialog.querySelectorAll<HTMLAnchorElement>(".js-menu-link")) {
+		// Other pages (the docs) navigate normally; in-page anchors close the menu first.
+		if (link.origin !== location.origin || !link.hash) continue;
 		link.addEventListener("click", (e) => {
 			e.preventDefault();
 			const target = document.querySelector(link.hash);
