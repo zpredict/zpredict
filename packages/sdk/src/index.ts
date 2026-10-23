@@ -176,7 +176,10 @@ export interface Market {
 	lastPrice?: number;
 	/** The last N clearing prices (same unit as `lastPrice`), oldest first, one per batch that crossed. */
 	history?: number[];
-	/** Unix seconds of each `history` entry (the batch's time), if the relayer serves them (#117). */
+	/**
+	 * When each `history` price cleared: unix seconds, same length and order as `history`.
+	 * 0 marks a price recorded before relayers kept the time (#121): skip it on a time axis.
+	 */
 	historyAt?: number[];
 }
 
