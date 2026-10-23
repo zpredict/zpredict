@@ -98,8 +98,8 @@ pub struct State {
     pub payout_retrying: bool,
     /// Deposits, withdrawals and resolved markets (`ledger.rs`).
     pub ledger: Ledger,
-    /// Market id → public clearing prices in cents (YES side), oldest first.
-    history: HashMap<u32, Vec<f64>>,
+    /// Market id → public clearing prices in cents (YES side) and their times, oldest first.
+    history: HashMap<u32, Vec<(f64, u64)>>,
     view: VecDeque<ViewItem>,
     seq: u64,
     store: Store,
@@ -225,8 +225,12 @@ impl State {
         items.take(max).cloned().collect()
     }
 
-    pub fn history(&self, market: u32) -> &[f64] {
-        self.history.get(&market).map_or(&[], Vec::as_slice)
+    /// `market`'s public clearing prices (cents, oldest first) and when each was recorded
+    /// (unix seconds; 0 = before #121).
+    pub fn history(&self, market: u32) -> (Vec<f64>, Vec<u64>) {
+        self.history
+            .get(&market)
+            .map_or_else(Default::default, |h| h.iter().copied().unzip())
     }
 
     /// This relayer's share of every position: each batched order with its fill share,

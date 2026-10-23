@@ -227,6 +227,9 @@ impl<M: Matcher> Batcher<M> {
                     credits: if run { credits } else { Vec::new() },
                     deposits: if run { deposits } else { Vec::new() },
                     withdrawals: results.map(|((id, _), ok)| (id.to_string(), *ok)).collect(),
+                    at: SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .map_or(0, |d| d.as_secs()),
                 })?;
             }
         }

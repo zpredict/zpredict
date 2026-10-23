@@ -21,7 +21,8 @@ pub async fn health(State(api): State<Api>) -> Response {
 }
 
 /// `Market` plus the public clearing prices (#39): `lastPrice` and `history` in cents,
-/// YES side. Prices are public by design; sizes and counts are not published.
+/// YES side, and `historyAt`, when each was recorded (unix seconds, 0 = unknown; #121).
+/// Prices are public by design; sizes and counts are not published.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct MarketView<'a> {
@@ -29,8 +30,10 @@ struct MarketView<'a> {
     market: &'a Market,
     #[serde(skip_serializing_if = "Option::is_none")]
     last_price: Option<f64>,
-    #[serde(skip_serializing_if = "<[f64]>::is_empty")]
-    history: &'a [f64],
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    history: Vec<f64>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    history_at: Vec<u64>,
     /// Mirrored markets: the source's own price, fetched by this relayer (`reference.rs`).
     #[serde(skip_serializing_if = "Option::is_none")]
     reference: Option<Reference>,
@@ -41,11 +44,12 @@ pub async fn markets(State(api): State<Api>) -> Response {
     let s = api.state.lock().expect("state lock");
     let list: Vec<MarketView> = (s.markets.iter())
         .map(|m| {
-            let history = s.history(m.id);
+            let (history, history_at) = s.history(m.id);
             MarketView {
                 market: m,
                 last_price: history.last().copied(),
                 history,
+                history_at,
                 reference: refs.get(&m.id).cloned(),
             }
         })
