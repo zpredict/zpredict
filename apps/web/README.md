@@ -32,7 +32,7 @@ Relayer URLs are baked in at build time from `NEXT_PUBLIC_RELAYERS="url0,url1,ur
 
 The escrow address is baked in from `NEXT_PUBLIC_ESCROW_UA` (published by the DKG). Without it, the flow says it isn't live yet and points to judge mode. Try it locally with `NEXT_PUBLIC_ESCROW_UA=utest1… pnpm --filter @zpredict/web dev:mock`: the mock relayers serve memo keys, but they don't scan deposits.
 
-**Withdrawals** (trade page, "Withdraw", once the account has a tag): an amount in units and a fresh unified address with an Ironwood (Orchard) receiver. Each relayer receives only a fresh XOR share of the tag with the public amount and address (`submitWithdrawal`), so no relayer learns whose withdrawal it is or can forge one; the status (`pending → debited → paying → paid`, or `refused` if the balance doesn't cover it) comes from relayer 0, with the txid once broadcast. The mock relayers combine the shares, debit and report a made-up txid.
+**Withdrawals** (trade page, "Withdraw", once the account has a tag): an amount in units and a fresh unified address with an Ironwood (Orchard) receiver. Each relayer receives only a fresh XOR share of the tag with the public amount and address (`submitWithdrawal`), so no relayer learns whose withdrawal it is or can forge one; the status (`pending → debited → paying → paid`, or `refused` if the balance doesn't cover it) comes from relayer 0, with the txid once broadcast. The mock relayers combine the shares, debit and report a made-up txid. A judge-mode tag gets a short explanation instead of the form: its credit is mock collateral, so it is never withdrawable (#104).
 
 ## Privacy gate
 

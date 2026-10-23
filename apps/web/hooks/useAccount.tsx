@@ -10,6 +10,8 @@ import { usePoll } from "./usePoll";
 
 interface Account {
 	tag: string | null;
+	/** Judge-mode tag (mock credit): its balance can't be withdrawn as testnet ZEC (#104). */
+	judge: boolean;
 	balance: bigint | null;
 	/** `waiting`: the relayers' table is full, so this account's orders can't fill yet. */
 	seat: Seat | null;
@@ -32,8 +34,13 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 	const [tag, setTag] = useState<string | null>(null);
 	const [balance, setBalance] = useState<bigint | null>(null);
 	const [seat, setSeat] = useState<Seat | null>(null);
+	const [judge, setJudge] = useState(false);
 
-	useEffect(() => setTag(load(KEYS.tag)), []);
+	useEffect(() => {
+		setTag(load(KEYS.tag));
+		// Tags from before `own` existed count as judge tags: real deposits hadn't started.
+		setJudge(load(KEYS.own) === null);
+	}, []);
 
 	const refresh = useCallback(async () => {
 		if (!tag) return;
@@ -51,19 +58,24 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 		save(KEYS.claim, t);
 		await claimJudge(t);
 		save(KEYS.tag, t);
+		save(KEYS.own, null);
 		save(KEYS.claim, null);
 		setTag(t);
+		setJudge(true);
 	}, []);
 
 	const create = useCallback(() => {
 		const t = newTag();
 		save(KEYS.tag, t);
 		setTag(t);
+		save(KEYS.own, "1");
+		setJudge(false);
 		return t;
 	}, []);
 
 	const forget = useCallback(() => {
 		save(KEYS.tag, null);
+		save(KEYS.own, null);
 		save(KEYS.orders, null);
 		setTag(null);
 		setBalance(null);
@@ -71,7 +83,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	return (
-		<Ctx.Provider value={{ tag, balance, seat, claim, create, forget, refresh }}>
+		<Ctx.Provider value={{ tag, balance, seat, judge, claim, create, forget, refresh }}>
 			{children}
 		</Ctx.Provider>
 	);
