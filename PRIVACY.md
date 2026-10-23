@@ -84,6 +84,7 @@ everything", which is already true of the single demo VM (see Accepted limitatio
 ## Accepted limitations
 
 - **Single-VM demo.** All three relayers run on one VPS, so its operator could read every share. The model needs three independent operators.
+- **Demo counterparty (#103).** "Take the other side (demo)" places a judge's order and its exact opposite from the same account at the same moment, so the judge trades with themselves (a labelled self-trade that nets out). The two are ordinary orders, but because they arrive together a relayer can guess they come from one browser. It still can't read either, see a fill, or tell which side is the judge's. Real traders don't use it.
 - **Cloudflare sees visitor IPs**, and until #88 is fixed, everything sent to the relayers.
 - **Relayers see deposit and withdrawal amounts**, addresses and times, and the account id behind each deposit. They do not see which withdrawal belongs to which account, except through #90 and #91.
 - **Key-burn DoS.** A dishonest relayer can pre-register shares for an id it learned and then burn that row. Funds stay locked, never stolen (DESIGN.md "Threat model"); the same as aborting the MPC.
