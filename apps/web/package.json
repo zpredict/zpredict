@@ -11,7 +11,8 @@
 		"build": "next build && node scripts/privacy.mjs",
 		"mock": "pnpm --filter @zpredict/sdk build && node mock-relayer/src/server.mjs",
 		"dev:mock": "pnpm prepare:deps && node scripts/dev-mock.mjs",
-		"test": "pnpm --filter @zpredict/sdk build && node --test 'mock-relayer/src/*.test.mjs' 'lib/*.test.ts' 'scripts/*.test.mjs'"
+		"test": "pnpm --filter @zpredict/sdk build && node --test 'mock-relayer/src/*.test.mjs' 'lib/*.test.ts' 'scripts/*.test.mjs'",
+		"e2e": "NEXT_PUBLIC_RELAYERS=http://localhost:4911,http://localhost:4912,http://localhost:4913 NEXT_PUBLIC_ESCROW_UA=utest1e2eescrowaddress pnpm build && node --test 'e2e/*.test.mjs'"
 	},
 	"dependencies": {
 		"@fontsource/jetbrains-mono": "^5.3.0",

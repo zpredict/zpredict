@@ -22,6 +22,7 @@ Other scripts:
 | `pnpm --filter @zpredict/web mock` | only the mock relayers (`MOCK_PORTS`, `MOCK_BATCH_MS`, `MOCK_BOT_MS`; `MOCK_ESCROW_EMPTY=1` keeps payouts `retrying`) |
 | `pnpm --filter @zpredict/web build` | static export to `out/`, then the privacy gate |
 | `pnpm --filter @zpredict/web test` | mock clearing rule against `packages/core` test vectors |
+| `pnpm --filter @zpredict/web e2e` | builds against mock relayers on :4911-4913 and drives judge mode → fill → chart → withdraw → deposit in headless Chrome (`CHROME=` the binary), with the deploy CSP and no request outside localhost |
 
 Relayer URLs are baked in at build time from `NEXT_PUBLIC_RELAYERS="url0,url1,url2"`; the default is the hosted testnet relayers `https://r{0,1,2}.zpredict.site`.
 
