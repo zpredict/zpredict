@@ -84,3 +84,14 @@ test("the CSP allows Turnstile on /faucet/ only", () => {
 	spawnSync("node", args.slice(0, 3));
 	assert.match(readFileSync(out, "utf8"), /^header Content-Security-Policy "default-src 'none'/);
 });
+
+test("only the onion relayers this build was given pass the gate (#90)", () => {
+	const onion = `http://${"a".repeat(56)}.onion`;
+	const d = site({ "index.html": `<script>fetch("${onion}/health")</script>` });
+	const given = `${onion},http://b.onion,http://c.onion`;
+	const env = { ...process.env, NEXT_PUBLIC_RELAYERS_ONION: given };
+	const ok = spawnSync("node", [join(here, "privacy.mjs"), d], { encoding: "utf8", env });
+	assert.equal(ok.status, 0, ok.stderr);
+	const { NEXT_PUBLIC_RELAYERS_ONION: _, ...bare } = process.env;
+	assert.equal(spawnSync("node", [join(here, "privacy.mjs"), d], { env: bare }).status, 1);
+});
