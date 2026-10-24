@@ -6,11 +6,15 @@ use zpredict_core::{
 };
 
 use super::{Rng, decoded, localhost, split3};
-use crate::{DEFAULT_WITHDRAWALS, Error, Outcome, Public, Shares, run_party};
+use crate::{DEFAULT_MARKETS, DEFAULT_WITHDRAWALS, Error, Outcome, Public, Shares, run_party};
 
-/// The markets every generated batch clears (two used slots, two unused); a few orders
-/// are for [`UNLISTED`], which the batch does not clear.
-pub const MARKETS: [u32; 6] = [7, 8, 0, 0, 0, 0];
+/// The markets every generated batch clears (two used slots, the rest unused); a few
+/// orders are for [`UNLISTED`], which the batch does not clear.
+pub const MARKETS: [u32; DEFAULT_MARKETS] = {
+    let mut m = [0; DEFAULT_MARKETS];
+    (m[0], m[1]) = (7, 8);
+    m
+};
 pub const UNLISTED: u32 = 9;
 
 /// A batch of encoded orders, the balance table, and the three relayers' shares of both.

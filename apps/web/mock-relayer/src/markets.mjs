@@ -1,8 +1,11 @@
-// The demo markets: the configured markets of deploy/production/relayer.toml (shown on
-// the landing; ids 11-13 mirror Polymarket) plus three extra chain markets, with mock
-// opening prices. Params follow
-// packages/plugins/*. Every market resolves at a future mainnet height; a market closes 100
-// blocks before it resolves.
+// The demo markets: the configured markets of deploy/production/relayer.toml (the two Zcash
+// markets, and the mirrored Polymarket markets from catalog.json, which
+// scripts/polymarket-catalog.mjs writes with the same entries) plus three extra chain
+// markets, with mock opening prices. Params follow packages/plugins/*. A chain market
+// closes 100 blocks before it resolves.
+import { readFileSync } from "node:fs";
+
+const CATALOG = JSON.parse(readFileSync(new URL("./catalog.json", import.meta.url), "utf8"));
 
 const market = (id, plugin, question, params, resolveHeight, fair) => ({
 	id,
@@ -16,28 +19,33 @@ const market = (id, plugin, question, params, resolveHeight, fair) => ({
 	fair,
 });
 
-const HOUSE = { id: "house-2026", title: "Which party will win the House in 2026?" };
-
 /**
- * A mirrored Polymarket market (packages/plugins/polymarket) with a mock reference: the
- * real relayers fetch it from Polymarket, the browser never does. Closes at block 3,540,470.
+ * A mirrored Polymarket market (packages/plugins/polymarket) with a mock reference around
+ * its catalog price: the real relayers fetch it from Polymarket, the browser never does.
  */
-const mirror = (id, question, conditionId, slug, price, event) => {
+const mirror = (c) => {
 	const now = Math.floor(Date.now() / 1000);
 	const history = Array.from({ length: 48 }, (_, i) => ({
 		t: now - (47 - i) * 3600,
-		price: Math.round((price + Math.sin(i / 5) * 3) * 10) / 10,
+		price: Math.min(99.9, Math.max(0.1, Math.round((c.price + Math.sin(i / 5) * 3) * 10) / 10)),
 	}));
 	return {
-		...market(id, "polymarket", question, { conditionId, slug }, 3_540_470, Math.round(price)),
-		closeHeight: 3_540_470,
-		category: "Politics",
-		...(event && { event }),
-		rules: "Mirrors the Polymarket market of the same question; YES iff Polymarket settles it Yes.",
+		...market(
+			c.id,
+			"polymarket",
+			c.question,
+			{ conditionId: c.conditionId, slug: c.slug },
+			c.closeHeight,
+			Math.round(c.price),
+		),
+		closeHeight: c.closeHeight,
+		category: c.category,
+		...(c.event && { event: c.event }),
+		rules: c.rules,
 		reference: {
 			source: "polymarket",
-			price,
-			url: `https://polymarket.com/market/${slug}`,
+			price: c.price,
+			url: `https://polymarket.com/market/${c.slug}`,
 			history,
 		},
 	};
@@ -60,29 +68,7 @@ export const MARKET_DEFS = [
 		3_560_000,
 		38,
 	),
-	mirror(
-		11,
-		"Will the Democratic Party control the House after the 2026 Midterm elections?",
-		"0xd5d9fc47718bd553592d126b1fa5e87183d27f3936975b0c04cc0f2dec1f1bb4",
-		"will-the-democratic-party-control-the-house-after-the-2026-midterm-elections",
-		92.5,
-		HOUSE,
-	),
-	mirror(
-		12,
-		"Will the Republican Party control the House after the 2026 Midterm elections?",
-		"0x4e4f77e7dbf4cab666e9a1943674d7ae66348e862df03ea6f44b11eb95731928",
-		"will-the-republican-party-control-the-house-after-the-2026-midterm-elections",
-		7.5,
-		HOUSE,
-	),
-	mirror(
-		13,
-		"Will the Democrats win the Texas Senate race in 2026?",
-		"0x34918035a590555ba1fb1d6a019d766ab6e557d63e7f3140b63b4550eee7f417",
-		"will-the-democrats-win-the-texas-senate-race-in-2026",
-		66.5,
-	),
+	...CATALOG.map(mirror),
 	market(
 		4,
 		"ironwood-pool",

@@ -16,7 +16,12 @@ const MOCK_PORTS = [4911, 4912, 4913];
 const ESCROW_UA = "utest1e2eescrowaddress";
 const web = new URL("../", import.meta.url).pathname;
 const out = join(web, "out");
-const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css" };
+const TYPES = {
+	".html": "text/html",
+	".js": "text/javascript",
+	".css": "text/css",
+	".jpg": "image/jpeg",
+};
 
 let mock;
 let site;
