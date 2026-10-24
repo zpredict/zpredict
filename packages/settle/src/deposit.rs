@@ -3,7 +3,8 @@
 use crate::memo::Tag;
 use crate::{DENOMINATIONS, HALF_TICKS_PER_UNIT, UNIT_ZATS};
 
-/// An escrow note: the transaction and the index of its action in the Ironwood bundle.
+/// An escrow note: the transaction and the index of its action in the Ironwood bundle
+/// (in the Orchard bundle for [`Flag::Orchard`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NoteId {
     pub txid: [u8; 32],
@@ -37,6 +38,9 @@ pub enum Flag {
     Denomination,
     /// No deposit memo, or this relayer's slot does not open.
     NoTag,
+    /// Sent to the Orchard pool, which is withdraw-only since NU6.3. Never credited,
+    /// whatever its amount or memo; refunded by hand (`packages/settle/README.md`).
+    Orchard,
 }
 
 /// The denomination of `zats`, if it is exactly one of [`DENOMINATIONS`].

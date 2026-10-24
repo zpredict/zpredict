@@ -5,6 +5,10 @@
 //! uses) and decrypts them here. Only the external scope is scanned: deposits arrive
 //! at the escrow's public address, while the escrow's own change goes to its internal
 //! scope and is never a deposit.
+//!
+//! Orchard has been withdraw-only since NU6.3, but a wallet holding old Orchard notes
+//! can still send Orchard → Orchard to the escrow's receiver. Those notes are decrypted
+//! only to flag them ([`Flag::Orchard`]), never credited; the README has the refund path.
 
 use orchard::bundle::Authorization;
 use orchard::keys::{FullViewingKey, IncomingViewingKey, Scope};
@@ -40,7 +44,7 @@ impl Scanner {
         let mut out = vec![];
         for height in from..=to {
             for raw in lwd
-                .ironwood_txs(height)
+                .orchard_family_txs(height)
                 .map_err(|e| Error::Chain(e.to_string()))?
             {
                 out.extend(self.tx(&raw, height)?);
@@ -54,10 +58,33 @@ impl Scanner {
         // v5+ transactions carry their own branch ID; the argument only matters for v4.
         let tx = Transaction::read(raw, BranchId::Nu7)?;
         let txid = *tx.txid().as_ref();
-        Ok(tx
+        let mut out: Vec<Scanned> = tx
             .ironwood_bundle()
             .map(|b| self.bundle(b, txid, height))
-            .unwrap_or_default())
+            .unwrap_or_default();
+        if let Some(b) = tx.orchard_bundle() {
+            out.extend(self.orchard(b, txid, height).into_iter().map(Err));
+        }
+        Ok(out)
+    }
+
+    /// Escrow notes in a (withdraw-only) Orchard bundle: all flagged, memo left unread.
+    pub fn orchard<A: Authorization, V>(
+        &self,
+        bundle: &orchard::Bundle<A, V>,
+        txid: [u8; 32],
+        height: u32,
+    ) -> Vec<Flagged> {
+        bundle
+            .decrypt_outputs_with_keys(std::slice::from_ref(&self.ivk))
+            .into_iter()
+            .map(|(action, _, note, _, _)| Flagged {
+                note: NoteId { txid, action },
+                height,
+                zats: note.value().inner(),
+                reason: Flag::Orchard,
+            })
+            .collect()
     }
 
     /// Escrow notes in an Ironwood bundle of transaction `txid`.
@@ -174,5 +201,47 @@ mod tests {
                 (3 * UNIT_ZATS, Flag::Denomination)
             );
         }
+    }
+
+    #[test]
+    fn flags_every_orchard_pool_note_even_a_tagged_denomination() {
+        let fvk = FullViewingKey::from(&SpendingKey::from_bytes([1; 32]).unwrap());
+        let foreign = FullViewingKey::from(&SpendingKey::from_bytes([2; 32]).unwrap());
+        let key = MemoKey::generate();
+        let tagged = memo::encode(&[7; 16], &[key.public(), [9; 32], [9; 32]]);
+        let v = BundleVersion::orchard_v2();
+        let mut b = Builder::new(
+            BundleType::DEFAULT,
+            v,
+            v.default_flags(),
+            Anchor::empty_tree(),
+        )
+        .unwrap();
+        output(
+            &mut b,
+            fvk.address_at(0u32, Scope::External),
+            5 * UNIT_ZATS,
+            tagged,
+        );
+        output(
+            &mut b,
+            fvk.address_at(0u32, Scope::Internal),
+            UNIT_ZATS,
+            tagged,
+        );
+        output(
+            &mut b,
+            foreign.address_at(0u32, Scope::External),
+            UNIT_ZATS,
+            tagged,
+        );
+        let (bundle, _) = b.build::<i64>(UnwrapErr(SysRng)).unwrap().unwrap();
+
+        let f = Scanner::new(&fvk, 0, key).orchard(&bundle, [3; 32], 9);
+        assert_eq!(f.len(), 1, "change and foreign outputs are not deposits");
+        assert_eq!(
+            (f[0].note.txid, f[0].height, f[0].zats, f[0].reason),
+            ([3; 32], 9, 5 * UNIT_ZATS, Flag::Orchard)
+        );
     }
 }
