@@ -3,6 +3,7 @@ import Link from "next/link";
 import DepositInfo from "@/components/order-ticket/DepositInfo";
 import WithdrawForm from "@/components/order-ticket/WithdrawForm";
 import Amount from "@/components/ui/Amount";
+import Button from "@/components/ui/Button";
 import { useAccount } from "@/hooks/useAccount";
 import KeyBackup from "./KeyBackup";
 
@@ -12,7 +13,7 @@ import KeyBackup from "./KeyBackup";
  * receives withdrawals.
  */
 export default function WalletGuide() {
-	const { tag, mock, balance } = useAccount();
+	const { tag, mock, balance, refresh } = useAccount();
 	return (
 		<div className="wguide">
 			<header className="wguide__head">
@@ -26,7 +27,10 @@ export default function WalletGuide() {
 				{tag && (
 					<p className="dim">
 						{mock ? "This browser holds a judge account (mock credit). " : ""}
-						Balance: {balance === null ? "…" : <Amount halfTicks={balance} />}
+						Balance: {balance === null ? "…" : <Amount halfTicks={balance} />}{" "}
+						<Button onClick={refresh} variant="ghost">
+							Refresh
+						</Button>
 					</p>
 				)}
 			</header>
