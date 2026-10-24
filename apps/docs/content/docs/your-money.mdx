@@ -3,14 +3,18 @@ title: Your money
 description: The FROST 2-of-3 escrow, fixed-denomination deposits with an encrypted memo, batched withdrawals to fresh addresses, and why judge credit never pays out.
 ---
 
-## Units
+## Amounts
+
+The app shows every amount in ZEC. You bet an amount; it buys whole shares at your limit price. One share pays **0.01 ZEC** if its side wins and costs the price in cents as a share of that: at 60¢, 0.006 ZEC. So 0.05 ZEC at 60¢ buys 8 shares for 0.048 ZEC and wins 0.08 ZEC.
+
+Below the UI (the SDK, the relayer API and the circuit) amounts are integers:
 
 | | Value |
 |---|---|
 | 1 unit of collateral | 0.01 ZEC = 1,000,000 zats |
 | 1 unit | 200 half-ticks (balances and costs are in half-ticks) |
 | 1 half-tick | 5,000 zats |
-| One matched YES/NO contract | locks 1 unit, pays 1 unit to the winner |
+| One matched YES/NO contract (share) | locks 1 unit, pays 1 unit to the winner |
 
 ## The escrow
 
@@ -24,7 +28,7 @@ Its group key `a0cff44d86411e03d1ae3a76982d38bf0aac73db9568a2496324167486dbc534`
 
 ## Deposits
 
-- **Fixed denominations only: 1, 5 or 25 units** ([`DENOMINATIONS`](https://github.com/zpredict/zpredict/blob/main/packages/sdk/src/memo.ts)). Any other amount, or a note without a readable memo slot, is flagged and never credited.
+- **Fixed denominations only: 0.01, 0.05 or 0.25 ZEC** (1, 5 or 25 units) ([`DENOMINATIONS`](https://github.com/zpredict/zpredict/blob/main/packages/sdk/src/memo.ts)). Any other amount, or a note without a readable memo slot, is flagged and never credited.
 - **The memo** (ZIP 302 `0xFF`, 512 bytes): `0xFF | 0x02 | epk | slot₀ | slot₁ | slot₂`. Slot `i` is ChaCha20-Poly1305 of `id ‖ sᵢ` under a key from X25519 with relayer `i`'s memo key and a fresh ephemeral key. Each relayer can open only its own slot, so none ever reads your tag, and no order data or amount is in the memo. The app hands your wallet a ZIP 321 payment request ([`depositUri`](/docs/sdk#deposits)).
 - **Crediting:** after 10 confirmations, and only when all three relayers' own escrow scans found the deposit. The credit enters the circuit as a public per-row input. No single relayer can credit money the chain does not show.
 
@@ -35,11 +39,11 @@ Its group key `a0cff44d86411e03d1ae3a76982d38bf0aac73db9568a2496324167486dbc534`
 3. Debited withdrawals are paid in **one** v6 transaction with an Ironwood output per payee and change back to the escrow, ZIP 317 fee, wallet-default padding. Each withdrawal keeps 2 half-ticks (10,000 zats) toward the fee: you receive `(amount − 2) × 5,000` zats.
 4. Status: `pending → debited → paying → paid` (with the txid), or `refused`. A payout the escrow cannot cover, or one a node misses, shows `payout: "retrying"` and is retried with backoff; it never stops clearing.
 
-Relayers do see each withdrawal's amount, address and time (they need them to pay), so amount and timing can link a deposit to a payout at the relayers ([#91](https://github.com/zpredict/zpredict/issues/91)). The app therefore withdraws in the deposit sizes (1, 5 or 25 units) by default; any other amount needs "I understand this amount is distinctive". It also warns when you reuse a payout address (checked against digests kept in your browser). Timing is not hidden: wait a while after a deposit if that matters to you.
+Relayers do see each withdrawal's amount, address and time (they need them to pay), so amount and timing can link a deposit to a payout at the relayers ([#91](https://github.com/zpredict/zpredict/issues/91)). The app therefore withdraws in the deposit sizes (0.01, 0.05 or 0.25 ZEC) by default; any other amount needs "I understand this amount is distinctive". It also warns when you reuse a payout address (checked against digests kept in your browser). Timing is not hidden: wait a while after a deposit if that matters to you.
 
 ## Judge credits are not money
 
-Judge mode (testnet only) opens an account with **mock** credit: 25 units, no deposit. Because a judge claim shows every relayer the new account's id, each relayer flags that row as mock, feeds its flags into the circuit as private input, and the circuit refuses any withdrawal from a flagged row if any relayer flagged it ([#104](https://github.com/zpredict/zpredict/issues/104), test `mock_rows_never_withdraw`). The refusal looks like any uncovered withdrawal. A judge account that later receives a real deposit stays mock: deposit with a fresh tag. Mainnet builds refuse judge mode.
+Judge mode (testnet only) opens an account with **mock** credit: 0.25 ZEC, no deposit. Because a judge claim shows every relayer the new account's id, each relayer flags that row as mock, feeds its flags into the circuit as private input, and the circuit refuses any withdrawal from a flagged row if any relayer flagged it ([#104](https://github.com/zpredict/zpredict/issues/104), test `mock_rows_never_withdraw`). The refusal looks like any uncovered withdrawal. A judge account that later receives a real deposit stays mock: deposit with a fresh tag. Mainnet builds refuse judge mode.
 
 ## Limits on the demo
 
