@@ -33,7 +33,7 @@ This page summarises [PRIVACY.md](https://github.com/zpredict/zpredict/blob/main
 |---|---|---|
 | ✅ | No transparent address in any product path | [`payout.rs`](https://github.com/zpredict/zpredict/blob/main/packages/settle/src/payout.rs) re-encodes payees Ironwood-only; `verify.rs` refuses transparent, Sapling or Orchard parts; the e2e scripts assert `transparent in+out 0` |
 | ✅ | Fixed deposit denominations; order size never on chain | `DENOMINATIONS`; orders exist only as XOR shares |
-| ⚠️ | Withdrawals don't link to deposits | Shielded on chain; relayers see amount, address and time (#91) |
+| ⚠️ | Withdrawals don't link to deposits | Shielded on chain; relayers see amount, address and time. The app withdraws in the deposit sizes unless you opt in, and warns on a reused address; timing is not hidden (#91) |
 | ✅ | Memos carry no order data and never the tag | [`memo-vectors.json`](https://github.com/zpredict/zpredict/blob/main/packages/settle/testdata/memo-vectors.json) |
 | ✅ | Each order share goes only to its own relayer | `submitOrder` + `distinct()` in [`packages/sdk`](https://github.com/zpredict/zpredict/tree/main/packages/sdk) |
 | ✅ | Public feeds can't be recombined | `/view` publishes BLAKE2b-128 digests, no shares, no orderIds |
