@@ -45,7 +45,7 @@ MEMO_FROM=sdk scripts/scan-e2e.sh   # same, but the deposit request is built by 
 pins the memo format for the TypeScript port in `@zpredict/sdk`.
 
 Each relayer runs a `Scanner` (shared escrow FVK, its relayer index, its memo key) over
-lightwalletd: blocks with Ironwood actions are fetched as full transactions (compact
+lightwalletd: blocks with Orchard or Ironwood actions are fetched as full transactions (compact
 blocks drop memos) and trial-decrypted with the escrow's **external** IVK, so escrow
 change is never mistaken for a deposit. Every received note comes out as either
 
@@ -54,7 +54,36 @@ change is never mistaken for a deposit. Every received note comes out as either
   the relayer's memo slot opens; `balance_share(i)` is the initial XOR share in
   half-ticks, `(A·200, 0, 0)` per the #9 decision; or
 - `Flagged { note, height, zats, reason }`: any other amount (`Denomination`) or no
-  readable memo slot (`NoTag`). Flagged notes are never credited.
+  readable memo slot (`NoTag`), or anything in the Orchard bundle (`Orchard`, below).
+  Flagged notes are never credited.
+
+**Orchard-pool deposits (#54).** The escrow UA's one receiver is Orchard-shaped, so a
+wallet that still holds Orchard notes can pay it Orchard → Orchard (NU6.3 only forbids
+*adding* value to Orchard). Such a note is in the escrow, but outside the pool zPredict
+settles in. The scanner trial-decrypts the Orchard bundle too and flags every escrow note
+there as `Orchard`, whatever its amount or memo (the memo is not read). `settle scan`
+prints it as `flagged <txid> <action> <height> <zats> Orchard`; the relayer logs only a
+count and the block range it scanned.
+
+It stays out of the live path: payout input selection prefers Ironwood and uses Orchard
+last, and `verify` refuses any PCZT with an Orchard part, so no payout can spend it (a
+payout Ironwood can't cover fails and is retried, as before).
+
+Refund path (manual; there is no refund command yet):
+
+1. **Claim.** The depositor sends the operators the txid and a fresh unified address.
+   Proof of ownership is the account tag of the deposit memo: each relayer opens its
+   own slot of that note's memo and checks `key_shares(tag)[i]`, as for a real deposit
+   (no command opens an Orchard note's memo yet; `memo::decode` does it).
+   The account is never credited, so revealing the tag costs nothing; deposit later with
+   a fresh one. A note with no zPredict memo has no proof and stays in the escrow.
+2. **Sign.** Any **2 of the 3 relayers** (FROST, as for payouts) sign one transaction
+   that spends the Orchard note into an Ironwood output to the claimant, ZIP 317 fee
+   taken from the note (Orchard → Ironwood is the direction NU6.3 allows). `sign.rs`
+   already takes randomizers from the Orchard bundle; `payout::create` would need
+   `SpendPolicy::shielded_pools([ShieldedPool::Orchard])` for that one note, and `verify`
+   a separate mode that accepts exactly that spend. Neither is built: a second spending
+   path in the signer's verifier is the riskiest code in the repo to touch before Oct 28.
 
 **Deposit memo** (`memo.rs`): ZIP 302 `0xFF` memo, `0xFF | 0x02 | epk (32) | slot₀ | slot₁ | slot₂`,
 zero after byte 154. `slotᵢ` = ChaCha20-Poly1305 (zero nonce) of `id u64 LE ‖ sᵢ` under

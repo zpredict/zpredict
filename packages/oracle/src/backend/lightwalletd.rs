@@ -73,9 +73,10 @@ impl Lightwalletd {
 }
 
 impl Lightwalletd {
-    /// Full bytes of every transaction in block `height` that has Ironwood actions.
-    /// Compact blocks drop memos, so the escrow scanner fetches these in full.
-    pub fn ironwood_txs(&self, height: u32) -> Result<Vec<Vec<u8>>> {
+    /// Full bytes of every transaction in block `height` that has Orchard or Ironwood
+    /// actions. Compact blocks drop memos, so the escrow scanner fetches these in full
+    /// (Orchard ones only to flag deposits sent to the withdraw-only pool).
+    pub fn orchard_family_txs(&self, height: u32) -> Result<Vec<Vec<u8>>> {
         let id = BlockId {
             height: height.into(),
             hash: vec![],
@@ -83,7 +84,7 @@ impl Lightwalletd {
         let b: CompactBlock = self.call("GetBlock", &id)?;
         b.vtx
             .into_iter()
-            .filter(|t| !t.ironwood_actions.is_empty())
+            .filter(|t| !t.actions.is_empty() || !t.ironwood_actions.is_empty())
             .map(|t| {
                 let filter = TxFilter {
                     block: None,

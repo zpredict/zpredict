@@ -18,6 +18,7 @@ Bet on an outcome without anyone learning that you bet, which side you took, or 
 - The trader sends fixed-denomination notes (1 / 5 / 25 units) to the escrow's unified address (Ironwood receiver only).
 - The memo (`0xFF` app memo, ZIP 302) gives each relayer, encrypted to it alone, the account's public id and **its own share of the account tag** (the tag is a random 16-byte secret made in the browser, the account's only credential). No relayer ever sees the tag, and no order data ever goes in a memo.
 - Each relayer scans the escrow with the shared viewing key and its own memo key (`[settlement]` in the relayer config). A deposit is credited once it has 10 confirmations and **all three** relayers' scans found it: the batch handshake intersects what each offers, and the credit enters the circuit as a public per-row input (the amount is visible to every relayer anyway). So no single relayer can credit money the chain does not show. Judge-mode credits are the one exception, accepted only where judge mode is on.
+- A note sent to the escrow through the old Orchard pool (withdraw-only since NU6.3, but still payable Orchard → Orchard from old notes) is flagged and never credited; operators refund it by hand (`packages/settle/README.md`, #54).
 
 ### 2. Order
 - In the browser: `order = {market, side, price, size, key = tag}` → split into three XOR shares → each share POSTed **directly to its own relayer** over TLS (onion service optional). No backend ever holds two shares.

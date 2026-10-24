@@ -1,7 +1,9 @@
 //! The deposit scanner: each relayer reads the escrow chain with the shared viewing key
 //! and its own memo key, and records every confirmed, fixed-denomination deposit with a
 //! readable memo slot (account id and this relayer's key share). Flagged notes (odd
-//! amounts, no readable slot) are never credited.
+//! amounts, no readable slot, anything in the withdraw-only Orchard pool) are never
+//! credited. Orchard-pool notes are counted in the log so an operator can refund them
+//! by hand (`packages/settle/README.md`); the line carries no txid, amount or account.
 //!
 //! A deposit is credited only once all three scanners have recorded it (the batch hello
 //! intersects their offers), so no relayer can credit what the chain does not show.
@@ -10,7 +12,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use zpredict_oracle::{Chain, Lightwalletd};
-use zpredict_settle::{HALF_TICKS_PER_UNIT, Scanner};
+use zpredict_settle::{Flag, HALF_TICKS_PER_UNIT, Scanner};
 
 use super::Escrow;
 use crate::state::Shared;
@@ -53,6 +55,15 @@ fn step(
     }
     let to = confirmed.min(from + STEP - 1);
     let found = scanner.blocks(node, from, to)?;
+    let orchard = found
+        .iter()
+        .filter(|s| matches!(s, Err(f) if f.reason == Flag::Orchard))
+        .count();
+    if orchard > 0 {
+        eprintln!(
+            "escrow scan: {orchard} note(s) sent to the withdraw-only Orchard pool in blocks {from}..={to}, not credited; refund by hand (packages/settle/README.md)"
+        );
+    }
     let mut s = state.lock().expect("state lock");
     for d in found.into_iter().flatten() {
         let (id, share) = (d.account, hex::encode(d.key_share));

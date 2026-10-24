@@ -46,7 +46,7 @@ everything", which is already true of the single demo VM (see Accepted limitatio
 | 9b | Relayer → `gamma-api.polymarket.com`, `clob.polymarket.com` (#114) | Public GETs only, no auth or cookies: each mirrored market's record by slug (outcome, Yes price) and a week of hourly prices. Cached 5 min (Gamma's own `max-age`), 10 s timeout, no retries. Served on as `reference` in `/markets` | Polymarket and its CDN see the VM IP and which markets we mirror (public in our config anyway) |
 | 10 | Relayer → `testnet.zec.rocks` | Escrow scan (viewing key stays local), payout broadcast by relayer 0 | Operator sees the VM IP and the escrow's tx |
 | 11 | Relayer → disk | Event log of its own shares; sealed key share, viewing key and memo key ([Secrets on disk](#secrets-on-disk)) | Host operator |
-| 12 | Logs (relayer stderr → Docker/Coolify; nginx; Caddy) | Relayer: start-up lines and errors that name a market or a failing step, never an order, share, account or address (`grep -rn eprintln apps/relayer/src`). nginx: `access_log off`, `error_log /dev/null`. Caddy: no `log` directive | — |
+| 12 | Logs (relayer stderr → Docker/Coolify; nginx; Caddy) | Relayer: start-up lines and errors that name a market or a failing step, never an order, share, account or address; the escrow scan logs a count of notes sent to the withdraw-only Orchard pool and the block range scanned (#54), never their txid or amount (`grep -rn eprintln apps/relayer/src`). nginx: `access_log off`, `error_log /dev/null`. Caddy: no `log` directive | — |
 | 13 | CI/CD | GitHub Actions runs checks; `deploy.yml` calls the Coolify API with `COOLIFY_TOKEN` (an environment secret). Relayer Noise keys live in Coolify as compose secrets, never in git | GitHub, Coolify |
 
 ## Leak checklist
