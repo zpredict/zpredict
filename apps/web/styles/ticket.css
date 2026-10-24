@@ -79,12 +79,6 @@
 	color: var(--zp-ink-2);
 }
 
-.ticket__fields {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-	gap: 6px;
-}
-
 .field {
 	display: grid;
 	gap: 6px;
@@ -184,8 +178,59 @@
 	font-size: 12px;
 }
 
-.ticket__add:hover {
+.ticket__add:hover:not(:disabled) {
 	border-color: var(--zp-lime);
+	color: var(--zp-lime);
+}
+
+.ticket__add:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+/* "Set limit price": closed by default, the current limit on the right. */
+.ticket__limit {
+	display: grid;
+	gap: 10px;
+}
+
+.ticket__limit summary {
+	display: flex;
+	justify-content: space-between;
+	color: var(--zp-muted);
+	font-size: 12px;
+	list-style: none;
+	cursor: pointer;
+}
+
+.ticket__limit summary::-webkit-details-marker {
+	display: none;
+}
+
+.ticket__limit summary::before {
+	content: "+\00a0";
+}
+
+.ticket__limit[open] summary::before {
+	content: "−\00a0";
+}
+
+.ticket__limit summary span {
+	margin-left: auto;
+	color: var(--zp-text);
+}
+
+.ticket__limit summary:hover,
+.ticket__limit summary:focus-visible {
+	color: var(--zp-lime);
+}
+
+.ticket__sum .ticket__win {
+	color: var(--zp-text);
+	font-size: 16px;
+}
+
+.ticket__sum dd.ticket__win {
 	color: var(--zp-lime);
 }
 
