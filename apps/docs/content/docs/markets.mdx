@@ -29,6 +29,8 @@ Resolved from **Zcash mainnet** blocks, read by each relayer from its own lightw
 
 The relayers also fetch Polymarket's Yes price and a week of hourly history, at most every 5 minutes ([`reference.rs`](https://github.com/zpredict/zpredict/blob/main/apps/relayer/src/reference.rs)), and serve it as `reference` in `/markets`. The browser never contacts Polymarket; the app shows the market page only as a plain outbound link.
 
+Which markets are mirrored comes from Polymarket too: [`scripts/polymarket-catalog.mjs`](https://github.com/zpredict/zpredict/blob/main/scripts/polymarket-catalog.mjs) takes the top open binary markets by volume (mixed categories, ending between 2 days and the end of 2027 out, no death or violence markets), with their question, category, event grouping and rules, and writes them into the relayer config. It also downloads each market's image once, resized to 112 px; the app serves those from its own origin.
+
 ## Signed outcomes
 
 Only a resolution all three relayers computed identically is signed, FROST 2-of-3 with the escrow's key shares, as an ordinary RedPallas signature under the group key. The signed bytes are `"zPredict outcome v1\n"` followed by compact JSON:
@@ -42,4 +44,4 @@ The two forms have disjoint keys, so one can never verify as the other. [`verify
 
 ## Capacity
 
-One clearing run has `DEFAULT_MARKETS = 6` market slots. The demo uses all six: NU7 activation, Ironwood ≥ 900,000 notes, three mirrored markets on the US midterms (two House-control rows of one event and the Texas Senate race), and the hourly rolling market. The rolling generator never opens a market past the cap; a seventh open market would need a second MPC run per window. The live list is in [`deploy/production/relayer.toml`](https://github.com/zpredict/zpredict/blob/main/deploy/production/relayer.toml) and at `GET /markets`.
+One clearing run has `DEFAULT_MARKETS = 24` market slots. The demo uses all of them: NU7 activation, Ironwood ≥ 900,000 notes, 21 mirrored Polymarket markets, and the hourly rolling market. The rolling generator never opens a market past the cap; a 25th open market would need a second MPC run per window. The live list is in [`deploy/production/relayer.toml`](https://github.com/zpredict/zpredict/blob/main/deploy/production/relayer.toml) and at `GET /markets`.

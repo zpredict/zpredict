@@ -25,7 +25,7 @@ This page summarises [PRIVACY.md](https://github.com/zpredict/zpredict/blob/main
 | All three relayers | Everything | — |
 | Counterparty | Its own fill at the midpoint; if a single pair crossed, the midpoint and its own limit give yours | Who you are |
 | lightwalletd operators (`zec.rocks`, `testnet.zec.rocks`) | The relayer VM's IP syncing and broadcasting | Users |
-| Polymarket | The relayer VM's IP fetching public records for the mirrored markets, about every 5 min | Users, orders. The browser never contacts Polymarket |
+| Polymarket | The relayer VM's IP fetching public records for the mirrored markets, about every 5 min | Users, orders. Market images are fetched once by the operator when the catalog is built and served from our origin. The browser never contacts Polymarket |
 
 ## Leak checklist
 

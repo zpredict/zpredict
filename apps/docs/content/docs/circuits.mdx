@@ -7,7 +7,7 @@ description: The Garble clearing circuit (orders, balances, credentials, withdra
 
 ## Clearing ([`clear.garble.rs`](https://github.com/zpredict/zpredict/blob/main/packages/circuit/src/clear.garble.rs))
 
-**Inputs.** Each party's shares of a fixed-size batch of orders (`DEFAULT_SLOTS` = 8, up to `MAX_SLOTS` = 21, padded with dummies), of the whole balance table (`id | balance | key share`, `DEFAULT_ROWS` = 32, 48 on the demo), of the withdrawal requests (`DEFAULT_WITHDRAWALS` = 2), and its private mock flags. Public: the open market ids (`DEFAULT_MARKETS` = 6 slots) and a credit per row (deposits and judge credits, which every relayer already sees). If the parties disagree on any public input, nothing moves.
+**Inputs.** Each party's shares of a fixed-size batch of orders (`DEFAULT_SLOTS` = 8, up to `MAX_SLOTS` = 21, padded with dummies), of the whole balance table (`id | balance | key share`, `DEFAULT_ROWS` = 32, 48 on the demo), of the withdrawal requests (`DEFAULT_WITHDRAWALS` = 2), and its private mock flags. Public: the open market ids (`DEFAULT_MARKETS` = 24 slots) and a credit per row (deposits and judge credits, which every relayer already sees). If the parties disagree on any public input, nothing moves.
 
 **Inside**, with no data-dependent control flow:
 
