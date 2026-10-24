@@ -64,6 +64,9 @@ pub struct Info {
 pub struct Event {
     pub id: String,
     pub title: String,
+    /// This market's row label inside the event (Polymarket's `groupItemTitle`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub outcome: Option<String>,
 }
 
 impl Market {

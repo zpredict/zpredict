@@ -12,9 +12,9 @@
 //! window start (blocks every relayer reads from its own node), so YES and NO are about
 //! even.
 //!
-//! **Cap:** a market is only created while fewer than `DEFAULT_MARKETS` (6, the markets
-//! one MPC run clears) close after its start height. With the five configured markets and
-//! `horizon_secs = interval_secs`, that is one rolling market open at a time: 5 + 1 = 6.
+//! **Cap:** a market is only created while fewer than `DEFAULT_MARKETS` (24, the markets
+//! one MPC run clears) close after its start height. With the 23 configured markets and
+//! `horizon_secs = interval_secs`, that is one rolling market open at a time: 23 + 1 = 24.
 
 use std::collections::HashSet;
 
@@ -258,14 +258,17 @@ mod tests {
             ..r.due(3_527_040, &[], &c).unwrap().unwrap()
         };
         let cap = zpredict_circuit::DEFAULT_MARKETS as u32;
-        let five: Vec<Market> = (1..cap).map(|i| headline(i, 3_543_000)).collect();
-        assert!(r.due(3_527_040, &five, &c).unwrap().is_some(), "5 + 1 fits");
-        let mut six = five.clone();
-        six.push(headline(cap, 3_560_000));
-        assert_eq!(r.due(3_527_040, &six, &c).unwrap(), None);
-        six[5].close_height = 3_527_000;
+        let under: Vec<Market> = (1..cap).map(|i| headline(i, 3_543_000)).collect();
         assert!(
-            r.due(3_527_040, &six, &c).unwrap().is_some(),
+            r.due(3_527_040, &under, &c).unwrap().is_some(),
+            "cap - 1 + 1 fits"
+        );
+        let mut full = under.clone();
+        full.push(headline(cap, 3_560_000));
+        assert_eq!(r.due(3_527_040, &full, &c).unwrap(), None);
+        full[0].close_height = 3_527_000;
+        assert!(
+            r.due(3_527_040, &full, &c).unwrap().is_some(),
             "closed ones free a slot"
         );
     }

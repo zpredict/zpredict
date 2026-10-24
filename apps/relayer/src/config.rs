@@ -244,6 +244,7 @@ pub(crate) mod tests {
             (r.interval_secs, r.horizon_secs, r.fast_from),
             (3600, 3600, 3_543_405)
         );
+        // The configured markets plus one rolling market fit one MPC run.
         assert_eq!(c.markets.len() + 1, zpredict_circuit::DEFAULT_MARKETS);
         assert_eq!(c.frost_share_file, None, "until the key ceremony (#78)");
     }
@@ -260,15 +261,19 @@ pub(crate) mod tests {
         assert_eq!(c.memo_key_file, Some("keys/r0-memo.pub".into()));
     }
 
-    /// The mirrored markets in production are the binary markets their params name.
+    /// The mirrored markets in production are the binary markets their params name. Unlike
+    /// the startup check, an unreachable Gamma fails here.
     #[test]
     #[ignore = "network"]
     fn production_mirrored_markets_check_against_gamma() {
         let prod = include_str!("../../../deploy/production/relayer.toml");
         let c = Config::parse(prod, std::iter::empty()).unwrap();
         let pm = zpredict_plugin_polymarket::Polymarket::default();
-        crate::reference::check(&pm, &c.markets).unwrap();
-        assert_eq!(crate::reference::mirrored(&c.markets).unwrap().len(), 3);
+        let mirrored = crate::reference::mirrored(&c.markets).unwrap();
+        for (id, p) in &mirrored {
+            pm.market(p).unwrap_or_else(|e| panic!("market {id}: {e}"));
+        }
+        assert_eq!(mirrored.len(), 21);
     }
 
     #[test]
