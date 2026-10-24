@@ -37,7 +37,7 @@ everything", which is already true of the single demo VM (see Accepted limitatio
 | 2 | Browser → relayer *i* `POST /orders` | `orderId`, share *i* of the order, read token *i* | Cloudflare sees all three (#88) |
 | 3 | Browser → relayer *i* `GET /orders/:id?token=` | Fill share *i*, served only to token *i* | Cloudflare |
 | 4 | Browser → relayer *i* `GET /accounts/:id?key=sᵢ` | Account id, key share *i* → balance share *i* | Cloudflare; the relayer links reads to the id (by design) and to orders on the same connection (#90) |
-| 5 | Browser → relayer *i* `POST /withdrawals` | Fresh tag share *i*, amount, address | Amount and address go to every relayer (by design, #91) |
+| 5 | Browser → relayer *i* `POST /withdrawals` | Fresh tag share *i*, amount, address | Amount and address go to every relayer (by design). The app offers only the deposit sizes unless you opt in (#91) |
 | 6 | Browser → relayers `GET /markets, /health, /view, /memo-key, /group-key` | Public data only | — |
 | 7 | Wallet → chain (deposit) | Fixed denomination to the escrow's Ironwood-only UA; 512-byte memo with three slots, each sealed to one relayer's X25519 key and holding `id ‖ sᵢ` | Your wallet's lightwalletd sees your IP; the chain sees a shielded tx |
 | 7b | Browser → `faucet.zpredict.site` `GET /status`, `POST /challenge`, `POST /drip` (#133) | A deposit memo the browser built for its own account (as in 7), a proof of work and a Turnstile token. The faucet checks the memo's shape, then pays 1 unit to the escrow from its own shielded wallet (ZIP 317 fee, no transparent part) with that memo unchanged. No per-IP state, no request logs (`grep -rn eprintln apps/faucet/src`), CORS for `app.zpredict.site` only | Faucet only: Cloudflare Turnstile sees your IP and browser signals when you request testnet ZEC; it never sees orders/positions; it can link your IP to the time a 1-unit deposit was sent. The faucet host is DNS-only, so nginx sees your IP (never logged or forwarded) |
@@ -55,7 +55,7 @@ everything", which is already true of the single demo VM (see Accepted limitatio
 |---|---|---|
 | ✅ | No transparent address in any product path | Payouts are re-encoded Orchard/Ironwood-only (`packages/settle/src/payout.rs` `Payout::parse`); `verify.rs` refuses any transparent, Sapling or Orchard part; the e2e scripts assert `transparent in+out 0` |
 | ✅ | Fixed deposit denominations; order size never on chain | `DENOMINATIONS` in `packages/sdk/src/memo.ts`; orders exist only as XOR shares |
-| ⚠️ | Withdrawals don't link to deposits | Shielded on chain. Relayers see amount, address and time (#91) |
+| ⚠️ | Withdrawals don't link to deposits | Shielded on chain. Relayers see amount, address and time. The app withdraws in the deposit sizes (1/5/25 units, `DENOMINATIONS`) unless you tick "I understand this amount is distinctive", and warns when you reuse a payout address (`apps/web/components/order-ticket/WithdrawForm.tsx`, #91). Timing is not hidden |
 | ✅ | Wallet-default fee and padding | ZIP 317 fee, wallet-default padding (DESIGN.md §5) |
 | ✅ | Memos carry no order data and never the tag | Each slot holds `id ‖ sᵢ`, sealed to relayer *i* (`packages/settle/testdata/memo-vectors.json`) |
 | ✅ | Each order share goes only to its own relayer | `submitOrder` + `distinct()` in `packages/sdk` |
@@ -79,7 +79,7 @@ everything", which is already true of the single demo VM (see Accepted limitatio
 | **DQ-risk** | Cloudflare proxies and terminates TLS for r0–r2 and the app | #88 (dashboard: DNS-only) |
 | **DQ-risk** | Cloudflare injects a `cloudflareinsights` beacon and NEL headers | #89 (dashboard) |
 | Medium | Same-connection and timing metadata links orders and withdrawals to an account id | Partly fixed (jitter, no read on fill); #90 |
-| Medium | Withdrawal amount and timing can link deposits to payouts at the relayers | Accepted; #91 |
+| Medium | Withdrawal amount and timing can link deposits to payouts at the relayers | Amount mitigated in the app (deposit sizes by default, reuse warning); timing accepted; #91 |
 | Medium | nginx forwarded Cloudflare's client-IP headers to the containers despite claiming otherwise | Fixed in this PR (apply `nginx.conf` on the VPS) |
 | Low | Public `/view` digests and `/markets` prices show how many orders arrive and when a market crossed | Accepted by design ("price public, participants private") |
 | Low | `/accounts/:id` answers 403 for a known id with a wrong key and a zero share for an unknown id: an existence oracle for ids, which only relayers know | Accepted |
@@ -91,7 +91,7 @@ everything", which is already true of the single demo VM (see Accepted limitatio
 - **Single-VM demo.** All three relayers run on one VPS, so its operator could read every share. The model needs three independent operators.
 - **Demo counterparty (#103).** "Take the other side (demo)" places a judge's order and its exact opposite from the same account at the same moment, so the judge trades with themselves (a labelled self-trade that nets out). The two are ordinary orders, but because they arrive together a relayer can guess they come from one browser. It still can't read either, see a fill, or tell which side is the judge's. Real traders don't use it.
 - **Cloudflare sees visitor IPs**, and until #88 is fixed, everything sent to the relayers.
-- **Relayers see deposit and withdrawal amounts**, addresses and times, and the account id behind each deposit. They do not see which withdrawal belongs to which account, except through #90 and #91.
+- **Relayers see deposit and withdrawal amounts**, addresses and times, and the account id behind each deposit. They do not see which withdrawal belongs to which account, except through #90 and #91. Withdrawals default to the deposit sizes, so an amount is shared by many; one you opt into can still stand out. A payout still follows its request by seconds, so a deposit followed soon by a same-size withdrawal can link by time (no hold or mixing delay).
 - **Key-burn DoS.** A dishonest relayer can pre-register shares for an id it learned and then burn that row. Funds stay locked, never stolen (DESIGN.md "Threat model"); the same as aborting the MPC.
 - **Public price per market** per crossing batch, and order arrival counts and times through `/view`.
 - **Two relayers can move escrow funds** (FROST 2-of-3), while order privacy needs all three.
@@ -145,6 +145,7 @@ associated data, so one sealed secret can't be passed off as another.
 | Escrow wallet (zcash-devtool DB: UFVK, notes, witnesses) | the proving relayer | `escrow-wallet.sealed` | Unsealed only for one step into `/dev/shm` (RAM) where it exists, else `ESCROW_WALLET_DIR` or `$RUN_DIR/escrow`; sealed again and deleted when the step exits, also on error |
 | Relayer Noise key (MPC peering) | that relayer | Production: compose secret from Coolify, mounted under `/run/secrets`, never in git. Local dev: `apps/relayer/config/keys/r{i}.key`, mode 0600, gitignored | While the relayer runs |
 | Account tag (the account's credential) | the trader's browser | `localStorage` only | Never outside the browser. Relayer `i` gets only `sᵢ` (memo slot, judge claim, balance query) and fresh XOR shares inside orders and withdrawals |
+| Payout-address digests (BLAKE2b-128, for the reuse warning) | the trader's browser | `localStorage` only (`zp.payouts`) | Never leave the browser |
 | Order shares and read tokens | the trader's browser | `localStorage` (with the order) | Share *i* and token *i* go only to relayer *i* |
 | Account key shares (`sᵢ` per id) | relayer `i` | its event log (`key` events) | In memory while the relayer runs |
 | Judge-mode flags (ids opened by a judge claim) | every relayer that received the claim | its event log (`mock` events) | The claim already shows the id. The flags only make the circuit refuse withdrawals of mock credit, and a refusal looks like any other (#104) |

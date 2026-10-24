@@ -35,7 +35,7 @@ Its group key `a0cff44d86411e03d1ae3a76982d38bf0aac73db9568a2496324167486dbc534`
 3. Debited withdrawals are paid in **one** v6 transaction with an Ironwood output per payee and change back to the escrow, ZIP 317 fee, wallet-default padding. Each withdrawal keeps 2 half-ticks (10,000 zats) toward the fee: you receive `(amount − 2) × 5,000` zats.
 4. Status: `pending → debited → paying → paid` (with the txid), or `refused`. A payout the escrow cannot cover, or one a node misses, shows `payout: "retrying"` and is retried with backoff; it never stops clearing.
 
-Relayers do see each withdrawal's amount, address and time (they need them to pay), so amount and timing can link a deposit to a payout at the relayers ([#91](https://github.com/zpredict/zpredict/issues/91)). Withdraw round amounts at unremarkable times if that matters to you.
+Relayers do see each withdrawal's amount, address and time (they need them to pay), so amount and timing can link a deposit to a payout at the relayers ([#91](https://github.com/zpredict/zpredict/issues/91)). The app therefore withdraws in the deposit sizes (1, 5 or 25 units) by default; any other amount needs "I understand this amount is distinctive". It also warns when you reuse a payout address (checked against digests kept in your browser). Timing is not hidden: wait a while after a deposit if that matters to you.
 
 ## Judge credits are not money
 
