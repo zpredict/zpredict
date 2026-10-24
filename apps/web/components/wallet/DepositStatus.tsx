@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useAccount } from "@/hooks/useAccount";
+import { useAccount, useBalanceWatch } from "@/hooks/useAccount";
 import { units } from "@/lib/format";
 
 /**
@@ -16,6 +16,7 @@ export default function DepositStatus() {
 	}, [balance, base]);
 
 	const credited = base !== null && balance !== null && balance > base ? balance - base : null;
+	useBalanceWatch(credited === null);
 	return (
 		<p aria-live="polite" className={`dstatus${credited ? " is-done" : ""}`} role="status">
 			{credited

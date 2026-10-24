@@ -61,7 +61,7 @@ const mine = (o: OrderInput, p: Placed, extra: Partial<MyOrder> = {}): MyOrder =
 });
 
 export function OrdersProvider({ children }: { children: ReactNode }) {
-	const { tag } = useAccount();
+	const { tag, refreshSoon } = useAccount();
 	const [orders, setOrders] = useState<MyOrder[]>([]);
 	const retried = useRef(new Set<string>());
 
@@ -81,8 +81,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 	const pending = orders.filter((o) => o.status === "pending" && o.tokens);
 
 	// No balance read right after a fill: a fill poll followed at once by `/accounts/:id`
-	// would let a relayer link the order to the account by timing. The balance poll
-	// picks the change up on its own (jittered) schedule.
+	// would let a relayer link the order to the account by timing. One read follows a
+	// jittered 10-30 s later instead (`refreshSoon`, #90).
 	usePoll(
 		async () => {
 			for (const { orderId, tokens = [] } of pending) {
@@ -90,6 +90,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 				if (r.status === "pending") continue;
 				const done = { status: r.status, fill: r.fill, fillShares: r.fillShares };
 				update((all) => all.map((o) => (o.orderId === orderId ? { ...o, ...done } : o)));
+				refreshSoon();
 			}
 		},
 		POLL_MS.fills,

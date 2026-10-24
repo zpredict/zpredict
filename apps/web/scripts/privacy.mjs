@@ -14,8 +14,17 @@ const OUT = process.argv[2]
 	: new URL("../out/", import.meta.url).pathname;
 const FAUCET_ONLY = "challenges.cloudflare.com";
 
-// Hosts the app may reference: our relayers and dev mocks.
+// Hosts the app may reference: our relayers and dev mocks, plus the relayers' onion
+// services this build was given (NEXT_PUBLIC_RELAYERS_ONION, #90). No other .onion host.
 const OURS = /^(([a-z0-9-]+\.)*zpredict\.site|localhost)$/;
+const ONIONS = new Set(
+	(process.env.NEXT_PUBLIC_RELAYERS_ONION ?? "")
+		.split(",")
+		.map((u) => u.trim())
+		.filter(Boolean)
+		.map((u) => new URL(u).hostname)
+		.filter((h) => h.endsWith(".onion")),
+);
 // Inert strings that are never fetched: XML namespaces, the core-js license banner in
 // Next's polyfills, doc links inside React/Next error messages, a paper citation in a
 // GLSL comment of Three.js (lazy hero chunk from @zpredict/ascii), plain links to our repo,
@@ -68,7 +77,7 @@ for (const file of files) {
 		// Hosts without a dot ("https://a", "http://n") are URL-parser feature tests in
 		// polyfills, not resolvable third-party hosts.
 		if (!host.includes(".") && host !== "localhost") continue;
-		if (OURS.test(host) || INERT.some((r) => r.test(url))) continue;
+		if (OURS.test(host) || ONIONS.has(host) || INERT.some((r) => r.test(url))) continue;
 		if (host === FAUCET_ONLY && (isFaucet(file) || faucetOnly.has(file))) continue;
 		bad.push(`${file.slice(OUT.length)}: ${url}`);
 	}

@@ -2,6 +2,8 @@
 #   docker build -f apps/web/Dockerfile [--build-arg NEXT_PUBLIC_RELAYERS=a,b,c] .
 FROM node:24.19.0-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df AS build
 ARG NEXT_PUBLIC_RELAYERS=https://r0.zpredict.site,https://r1.zpredict.site,https://r2.zpredict.site
+# Optional "http://….onion,…,…" (three): used when the app is opened from a .onion host (#90).
+ARG NEXT_PUBLIC_RELAYERS_ONION=
 # The testnet escrow's Ironwood address from the key ceremony (#78); public by design.
 ARG NEXT_PUBLIC_ESCROW_UA=utest18yg3cneyjgxxknjm0j9020hmx5jp2wm67qn2p3rfmflct9hwlt363gzl50qeu3ms2u044hq8jzuzkl2tq8xa4m0ukzvlpqgtvu96ffyy
 # Testnet faucet API (#133) and its Cloudflare Turnstile site key (public). Turnstile's
@@ -10,6 +12,7 @@ ARG NEXT_PUBLIC_FAUCET=https://faucet.zpredict.site
 ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY=0x4AAAAAAEbwjG4MgK2WI6FF
 ARG TURNSTILE_ORIGIN=https://challenges.cloudflare.com
 ENV HUSKY=0 NEXT_TELEMETRY_DISABLED=1 NEXT_PUBLIC_RELAYERS=$NEXT_PUBLIC_RELAYERS \
+	NEXT_PUBLIC_RELAYERS_ONION=$NEXT_PUBLIC_RELAYERS_ONION \
 	NEXT_PUBLIC_ESCROW_UA=$NEXT_PUBLIC_ESCROW_UA NEXT_PUBLIC_FAUCET=$NEXT_PUBLIC_FAUCET \
 	NEXT_PUBLIC_TURNSTILE_SITE_KEY=$NEXT_PUBLIC_TURNSTILE_SITE_KEY
 RUN corepack enable
@@ -18,7 +21,7 @@ COPY . .
 RUN pnpm install --frozen-lockfile --filter @zpredict/web... \
 	&& pnpm --filter @zpredict/web build \
 	&& node deploy/static/prepare.mjs apps/web/out /csp.caddy \
-		"$NEXT_PUBLIC_RELAYERS,$NEXT_PUBLIC_FAUCET" "$TURNSTILE_ORIGIN"
+		"$NEXT_PUBLIC_RELAYERS,$NEXT_PUBLIC_RELAYERS_ONION,$NEXT_PUBLIC_FAUCET" "$TURNSTILE_ORIGIN"
 
 FROM caddy:2.11.7-alpine@sha256:24ec7b05bc532c7bb57f727030c5056e257ff7138b4b50460306819ff79362bd
 COPY deploy/static/Caddyfile /etc/caddy/Caddyfile

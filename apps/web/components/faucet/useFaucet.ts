@@ -13,7 +13,7 @@ import {
 	solveFaucetPow,
 } from "@zpredict/sdk";
 import { useCallback, useEffect, useState } from "react";
-import { useAccount } from "@/hooks/useAccount";
+import { useAccount, useBalanceWatch } from "@/hooks/useAccount";
 import { usePoll } from "@/hooks/usePoll";
 import { FAUCET_URL, POLL_MS, TURNSTILE_SITE_KEY } from "@/lib/config";
 import { fetchMemoKeys } from "@/lib/relayer";
@@ -43,6 +43,7 @@ export function useFaucet() {
 	const [down, setDown] = useState(false);
 	const [phase, setPhase] = useState<Phase>({ k: "idle" });
 	const pending = phase.k === "sent" ? phase.txid : undefined;
+	useBalanceWatch(phase.k === "sent" || phase.k === "mined");
 
 	usePoll(
 		async () => {

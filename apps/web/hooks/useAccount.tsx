@@ -2,8 +2,16 @@
 // The account: a random tag kept only in this browser (its credential: relayers only ever
 // get shares of it), and its balance, combined from the three relayers' XOR balance shares.
 import { newTag, type Seat } from "@zpredict/sdk";
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
-import { POLL_MS } from "@/lib/config";
+import {
+	createContext,
+	type ReactNode,
+	useCallback,
+	useContext,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
+import { jitter, POLL_MS } from "@/lib/config";
 import { claimJudge, fetchAccount } from "@/lib/relayer";
 import { KEYS, load, save } from "@/lib/storage";
 import { usePoll } from "./usePoll";
@@ -21,7 +29,10 @@ interface Account {
 	forget: () => void;
 	/** Replaces this browser's account with a restored tag (its orders here are dropped). */
 	restore: (tag: string) => void;
+	/** Reads the balance now (a user action); never rejects. */
 	refresh: () => Promise<void>;
+	/** One read after a jittered delay (`POLL_MS.afterBatch`), e.g. once a batch ran. */
+	refreshSoon: () => void;
 }
 
 const Ctx = createContext<Account | null>(null);
@@ -30,6 +41,12 @@ export function useAccount(): Account {
 	const v = useContext(Ctx);
 	if (!v) throw new Error("useAccount outside AccountProvider");
 	return v;
+}
+
+/** Polls the balance (jittered) while `on`: only while a deposit or faucet drop is awaited. */
+export function useBalanceWatch(on: boolean) {
+	const { refresh } = useAccount();
+	usePoll(refresh, on ? POLL_MS.balance : null);
 }
 
 export function AccountProvider({ children }: { children: ReactNode }) {
@@ -42,13 +59,38 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
 	const refresh = useCallback(async () => {
 		if (!tag) return;
-		const a = await fetchAccount(tag);
-		setBalance(a.balance);
-		setSeat(a.seat);
-		setMock(a.mock);
+		try {
+			const a = await fetchAccount(tag);
+			setBalance(a.balance);
+			setSeat(a.seat);
+			setMock(a.mock);
+		} catch {
+			// relayers unreachable: keep the last balance until the next read
+		}
 	}, [tag]);
 
-	usePoll(refresh, POLL_MS.balance, tag);
+	// A balance read names the account id, so reads aren't a constant stream (#90): one on
+	// load and on window focus, one a jittered while after a batch this browser had an order
+	// in (`refreshSoon`), and a poll only while a deposit is awaited (`useBalanceWatch`).
+	useEffect(() => {
+		const read = () => void refresh();
+		read();
+		window.addEventListener("focus", read);
+		return () => window.removeEventListener("focus", read);
+	}, [refresh]);
+
+	// The timer reads whichever account is current when it fires, never a forgotten one.
+	const latest = useRef(refresh);
+	latest.current = refresh;
+	const soon = useRef<ReturnType<typeof setTimeout>>(undefined);
+	useEffect(() => () => clearTimeout(soon.current), []);
+	const refreshSoon = useCallback(() => {
+		if (soon.current) return;
+		soon.current = setTimeout(() => {
+			soon.current = undefined;
+			void latest.current();
+		}, jitter(POLL_MS.afterBatch));
+	}, []);
 
 	// One account per browser: a claim that failed halfway is retried with the same tag,
 	// which the relayers accept without a second credit (or a second table row).
@@ -92,7 +134,9 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 	}, []);
 
 	return (
-		<Ctx.Provider value={{ tag, balance, seat, mock, claim, create, forget, restore, refresh }}>
+		<Ctx.Provider
+			value={{ tag, balance, seat, mock, claim, create, forget, restore, refresh, refreshSoon }}
+		>
 			{children}
 		</Ctx.Provider>
 	);

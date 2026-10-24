@@ -36,7 +36,7 @@ everything", which is already true of the single demo VM (see Accepted limitatio
 | 1 | Browser → `app.zpredict.site`, `zpredict.site` | Static HTML/JS/CSS/fonts. No cookies, no analytics, self-only CSP | Cloudflare (proxy) |
 | 2 | Browser → relayer *i* `POST /orders` | `orderId`, share *i* of the order, read token *i* | Cloudflare sees all three (#88) |
 | 3 | Browser → relayer *i* `GET /orders/:id?token=` | Fill share *i*, served only to token *i* | Cloudflare |
-| 4 | Browser → relayer *i* `GET /accounts/:id?key=sᵢ` | Account id, key share *i* → balance share *i* | Cloudflare; the relayer links reads to the id (by design) and to orders on the same connection (#90) |
+| 4 | Browser → relayer *i* `GET /accounts/:id?key=sᵢ` | Account id, key share *i* → balance share *i* | Cloudflare; the relayer links reads to the id (by design) and to orders on the same connection (#90). Read on load, on focus, on Refresh, once 10-30 s after a batch you had an order or withdrawal in, and polled only while a deposit is awaited |
 | 5 | Browser → relayer *i* `POST /withdrawals` | Fresh tag share *i*, amount, address | Amount and address go to every relayer (by design). The app offers only the deposit sizes unless you opt in (#91) |
 | 6 | Browser → relayers `GET /markets, /health, /view, /memo-key, /group-key` | Public data only | — |
 | 7 | Wallet → chain (deposit) | Fixed denomination to the escrow's Ironwood-only UA; 512-byte memo with three slots, each sealed to one relayer's X25519 key and holding `id ‖ sᵢ` | Your wallet's lightwalletd sees your IP; the chain sees a shielded tx |
@@ -66,7 +66,7 @@ everything", which is already true of the single demo VM (see Accepted limitatio
 | ✅ | No third-party requests from the frontends | One opt-in exception: Cloudflare Turnstile on `/faucet/` only, loaded on click (#133); the CSP allows its origin on that path only and the build gate fails if it appears in any file another route loads (`apps/web/scripts/privacy.test.mjs`). Otherwise self-only CSP (`deploy/static/prepare.mjs`); build gate `apps/web/scripts/privacy.mjs`; Chrome net log on 2026-10-23 shows only `*.zpredict.site`. Mirrored markets (#114): the Polymarket price comes from our relayers; the only Polymarket URL in the app is a plain outbound link (`rel="noopener noreferrer"`, built from relayer data and checked to be `https://polymarket.com/…`), so nothing loads unless clicked, and no logos or images are embedded |
 | ⚠️ | No analytics | We ship none, but Cloudflare injects a Web Analytics beacon into HTML (CSP blocks it, no request is made) and sends NEL headers (#89) |
 | ✅ | No IP logs | nginx/Caddy settings above; **fixed in #15**: nginx now strips `CF-Connecting-IP`/`X-Forwarded-For`, which it used to pass to the containers |
-| ⚠️ | Request metadata doesn't link actions to an account | Timing reduced in #15 (no balance read on fill, ±50% poll jitter); connection-level linkage stays open (#90) |
+| ⚠️ | Request metadata doesn't link actions to an account | Timing reduced: no balance read on fill, ±50% jitter (#15), and no constant balance poll (#90, `apps/web/hooks/useAccount.tsx`). Optional onion relayers (`NEXT_PUBLIC_RELAYERS_ONION`) when the app is opened from a `.onion` host. Same-connection linkage is accepted (#90) |
 | ✅ | Viewing keys and key shares never leave the relayers or appear in logs | Sealed at rest; no log line prints them |
 | ✅ | No secrets in git | `trufflehog … --no-verification` over all history: one false positive (a commit SHA near the word "SonarQube"); no keys, seeds, UFVKs or `.env` ever committed. #15 untracked a `.pyc` that embedded a local path |
 
@@ -78,7 +78,7 @@ everything", which is already true of the single demo VM (see Accepted limitatio
 | **DQ** | `GET /orders/:id` returned the fill share to anyone with the orderId, and every relayer knows every orderId | Fixed in this PR (per-relayer read token) |
 | **DQ-risk** | Cloudflare proxies and terminates TLS for r0–r2 and the app | #88 (dashboard: DNS-only) |
 | **DQ-risk** | Cloudflare injects a `cloudflareinsights` beacon and NEL headers | #89 (dashboard) |
-| Medium | Same-connection and timing metadata links orders and withdrawals to an account id | Partly fixed (jitter, no read on fill); #90 |
+| Medium | Same-connection and timing metadata links orders and withdrawals to an account id | Reduced (on-demand balance reads, jitter, optional onion relayers); same-connection linkage accepted; #90 |
 | Medium | Withdrawal amount and timing can link deposits to payouts at the relayers | Amount mitigated in the app (deposit sizes by default, reuse warning); timing accepted; #91 |
 | Medium | nginx forwarded Cloudflare's client-IP headers to the containers despite claiming otherwise | Fixed in this PR (apply `nginx.conf` on the VPS) |
 | Low | Public `/view` digests and `/markets` prices show how many orders arrive and when a market crossed | Accepted by design ("price public, participants private") |
@@ -92,6 +92,7 @@ everything", which is already true of the single demo VM (see Accepted limitatio
 - **Demo counterparty (#103).** "Take the other side (demo)" places a judge's order and its exact opposite from the same account at the same moment, so the judge trades with themselves (a labelled self-trade that nets out). The two are ordinary orders, but because they arrive together a relayer can guess they come from one browser. It still can't read either, see a fill, or tell which side is the judge's. Real traders don't use it.
 - **Cloudflare sees visitor IPs**, and until #88 is fixed, everything sent to the relayers.
 - **Relayers see deposit and withdrawal amounts**, addresses and times, and the account id behind each deposit. They do not see which withdrawal belongs to which account, except through #90 and #91. Withdrawals default to the deposit sizes, so an amount is shared by many; one you opt into can still stand out. A payout still follows its request by seconds, so a deposit followed soon by a same-size withdrawal can link by time (no hold or mixing delay).
+- **Same-connection metadata (#90).** The browser still sends its balance reads, orders and withdrawals to each relayer from one IP and often one connection, so that relayer's operator can tie them to the account id. Reads are rarer now (no constant poll), and the onion relayers hide the IP, but not the connection. No OHTTP relay.
 - **Key-burn DoS.** A dishonest relayer can pre-register shares for an id it learned and then burn that row. Funds stay locked, never stolen (DESIGN.md "Threat model"); the same as aborting the MPC.
 - **Public price per market** per crossing batch, and order arrival counts and times through `/view`.
 - **Two relayers can move escrow funds** (FROST 2-of-3), while order privacy needs all three.
