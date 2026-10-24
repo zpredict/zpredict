@@ -70,6 +70,18 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
     let escrow = (c.settlement.as_ref())
         .map(|s| Escrow::load(s, c.index).map(Arc::new))
         .transpose()?;
+    // Relayer 0 keeps the escrow wallet near the tip, so a payout's own sync is short.
+    if let Some(tool) = escrow.as_ref().and_then(|e| e.devtool.clone()) {
+        tokio::spawn(async move {
+            loop {
+                let t = tool.clone();
+                if let Ok(Err(err)) = tokio::task::spawn_blocking(move || t.sync()).await {
+                    eprintln!("escrow wallet sync: {err}");
+                }
+                tokio::time::sleep(std::time::Duration::from_secs(600)).await;
+            }
+        });
+    }
     let public = [
         read_key(&c.peer_keys[0])?,
         read_key(&c.peer_keys[1])?,
