@@ -3,7 +3,7 @@ import { bytes, ORDER_FIELDS } from "@/lib/format";
 
 interface Props {
 	hex: string | null;
-	/** Group bytes by the order layout and caption each field; masks the account key. */
+	/** Group bytes by the order layout and caption each field. */
 	fields?: boolean;
 }
 
@@ -15,11 +15,11 @@ export default function HexBytes({ hex, fields = false }: Props) {
 			{ORDER_FIELDS.map((f) => (
 				<span className={`hexbytes__group f-${f.name}`} key={f.name}>
 					<span className="hexbytes__bytes">
-						{/* The whole plaintext key is the account credential: never put it on screen. */}
-						{(fields && f.name === "key"
-							? b.slice(f.from, f.to).fill("··")
-							: b.slice(f.from, f.to)
-						).join(" ")}
+						{/* The key is the account credential. Never on screen, not even as shares: the three
+						    shares XOR back to it, and one screenshot plus a relayer's own share is enough. */}
+						{(f.name === "key" ? b.slice(f.from, f.to).fill("··") : b.slice(f.from, f.to)).join(
+							" ",
+						)}
 					</span>
 					{fields && <span className="hexbytes__label">{f.name}</span>}
 				</span>

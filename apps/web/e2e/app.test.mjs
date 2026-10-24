@@ -118,6 +118,13 @@ test("judge mode to a fill, chart, withdraw and deposit", async () => {
 	assert.match(await text(".xor__fill"), /^Filled 5 @ \d+\.\d¢ average/);
 	assert.match(await text(".xor__counter"), /Demo counterparty \(self-trade\)/);
 
+	// The account key never shows, in the plaintext or in any of the three shares (#153).
+	const keys = await b.evaluate(
+		`[...document.querySelectorAll(".xor .f-key .hexbytes__bytes")].map((e) => e.textContent)`,
+	);
+	assert.ok(keys.length >= 4, "key groups rendered");
+	for (const k of keys) assert.match(k, /^(··)( ··)*$/);
+
 	// The crosshair follows the pointer: a time on top and each series' price.
 	const box = await b.evaluate(`(() => {
 		const r = document.querySelector(".pchart__plot").getBoundingClientRect();
