@@ -24,7 +24,9 @@ Other scripts:
 | `pnpm --filter @zpredict/web test` | mock clearing rule against `packages/core` test vectors |
 | `pnpm --filter @zpredict/web e2e` | builds against mock relayers on :4911-4913 and drives judge mode → fill → chart → withdraw → deposit in headless Chrome (`CHROME=` the binary), with the deploy CSP and no request outside localhost |
 
-Relayer URLs are baked in at build time from `NEXT_PUBLIC_RELAYERS="url0,url1,url2"`; the default is the hosted testnet relayers `https://r{0,1,2}.zpredict.site`.
+Relayer URLs are baked in at build time from `NEXT_PUBLIC_RELAYERS="url0,url1,url2"`; the default is the hosted testnet relayers `https://r{0,1,2}.zpredict.site`. For Tor Browser, `NEXT_PUBLIC_RELAYERS_ONION="http://….onion,…,…"` (optional, three onion origins) is used instead whenever the app itself is opened from a `.onion` host, e.g. this static export served as an onion service. The build gate allows exactly those onion hosts, and the Dockerfile adds them to the CSP's `connect-src` (#90).
+
+The balance is read on load, on window focus, on Refresh (wallet page) and once 10-30 s after a batch this browser had an order or withdrawal in; it is polled (jittered) only while a deposit or faucet drop is awaited, so balance reads, which carry the account id, aren't a constant stream (#90).
 
 **Deposits** (trade page, "Deposit") work like this:
 1. Pick 1, 5 or 25 units.

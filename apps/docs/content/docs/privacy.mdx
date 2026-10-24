@@ -43,7 +43,7 @@ This page summarises [PRIVACY.md](https://github.com/zpredict/zpredict/blob/main
 | ✅ | No third-party requests from the frontends | Self-only CSP; build gates; these docs too (below) |
 | ⚠️ | No analytics | We ship none; Cloudflare injects a beacon (blocked by CSP) and NEL headers ([#89](https://github.com/zpredict/zpredict/issues/89)) |
 | ✅ | No IP logs | nginx `access_log off`, `error_log /dev/null`, client-IP headers stripped; Caddy and the relayers log no addresses |
-| ⚠️ | Request metadata doesn't link actions to an account | Poll jitter, no balance read on fill; connection-level linkage open ([#90](https://github.com/zpredict/zpredict/issues/90)) |
+| ⚠️ | Request metadata doesn't link actions to an account | Poll jitter, no balance read on fill, no constant balance poll (on load, focus, Refresh, and once after a batch you were in); optional onion relayers. Same-connection linkage accepted ([#90](https://github.com/zpredict/zpredict/issues/90)) |
 | ✅ | Viewing keys and key shares never leave the relayers or appear in logs | Sealed at rest ([Settlement & FROST](/docs/settlement#secrets-at-rest)) |
 | ✅ | No secrets in git | `trufflehog git file://. --no-verification` over all history |
 
