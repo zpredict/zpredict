@@ -7,7 +7,7 @@ export default function DetailFaq({ market: m }: { market: Market }) {
 	const faq = [
 		[
 			`What is the "${title}" market?`,
-			"A YES/NO prediction market on zPredict. A YES contract pays 1 unit if the outcome is YES, a NO contract if it is NO; the price in cents is the market's public estimate of the chance.",
+			"A YES/NO prediction market on zPredict. A YES share pays 0.01 ZEC if the outcome is YES, a NO share if it is NO. A share at 60¢ costs 60% of that, 0.006 ZEC, and the price is the market's public estimate of the chance.",
 		],
 		[
 			"Who can see that I traded?",

@@ -216,18 +216,3 @@
 .amount {
 	white-space: nowrap;
 }
-
-.amount__zec {
-	color: var(--zp-muted);
-}
-
-.balance__zec {
-	color: var(--zp-muted);
-	font-size: 12px;
-}
-
-@media (max-width: 899.98px) {
-	.balance__zec {
-		display: none;
-	}
-}

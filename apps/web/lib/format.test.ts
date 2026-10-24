@@ -1,4 +1,4 @@
-// Units → ZEC formatting, the inline ZEC icon matching the brand file, average price, and
+// Half-ticks/zats → ZEC formatting, the inline ZEC icon matching the brand file, average price, and
 // the browser-side share XOR (node --test).
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -14,7 +14,7 @@ import {
 	unitsToZec,
 	viewDigest,
 } from "@zpredict/sdk";
-import { avgCents, ORDER_FIELDS, units, zec } from "./format.ts";
+import { avgCents, ORDER_FIELDS, zatsToZec, zec } from "./format.ts";
 import { digestsOf, openFill, openOrder, xorHex } from "./shares.ts";
 
 test("1 unit = 200 half-ticks = 0.01 ZEC, exact", () => {
@@ -26,7 +26,8 @@ test("1 unit = 200 half-ticks = 0.01 ZEC, exact", () => {
 	assert.equal(zec(0), "0.00");
 	assert.equal(zec(10_000n * HALF_TICKS_PER_UNIT), "100.00");
 	assert.equal(zec(-200), "-0.01");
-	assert.equal(units(5000), "25.00");
+	assert.equal(zatsToZec(1n), "0.00000001");
+	assert.equal(zatsToZec(150_000_000n), "1.50");
 });
 
 test("agrees with the sdk's deposit amounts (UNIT_ZATS)", () => {

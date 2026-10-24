@@ -11,7 +11,7 @@ pnpm install
 pnpm --filter @zpredict/web dev:mock   # 3 mock relayers on :4101-4103 + next dev on :3000
 ```
 
-Open http://localhost:3000, click **Judge mode** (mock credit of 25 units), place an order, and watch the three relayer panels. A fill shows up within one batch (5 s).
+Open http://localhost:3000, click **Judge mode** (mock credit of 0.25 ZEC), enter an amount in ZEC, and watch the three relayer panels. A fill shows up within one batch (5 s).
 
 Judge mode makes one account per browser (its tag lives in `localStorage`; a claim that fails halfway is retried with the same tag, so it never takes a second table row). The relayers' balance table has a fixed number of rows (`table_rows`). When it is full, Judge mode says so instead of creating an account, and an account that only has a row past the cap (a deposit that arrived after the table filled) gets a clear notice on the order ticket rather than orders that never fill.
 
@@ -29,13 +29,13 @@ Relayer URLs are baked in at build time from `NEXT_PUBLIC_RELAYERS="url0,url1,ur
 The balance is read on load, on window focus, on Refresh (wallet page) and once 10-30 s after a batch this browser had an order or withdrawal in; it is polled (jittered) only while a deposit or faucet drop is awaited, so balance reads, which carry the account id, aren't a constant stream (#90).
 
 **Deposits** (trade page, "Deposit") work like this:
-1. Pick 1, 5 or 25 units.
+1. Pick 0.01, 0.05 or 0.25 ZEC.
 2. Create an account tag in the browser, or keep the judge tag.
 3. Copy or open the ZIP 321 payment request: the escrow UA, the exact amount, and a memo giving each relayer (encrypted to its `GET /memo-key`) the account id and its own share of the tag, never the tag. Every view builds a fresh memo.
 
 The escrow address is baked in from `NEXT_PUBLIC_ESCROW_UA` (published by the DKG). Without it, the flow says it isn't live yet and points to judge mode. Try it locally with `NEXT_PUBLIC_ESCROW_UA=utest1… pnpm --filter @zpredict/web dev:mock`: the mock relayers serve memo keys, but they don't scan deposits.
 
-**Withdrawals** (trade page, "Withdraw", once the account has a tag): an amount in the deposit sizes (1/5/25 units; any other amount only after "I understand this amount is distinctive", #91) and a fresh unified address, with a warning if this browser paid out to it before with an Ironwood (Orchard) receiver. Each relayer receives only a fresh XOR share of the tag with the public amount and address (`submitWithdrawal`), so no relayer learns whose withdrawal it is or can forge one; the status (`pending → debited → paying → paid`, or `refused` if the balance doesn't cover it) comes from relayer 0, with the txid once broadcast. The mock relayers combine the shares, debit and report a made-up txid. A judge-mode tag gets a short explanation instead of the form: its credit is mock collateral, so it is never withdrawable (#104).
+**Withdrawals** (trade page, "Withdraw", once the account has a tag): an amount in the deposit sizes (0.01/0.05/0.25 ZEC; any other amount only after "I understand this amount is distinctive", #91) and a fresh unified address, with a warning if this browser paid out to it before with an Ironwood (Orchard) receiver. Each relayer receives only a fresh XOR share of the tag with the public amount and address (`submitWithdrawal`), so no relayer learns whose withdrawal it is or can forge one; the status (`pending → debited → paying → paid`, or `refused` if the balance doesn't cover it) comes from relayer 0, with the txid once broadcast. The mock relayers combine the shares, debit and report a made-up txid. A judge-mode tag gets a short explanation instead of the form: its credit is mock collateral, so it is never withdrawable (#104).
 
 ## Privacy gate
 

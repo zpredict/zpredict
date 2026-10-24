@@ -8,7 +8,7 @@ From [DESIGN.md "Threat model"](https://github.com/zpredict/zpredict/blob/main/D
 | Observer | Learns | Doesn't learn |
 |---|---|---|
 | Chain observer | The escrow address exists and makes batched shielded transactions | Who bet, which side, how much, who won |
-| Any single relayer | "A 5-unit deposit arrived for account X"; "someone withdrew A to address Y" | Orders, sides, prices, positions, balances, whose withdrawal it was; any account's tag, so it can't trade, withdraw or read a balance as anyone |
+| Any single relayer | "A 0.05 ZEC deposit arrived for account X"; "someone withdrew A to address Y" | Orders, sides, prices, positions, balances, whose withdrawal it was; any account's tag, so it can't trade, withdraw or read a balance as anyone |
 | 2 colluding relayers | Same as one for orders; **can move escrow funds** (FROST 2-of-3) | Orders (polytune needs all 3 to collude); tags (the third share is missing) |
 | All 3 colluding | Everything | — |
 | Counterparty | That a fill happened at the midpoint | Who you are, your size beyond the fill |

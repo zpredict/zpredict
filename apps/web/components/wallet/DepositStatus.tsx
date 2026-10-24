@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
+import Amount from "@/components/ui/Amount";
 import { useAccount, useBalanceWatch } from "@/hooks/useAccount";
-import { units } from "@/lib/format";
 
 /**
  * Live status of a deposit, from the account's balance (combined in this browser from the
@@ -19,11 +19,15 @@ export default function DepositStatus() {
 	useBalanceWatch(credited === null);
 	return (
 		<p aria-live="polite" className={`dstatus${credited ? " is-done" : ""}`} role="status">
-			{credited
-				? `Credited by the three relayers: +${units(credited)} units. You can trade now.`
-				: seat === "waiting"
-					? "Your deposit is credited but the relayers' table is full: orders fill once a row frees up."
-					: "Waiting for your deposit. The relayers credit it after 10 confirmations (about 13 minutes on testnet); this updates by itself."}
+			{credited ? (
+				<>
+					Credited by the three relayers: +<Amount halfTicks={credited} />. You can trade now.
+				</>
+			) : seat === "waiting" ? (
+				"Your deposit is credited but the relayers' table is full: orders fill once a row frees up."
+			) : (
+				"Waiting for your deposit. The relayers credit it after 10 confirmations (about 13 minutes on testnet); this updates by itself."
+			)}
 		</p>
 	);
 }

@@ -1,20 +1,16 @@
-import { type Fill, HALF_TICKS_PER_UNIT, type Side, ZATS_PER_HALF_TICK } from "@zpredict/sdk";
+import { type Fill, type Side, ZATS_PER_HALF_TICK } from "@zpredict/sdk";
 
-/** Half-ticks to units of collateral, two decimals. */
-export const units = (halfTicks: bigint | number) =>
-	(Number(halfTicks) / Number(HALF_TICKS_PER_UNIT)).toFixed(2);
-
-/**
- * Half-ticks to ZEC (1 unit = 200 half-ticks = 0.01 ZEC), exact, at least two decimals and no
- * trailing zeros beyond: "0.25", "0.035", "0.0001".
- */
-export function zec(halfTicks: bigint | number): string {
-	const zats = BigInt(halfTicks) * ZATS_PER_HALF_TICK;
+/** Zatoshis to ZEC, exact, at least two decimals and no trailing zeros beyond: "0.25", "0.0001". */
+export function zatsToZec(zats: bigint): string {
 	const sign = zats < 0n ? "-" : "";
 	const abs = zats < 0n ? -zats : zats;
 	const frac = (abs % 100_000_000n).toString().padStart(8, "0").replace(/0+$/, "");
 	return `${sign}${abs / 100_000_000n}.${frac.padEnd(2, "0")}`;
 }
+
+/** Half-ticks to ZEC (200 half-ticks = 0.01 ZEC): "0.25", "0.035", "0.00005". */
+export const zec = (halfTicks: bigint | number) =>
+	zatsToZec(BigInt(halfTicks) * ZATS_PER_HALF_TICK);
 
 /** Average fill price in cents per contract: totalCost (half-ticks) / size / 2. */
 export const avgCents = (f: Fill) => (f.size ? f.totalCost / f.size / 2 : 0);

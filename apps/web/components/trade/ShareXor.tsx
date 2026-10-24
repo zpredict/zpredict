@@ -3,7 +3,7 @@ import type { Fill } from "@zpredict/sdk";
 import Badge from "@/components/ui/Badge";
 import Card from "@/components/ui/Card";
 import type { MyOrder } from "@/hooks/useOrders";
-import { avgCents, sideName } from "@/lib/format";
+import { avgCents, sideName, zec } from "@/lib/format";
 import { missed, openFill, openOrder, xorHex } from "@/lib/shares";
 import HexBytes from "./HexBytes";
 
@@ -23,7 +23,7 @@ function unfilledText(o: MyOrder): string {
 
 function fillText(o: MyOrder, fill: Fill | null): string {
 	if (fill?.filled)
-		return `Filled ${fill.size} @ ${avgCents(fill).toFixed(1)}¢ average — only you can open this.`;
+		return `Filled ${fill.size} shares for ${zec(fill.totalCost)} ZEC (${avgCents(fill).toFixed(1)}¢ average) — only you can open this.`;
 	if (fill || missed(o)) return unfilledText(o);
 	return o.retry && o.counterId
 		? "Retrying in the next batch…"

@@ -11,7 +11,7 @@ Your browser makes a random 16-byte **tag**. It is the account's only credential
 
 ## 2. Deposit
 
-You send a fixed-denomination note (1, 5 or 25 units; 1 unit = 0.01 ZEC) to the escrow's Ironwood-only address. The 512-byte memo carries three slots, each encrypted to one relayer and holding `id ‖ sᵢ`. No order data ever goes on chain. A deposit is credited after 10 confirmations, and only once **all three** relayers' own scans found it. See [Your money](/docs/your-money).
+You send a fixed-denomination note (0.01, 0.05 or 0.25 ZEC) to the escrow's Ironwood-only address. The 512-byte memo carries three slots, each encrypted to one relayer and holding `id ‖ sᵢ`. No order data ever goes on chain. A deposit is credited after 10 confirmations, and only once **all three** relayers' own scans found it. See [Your money](/docs/your-money).
 
 ## 3. Order
 
@@ -29,7 +29,7 @@ Out come XOR-shared fill records and new balances, plus **one public clearing pr
 
 ## 5. Resolution
 
-At the resolve height (+10 confirmations), each relayer evaluates the market's rule against its own node. Only an outcome all three computed identically is signed, FROST 2-of-3, and published with the block hash and height so anyone can recompute and verify it. A second small MPC program then pays one unit per winning contract into the winners' rows, without anyone learning which positions won. See [Markets & resolution](/docs/markets).
+At the resolve height (+10 confirmations), each relayer evaluates the market's rule against its own node. Only an outcome all three computed identically is signed, FROST 2-of-3, and published with the block hash and height so anyone can recompute and verify it. A second small MPC program then pays 0.01 ZEC per winning share into the winners' rows, without anyone learning which positions won. See [Markets & resolution](/docs/markets).
 
 ## 6. Withdrawal
 

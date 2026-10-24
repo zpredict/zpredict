@@ -4,6 +4,7 @@ import { useState } from "react";
 import DenominationPicker from "@/components/order-ticket/DenominationPicker";
 import NumberField from "@/components/order-ticket/NumberField";
 
+/** `value` and `max` count 0.01 ZEC steps (the sdk's deposit units); the field shows ZEC. */
 interface Props {
 	value: number;
 	max: number;
@@ -27,13 +28,14 @@ export default function WithdrawAmount({ value, max, onChange }: Props) {
 		<>
 			{distinct ? (
 				<NumberField
-					id="withdraw-units"
+					id="withdraw-amount"
 					label="Amount"
-					max={max}
-					min={1}
-					onChange={onChange}
-					unit="units"
-					value={value}
+					max={max / 100}
+					min={0.01}
+					onChange={(z) => onChange(Math.round(z * 100))}
+					step={0.01}
+					unit="ZEC"
+					value={value / 100}
 				/>
 			) : (
 				<DenominationPicker

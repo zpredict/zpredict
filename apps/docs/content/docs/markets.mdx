@@ -3,7 +3,7 @@ title: Markets & resolution
 description: Chain-data markets, the hourly rolling market, mirrored Polymarket markets and whose word each one trusts.
 ---
 
-A market is `{id, question, resolution rule, close height, resolve height}`. Prices are ticks from 1 to 99 cents. A matched YES/NO pair locks exactly 1 unit of collateral and pays 1 unit to the winning side. Each rule is a plugin implementing the `Resolver` trait from [`packages/oracle`](https://github.com/zpredict/zpredict/tree/main/packages/oracle); a new market type is a new plugin.
+A market is `{id, question, resolution rule, close height, resolve height}`. Prices are ticks from 1 to 99 cents. A matched YES/NO pair locks exactly 0.01 ZEC (1 unit of collateral) and pays it to the winning side: a share bought at 60¢ costs 0.006 ZEC and pays 0.01 ZEC if it wins. Each rule is a plugin implementing the `Resolver` trait from [`packages/oracle`](https://github.com/zpredict/zpredict/tree/main/packages/oracle); a new market type is a new plugin.
 
 ## Chain-data markets
 

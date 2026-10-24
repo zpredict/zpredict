@@ -6,9 +6,8 @@ import Button from "@/components/ui/Button";
 import Pane from "@/components/ui/Pane";
 import ZecIcon from "@/components/ui/ZecIcon";
 import { useAccount } from "@/hooks/useAccount";
+import { zatsToZec } from "@/lib/format";
 import { type Phase, useFaucet } from "./useFaucet";
-
-const zec = (zats: number) => (zats / 1e8).toFixed(zats % 1e6 ? 8 : 2);
 
 const STEPS = ["sent", "mined", "credited"] as const;
 
@@ -52,7 +51,7 @@ function StatusList({ status, down }: { status: FaucetStatus | null; down: boole
 			<dd>
 				{status?.balance != null ? (
 					<>
-						<ZecIcon /> {zec(status.balance)} TAZ
+						<ZecIcon /> {zatsToZec(BigInt(status.balance))} ZEC
 					</>
 				) : (
 					"…"
@@ -66,7 +65,7 @@ function StatusList({ status, down }: { status: FaucetStatus | null; down: boole
 	);
 }
 
-/** /faucet: one unit of testnet ZEC into this browser's own account, credited like any deposit. */
+/** /faucet: 0.01 testnet ZEC into this browser's own account, credited like any deposit. */
 export default function FaucetScreen() {
 	const { status, down, phase, request, tag, mock } = useFaucet();
 	const { create, forget } = useAccount();
@@ -78,7 +77,7 @@ export default function FaucetScreen() {
 		<Pane aria-labelledby="faucet-title" className="faucet" variant="dark">
 			<p className="faucet__eyebrow">[ testnet faucet ]</p>
 			<h1 className="faucet__title" id="faucet-title">
-				Get 1 unit of testnet ZEC into your account.
+				Get 0.01 testnet ZEC into your account.
 			</h1>
 			<p>
 				The faucet sends one fixed 0.01 TAZ shielded deposit to the escrow with a memo this browser
@@ -117,9 +116,9 @@ export default function FaucetScreen() {
 
 			<p className="dim">
 				Anti-abuse: when you click, this page loads Cloudflare Turnstile, which sees your IP and
-				browser signals (never your orders or positions) and could link your IP to the time a 1-unit
-				deposit was sent. Then a proof of work, one drop at a time for everyone and a daily cap. The
-				faucet itself keeps no IPs and no request logs, and never sees your tag.
+				browser signals (never your orders or positions) and could link your IP to the time a 0.01
+				ZEC deposit was sent. Then a proof of work, one drop at a time for everyone and a daily cap.
+				The faucet itself keeps no IPs and no request logs, and never sees your tag.
 			</p>
 			<p className="dim">
 				Have your own Zcash testnet wallet? Get TAZ from an external faucet such as{" "}

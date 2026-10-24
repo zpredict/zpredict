@@ -16,7 +16,7 @@ export default function JudgeCta() {
 				{error ||
 					(hasAccount
 						? "Demo account ready in this browser."
-						: "Credits a fresh testnet demo account with 25 units. No wallet, no deposit.")}
+						: "Credits a fresh testnet demo account with 0.25 ZEC. No wallet, no deposit.")}
 			</p>
 		</div>
 	);
