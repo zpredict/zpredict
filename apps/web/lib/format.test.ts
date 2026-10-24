@@ -51,7 +51,7 @@ test("average price: 3 contracts for 345 half-ticks is 57.5¢; no contracts, no 
 	assert.equal(avgCents({ size: 0, totalCost: 0, side: 0, filled: false }), 0);
 });
 
-test("ORDER_FIELDS covers the whole order", { skip: "#130" }, () => {
+test("ORDER_FIELDS covers the whole order (#130)", () => {
 	assert.equal(ORDER_FIELDS[0].from, 0);
 	for (const [i, f] of ORDER_FIELDS.slice(1).entries()) assert.equal(f.from, ORDER_FIELDS[i].to);
 	assert.equal(ORDER_FIELDS.at(-1)?.to, ORDER_LEN);

@@ -64,8 +64,8 @@
 	align-items: center;
 }
 
-.f-account {
-	width: 23ch;
+.f-key {
+	width: 47ch;
 }
 
 .hexbytes__label {
@@ -103,7 +103,7 @@
 		grid-template-columns: 11ch 4.5ch 4.5ch 11ch;
 		font-size: 11px;
 	}
-	.f-account {
+	.f-key {
 		grid-column: 1 / -1;
 	}
 }
