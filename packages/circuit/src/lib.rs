@@ -3,7 +3,7 @@
 //! One run clears several markets at once. Each relayer holds one XOR share of every
 //! order in a batch ([`DEFAULT_SLOTS`] = 8 slots, up to [`MAX_SLOTS`]) and of every row of
 //! the balance table (`id | balance`, any number of rows; [`DEFAULT_ROWS`] = 32). All
-//! three call [`run_party`] with the same public market list ([`DEFAULT_MARKETS`] = 4
+//! three call [`run_party`] with the same public market list ([`DEFAULT_MARKETS`] = 24
 //! slots, `0` = unused) and per-row credits; the circuit rebuilds the orders and the
 //! table, adds the credits, crosses the orders exactly like
 //! [`zpredict_core::clear_with_balances`], and each relayer gets back only its XOR share
@@ -87,9 +87,9 @@
 //! (+21k gates, +0.4 s over id matching).
 //! A resolution run of [`DEFAULT_POSITIONS`] = 16 positions over 32 rows is 158,335 AND
 //! gates (~3.5 s by the same rate). The 16- and 24-row rows of the table are from the
-//! account-key circuit (#94): 195,671 gates at 16 rows. [`DEFAULT_MARKETS`] is 6 since #114:
-//! 393,999 gates at 8 × 48 against 385,321 with four slots (+2.3%, ~+3% preprocessing).
-//! Three market slots instead of four save only 1.5% (286,204 at 32 rows).
+//! account-key circuit (#94): 195,671 gates at 16 rows. [`DEFAULT_MARKETS`] is 24 since #148:
+//! 472,389 gates at 8 × 48 against 394,287 with six slots (+20%, ~+17% preprocessing),
+//! ~4.3k gates per slot.
 //!
 //! **Preprocessing** (WRK17's input-independent phases) is ~92% of every run: 5.7 s of
 //! 6.2 s at 8 × 32, 4.8 of 5.3 s at 24 rows, 3.9 of 4.2 s at 16. [`preprocess`] does it

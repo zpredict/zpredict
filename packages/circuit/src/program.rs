@@ -20,7 +20,7 @@ pub const MAX_SLOTS: usize = 21;
 pub const DEFAULT_ROWS: usize = 32;
 /// Market slots per run. Pad unused slots with market id 0; a deployment with more open
 /// markets runs once per group of this many.
-pub const DEFAULT_MARKETS: usize = 6;
+pub const DEFAULT_MARKETS: usize = 24;
 /// Withdrawal slots per batch (~9k AND gates each at 32 rows); more requests wait.
 pub const DEFAULT_WITHDRAWALS: usize = 2;
 
