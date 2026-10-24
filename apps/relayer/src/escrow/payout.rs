@@ -93,6 +93,13 @@ async fn coordinate(
         .devtool
         .as_ref()
         .ok_or_else(|| Error::Config("no devtool".into()))?;
+    // The sidecar opens the wallet fresh on every deploy: bring it to the tip first, or
+    // the proposal fails with "Must scan blocks first".
+    blocking({
+        let tool = tool.clone();
+        move || tool.sync()
+    })
+    .await?;
     let (params, wallet, list) = (e.params, tool.wallet.clone(), payouts.to_vec());
     let pczt =
         blocking(move || Ok(zpredict_settle::payout::create(&params, &wallet, &list)?)).await?;
