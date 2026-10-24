@@ -40,6 +40,10 @@
 	font-size: 15px;
 }
 
+.glyph--img {
+	object-fit: cover;
+}
+
 .glyph--lg {
 	width: 56px;
 	height: 56px;
