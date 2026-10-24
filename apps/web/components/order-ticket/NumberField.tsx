@@ -4,23 +4,34 @@ interface Props {
 	unit: string;
 	value: number;
 	min: number;
-	max: number;
+	max?: number;
+	/** 1 = whole numbers; anything else takes decimals (a ZEC amount). */
+	step?: number;
 	onChange: (v: number) => void;
 }
 
-/** Labelled whole-number input with a unit suffix. */
-export default function NumberField({ id, label, unit, value, min, max, onChange }: Props) {
+/** Labelled number input with a unit suffix. */
+export default function NumberField({
+	id,
+	label,
+	unit,
+	value,
+	min,
+	max,
+	step = 1,
+	onChange,
+}: Props) {
 	return (
 		<label className="field" htmlFor={id}>
 			<span className="field__label">{label}</span>
 			<span className="field__box">
 				<input
 					id={id}
-					inputMode="numeric"
+					inputMode={step === 1 ? "numeric" : "decimal"}
 					max={max}
 					min={min}
 					onChange={(e) => onChange(e.target.valueAsNumber)}
-					step={1}
+					step={step}
 					type="number"
 					value={Number.isNaN(value) ? "" : value}
 				/>

@@ -72,8 +72,8 @@ export default function DepositInfo({ open = false }: { open?: boolean }) {
 					{request && <DepositStatus />}
 				</li>
 				<li>
-					No testnet wallet? The <Link href="/faucet/">faucet</Link> sends 1 unit straight into this
-					account.
+					No testnet wallet? The <Link href="/faucet/">faucet</Link> sends 0.01 ZEC straight into
+					this account.
 				</li>
 			</ol>
 			{!escrowReady && (

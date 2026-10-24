@@ -12,7 +12,7 @@ import Button from "@/components/ui/Button";
 import ZecIcon from "@/components/ui/ZecIcon";
 import { useAccount } from "@/hooks/useAccount";
 import { useWithdraw } from "@/hooks/useWithdraw";
-import { units } from "@/lib/format";
+import { zatsToZec } from "@/lib/format";
 import { addressUsed } from "@/lib/storage";
 import WithdrawAmount from "./WithdrawAmount";
 
@@ -63,7 +63,7 @@ export default function WithdrawForm() {
 		);
 	const halfTicks = BigInt(Number.isNaN(amount) ? 0 : amount) * HALF_TICKS_PER_UNIT;
 	const max = Number((balance ?? 0n) / HALF_TICKS_PER_UNIT);
-	const zec = (Number(halfTicks > WITHDRAWAL_FEE ? payoutZats(halfTicks) : 0n) / 1e8).toFixed(4);
+	const zec = zatsToZec(halfTicks > WITHDRAWAL_FEE ? payoutZats(halfTicks) : 0n);
 	// Shown once something is typed: testnet unified address, Ironwood receiver, nothing transparent.
 	const problem = address ? withdrawalAddressProblem(address, "test") : null;
 	const check = addressCheck(address, problem);
@@ -101,8 +101,8 @@ export default function WithdrawForm() {
 				{check.text}
 			</p>
 			<p className="dim">
-				You receive <ZecIcon /> {zec} testnet ZEC: the amount less a {units(WITHDRAWAL_FEE)}-unit
-				network fee.
+				You receive <ZecIcon /> {zec} testnet ZEC: the amount less a{" "}
+				<Amount halfTicks={WITHDRAWAL_FEE} /> network fee.
 			</p>
 			<Button
 				disabled={

@@ -9,7 +9,7 @@ interface Props {
 	legend?: string;
 }
 
-/** The three deposit sizes as a native radio group. */
+/** The three deposit sizes (0.01, 0.05, 0.25 ZEC) as a native radio group. */
 export default function DenominationPicker({
 	units,
 	onChange,
@@ -20,7 +20,7 @@ export default function DenominationPicker({
 		<fieldset className="denoms">
 			<legend className="sr-only">{legend}</legend>
 			{DENOMINATIONS.map((d) => (
-				<label className={`denom${units === d ? " is-on" : ""}`} key={d}>
+				<label className={`denom num${units === d ? " is-on" : ""}`} key={d}>
 					<input
 						checked={units === d}
 						name={name}
@@ -28,8 +28,7 @@ export default function DenominationPicker({
 						type="radio"
 						value={d}
 					/>
-					{d} unit{d > 1 ? "s" : ""}
-					<span className="dim">
+					<span>
 						<ZecIcon /> {unitsToZec(d)} ZEC
 					</span>
 				</label>

@@ -115,7 +115,10 @@ test("judge mode to a fill, chart, withdraw and deposit", async () => {
 		}
 		throw new Error(`${e.message}: ${await text(".xor")}\n${seen.join("\n")}`);
 	});
-	assert.match(await text(".xor__fill"), /^Filled 5 @ \d+\.\d¢ average/);
+	assert.match(
+		await text(".xor__fill"),
+		/^Filled \d+ shares for \d+\.\d+ ZEC \(\d+\.\d¢ average\)/,
+	);
 	assert.match(await text(".xor__counter"), /Demo counterparty \(self-trade\)/);
 
 	// The crosshair follows the pointer: a time on top and each series' price.
