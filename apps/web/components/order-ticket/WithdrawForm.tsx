@@ -7,13 +7,14 @@ import {
 	withdrawalAddressProblem,
 } from "@zpredict/sdk";
 import { useState } from "react";
-import NumberField from "@/components/order-ticket/NumberField";
 import Amount from "@/components/ui/Amount";
 import Button from "@/components/ui/Button";
 import ZecIcon from "@/components/ui/ZecIcon";
 import { useAccount } from "@/hooks/useAccount";
 import { useWithdraw } from "@/hooks/useWithdraw";
 import { units } from "@/lib/format";
+import { addressUsed } from "@/lib/storage";
+import WithdrawAmount from "./WithdrawAmount";
 
 const statusText = (s: WithdrawalStatus) =>
 	s.status === "debited" && s.payout === "retrying"
@@ -27,7 +28,22 @@ const addressHint = (address: string) =>
 		? "Address OK: testnet, with an Ironwood receiver and no transparent one."
 		: "Shielded only: the payout goes to the address's Ironwood (Orchard) receiver.";
 
-/** Withdraw to a fresh shielded address. Each relayer gets only a share of the account. */
+/** The line under the address: its problem, a reuse warning (#91), or a hint. */
+function addressCheck(address: string, problem: string | null) {
+	if (problem) return { text: problem, bad: true };
+	if (addressUsed(address))
+		return {
+			text: "You withdrew to this address before. The relayers see the reuse and can link both withdrawals: use a fresh address.",
+			bad: true,
+		};
+	return { text: addressHint(address), bad: false };
+}
+
+/**
+ * Withdraw to a fresh shielded address. Each relayer gets only a share of the account, but
+ * sees the amount and address, so the form offers the deposit sizes and warns on a reused
+ * address (#91).
+ */
 export default function WithdrawForm() {
 	const { tag, balance, mock } = useAccount();
 	const [amount, setAmount] = useState(1);
@@ -50,6 +66,7 @@ export default function WithdrawForm() {
 	const zec = (Number(halfTicks > WITHDRAWAL_FEE ? payoutZats(halfTicks) : 0n) / 1e8).toFixed(4);
 	// Shown once something is typed: testnet unified address, Ironwood receiver, nothing transparent.
 	const problem = address ? withdrawalAddressProblem(address, "test") : null;
+	const check = addressCheck(address, problem);
 
 	return (
 		<details className="deposit">
@@ -58,17 +75,10 @@ export default function WithdrawForm() {
 				Paid from the escrow in one batched shielded transaction, to a fresh unified address with an
 				Ironwood (Orchard) receiver. The relayers see the amount, the address and the time, but not
 				which account it came from, except through request metadata and amount and timing (see the
-				threat model). Balance: <Amount halfTicks={balance ?? 0n} />.
+				threat model). Withdrawing in the deposit sizes keeps your amount common; the rest stays in
+				your balance. Balance: <Amount halfTicks={balance ?? 0n} />.
 			</p>
-			<NumberField
-				id="withdraw-units"
-				label="Amount"
-				max={max}
-				min={1}
-				onChange={setAmount}
-				unit="units"
-				value={amount}
-			/>
+			<WithdrawAmount max={max} onChange={setAmount} value={amount} />
 			<label className="field" htmlFor="withdraw-address">
 				<span className="field__label">Fresh testnet unified address (utest1…)</span>
 				<span className={`field__box${problem ? " is-bad" : ""}`}>
@@ -83,8 +93,12 @@ export default function WithdrawForm() {
 					/>
 				</span>
 			</label>
-			<p aria-live="polite" className={problem ? "ticket__err" : "dim"} id="withdraw-address-check">
-				{problem ?? addressHint(address)}
+			<p
+				aria-live="polite"
+				className={check.bad ? "ticket__err" : "dim"}
+				id="withdraw-address-check"
+			>
+				{check.text}
 			</p>
 			<p className="dim">
 				You receive <ZecIcon /> {zec} testnet ZEC: the amount less a {units(WITHDRAWAL_FEE)}-unit
@@ -94,7 +108,7 @@ export default function WithdrawForm() {
 				disabled={
 					pending || !address || problem !== null || halfTicks <= WITHDRAWAL_FEE || amount > max
 				}
-				onClick={() => submit(halfTicks, address)}
+				onClick={() => submit(halfTicks, address).then((ok) => ok && setAddress(""))}
 			>
 				Withdraw
 			</Button>

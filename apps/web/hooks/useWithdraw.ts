@@ -5,6 +5,7 @@ import type { WithdrawalStatus } from "@zpredict/sdk";
 import { useCallback, useState } from "react";
 import { POLL_MS } from "@/lib/config";
 import { fetchWithdrawal, withdraw } from "@/lib/relayer";
+import { rememberAddress } from "@/lib/storage";
 import { usePoll } from "./usePoll";
 
 const DONE = new Set<WithdrawalStatus["status"]>(["paid", "refused"]);
@@ -14,15 +15,19 @@ export function useWithdraw(tag: string | null) {
 	const [status, setStatus] = useState<WithdrawalStatus | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
+	/** Resolves true once the relayers accepted the request; the address is then remembered. */
 	const submit = useCallback(
 		async (halfTicks: bigint, address: string) => {
-			if (!tag) return;
+			if (!tag) return false;
 			setError(null);
 			setStatus(null);
 			try {
 				setId((await withdraw(tag, halfTicks, address)).withdrawalId);
+				rememberAddress(address);
+				return true;
 			} catch (e) {
 				setError(e instanceof Error ? e.message : String(e));
+				return false;
 			}
 		},
 		[tag],
