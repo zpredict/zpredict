@@ -55,9 +55,10 @@ impl Devtool {
     }
 
     /// Merges the signed and the proven PCZT. devtool reads both from files, written
-    /// next to the wallet (operator-controlled, tmpfs in the scripts) and removed after.
+    /// inside the wallet directory (operator-controlled, tmpfs in production; its parent
+    /// may be `/`, which the relayer can't write) and removed after.
     pub fn combine(&self, signed: &[u8], proven: &[u8]) -> Result<Vec<u8>> {
-        let dir = self.wallet.parent().unwrap_or(&self.wallet);
+        let dir = &self.wallet;
         let (a, b) = (
             dir.join("payout-signed.pczt"),
             dir.join("payout-proven.pczt"),
