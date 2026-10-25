@@ -31,7 +31,7 @@ function rule(m: Market): string {
 export default function Rules({ market: m }: { market: Market }) {
 	const tip = useTip();
 	const groupKey = useGroupKey();
-	const first = m.historyAt?.[0];
+	const first = m.historyAt?.find((t) => t > 0);
 	const mirrored = isMirrored(m);
 	return (
 		<section aria-labelledby="rules-title" className="rules">

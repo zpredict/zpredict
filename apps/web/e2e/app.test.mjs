@@ -132,6 +132,15 @@ test("judge mode to a fill, chart, withdraw and deposit", async () => {
 	);
 	assert.ok(keys.length >= 4, "key groups rendered");
 	for (const k of keys) assert.match(k, /^(··)( ··)*$/);
+	// Nor in the Relayer View's pinned "you" rows, one per relayer, side by side (#159).
+	await b.waitFor(
+		`[...document.querySelectorAll(".pinned.is-on .pinned__line")].some((e) => /^order\\s*[0-9a-f]{2}/.test(e.textContent))`,
+	);
+	const pinned = await b.evaluate(
+		`[...document.querySelectorAll(".pinned.is-on .pinned__line")].filter((e) => e.textContent.startsWith("order")).map((e) => e.lastElementChild.textContent)`,
+	);
+	assert.ok(pinned.length >= 1, "pinned order rows rendered");
+	for (const row of pinned) assert.deepEqual(row.split(" ").slice(10, 26), Array(16).fill("··"));
 
 	// The crosshair follows the pointer: a time on top and each series' price.
 	const box = await b.evaluate(`(() => {
