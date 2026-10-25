@@ -39,14 +39,17 @@ txid 8f5c8135addb23796c87f557ccb01dd1a859363b64a6680d48f01644c7d4cf00  version 6
 | FROST group key (`ak`) | `a0cff44d86411e03d1ae3a76982d38bf0aac73db9568a2496324167486dbc534` |
 | Escrow birthday | testnet block 4,530,716 (key ceremony, 2026-10-23) |
 
-<Callout type="info">
-**Testnet transactions: to be added.** Deposit and payout txids from the hosted demo go here once recorded (deposit txid, payout txid, block height, and the explorer-independent check below). Until then the regtest runs above are the on-chain evidence.
-</Callout>
+One full cycle on the live demo (2026-10-24 UTC), with a fresh, non-judge account made in the app and funded from a testnet faucet:
 
-| Kind | txid | Height |
-|---|---|---|
-| Deposit | _pending_ | |
-| Batched payout | _pending_ | |
+| Step | Evidence |
+|---|---|
+| Deposit 0.25 TAZ to the escrow (the app's ZIP 321 request, paid from a wallet) | txid `8a4bc24782738b87aaa872c3066d806b494c6e462b1ff4a83e82bfdeb62de82d`, testnet height 4,537,064 |
+| Credited by all three relayers | The app showed the balance once each relayer's scanner had the note |
+| Order filled inside MPC | Rolling market #1073528, "Will mainnet block 3,529,392 contain ≥ 5 shielded actions?": YES and NO, 5 shares each at 50¢ (a self-trade, one account on both sides) |
+| Resolved and FROST-signed | Outcome YES from mainnet block 3,529,392 (`00000000003a4db9b94acea70f19e0152553965f961913afd120b4bedc63f9fe`); the app verified the 2-of-3 signature against the group key above |
+| Withdrawal paid, 2-of-3 | Batched payout txid `67d93312ad79da5d7ca62a6f63568e870baf68bf1dcd31ac0c949d0e10620a16`, testnet height 4,539,998, to an Ironwood address |
+
+The run found three bugs on the way to the payout, all fixed: the escrow wallet was never synced (#151, #152), the payout's temporary files went to an unwritable directory (#155), and a failure before broadcast left the withdrawal stuck at `paying` (#156). The stuck withdrawal was reset by the operator after checking that the escrow had sent nothing.
 
 Check a txid against your own node: `zcash-cli getrawtransaction <txid> 1` should show version 6, Ironwood actions, and no transparent inputs or outputs.
 
