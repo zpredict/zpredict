@@ -134,6 +134,12 @@ async fn coordinate(
     let sigs = frost::aggregate(&e.share.group, &requests, &all)?;
     let signed = serialize(&zpredict_settle::apply(pczt, &sigs)?)?;
     let proven = prover.await.map_err(|e| Error::Settle(e.to_string()))??;
+    // Combining is local: if it fails nothing was sent, so the round just retries.
+    let tx = blocking({
+        let tool = tool.clone();
+        move || tool.combine(&signed, &proven)
+    })
+    .await?;
 
     // From here a broadcast may happen: record it first, so a crash never pays twice.
     let paying = Event::Payout {
@@ -143,7 +149,7 @@ async fn coordinate(
     };
     state.lock().expect("state lock").record(paying)?;
     let tool = tool.clone();
-    blocking(move || tool.send(&tool.combine(&signed, &proven)?)).await
+    blocking(move || tool.send(&tx)).await
 }
 
 /// Relayer 1: commit, then sign only what its own payout vector says.
