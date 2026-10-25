@@ -1,7 +1,7 @@
 // Chart math (node --test; Node strips the types).
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { inRange, valueAt, xTicks, yTicks } from "./chart.ts";
+import { inRange, seriesOf, valueAt, xTicks, yTicks } from "./chart.ts";
 
 const pts = [
 	{ t: 100, p: 40 },
@@ -40,4 +40,11 @@ test("xTicks stays within range and at most ~7 labels at every span", () => {
 		assert.ok(ticks.length >= 1 && ticks.length <= 8, `span ${span}: ${ticks.length}`);
 		assert.ok(ticks.every((k) => k.t >= t1 - span && k.t <= t1));
 	}
+});
+
+test("prices recorded before relayers kept the time (historyAt 0) stay off the time axis", () => {
+	const m = { id: 1, history: [40, 50, 60], historyAt: [0, 0, 1_700_000_000] };
+	const [own] = seriesOf([m as never], () => "", true);
+	assert.deepEqual(own.points, [{ t: 1_700_000_000, p: 60 }]);
+	assert.equal(seriesOf([m as never], () => "", false)[0].points.length, 3);
 });

@@ -42,7 +42,10 @@ export function seriesOf(markets: Market[], labelOf: (m: Market) => string, useT
 			key: String(m.id),
 			label: labelOf(m),
 			tone: TONES[i] ?? "grey",
-			points: (m.history ?? []).map((p, k) => ({ t: useTime ? (m.historyAt?.[k] ?? k) : k, p })),
+			// historyAt is 0 for prices recorded before relayers kept the time (#121): off a time axis.
+			points: (m.history ?? [])
+				.map((p, k) => ({ t: useTime ? (m.historyAt?.[k] ?? k) : k, p }))
+				.filter((pt) => !useTime || pt.t > 0),
 		}),
 	);
 	const ref = markets.length === 1 && useTime ? markets[0].reference?.history : undefined;
