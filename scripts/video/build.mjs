@@ -19,9 +19,9 @@ const app = JSON.parse(readFileSync(join(dir, "shots.json"), "utf8")).app;
 const work = join(dir, "build");
 mkdirSync(work, { recursive: true });
 
-// clip: shot file; right: captions over the Relayer View pane; from/to: seconds into it; speed: time-lapse factor; label: top-left strip.
+// clip: shot file; left: captions centred under the Relayer View (left column), not the trade
+// ticket; from/to: seconds into it; speed: time-lapse factor; label: bottom-left strip.
 // `at` pins a line to a time in the segment (else it follows the previous line).
-const lapse = 6;
 const SEGMENTS = [
 	{
 		clip: "title",
@@ -37,36 +37,31 @@ const SEGMENTS = [
 	},
 	{
 		clip: "app",
-		right: true,
-		to: app.sent + 5,
+		to: app.judge,
+		label: "app.zpredict.site · live",
+		lines: ["Live now: twenty-one Polymarket mirrors, plus markets on Zcash itself, every hour."],
+	},
+	{
+		clip: "app",
+		left: true,
+		from: app.judge,
+		to: app.sent,
 		lines: [
 			"Judge mode gives you a demo account. No wallet needed.",
-			{ at: 7.2, text: "The market: will NU7 activate at this block?" },
-			{
-				at: Math.max(0, app.sent - 1.5),
-				text: "Buy YES. Your browser splits the order into three random shares, one per relayer.",
-			},
+			"The market: will NU7 activate at this block?",
 		],
 	},
 	{
 		clip: "app",
-		right: true,
-		from: app.sent + 5,
-		to: app.fill - 2,
-		speed: lapse,
+		left: true,
+		from: app.sent,
 		full: true,
-		label: `time-lapse x${lapse} · a second trader buys NO in another browser`,
+		label: "a second judge account buys NO in another browser",
 		lines: [
-			"Three relayers match orders inside multi-party computation.",
-			"None of them knows what you bet. Your shares are lit; the rest is noise.",
+			"Buy YES, in ZEC. Your browser splits it into three random shares, one per relayer.",
+			"Three relayers match orders inside multi-party computation. None of them knows what you bet.",
+			"The fill: only your browser can open it.",
 		],
-	},
-	{
-		clip: "app",
-		right: true,
-		from: app.fill - 2,
-		full: true,
-		lines: [{ at: 2.3, text: "Then the fill, at the midpoint." }, "Only your browser can open it."],
 	},
 	{
 		clip: "resolved",
@@ -86,8 +81,15 @@ const SEGMENTS = [
 				at: 4.5,
 				text: "Each relayer tried to forge the winner's withdrawal. All three were refused.",
 			},
-			"The real payout: one Ironwood transaction to a fresh shielded address.",
-			"On chain: nothing readable. Zero transparent inputs or outputs.",
+			"The payout: one Ironwood transaction. Zero transparent inputs or outputs.",
+		],
+	},
+	{
+		clip: "testnet",
+		label: "zcash testnet · txids in docs.zpredict.site evidence",
+		lines: [
+			"And on public testnet, the full cycle on the live demo:",
+			"deposit, fill, a signed outcome, and a two-of-three payout to an Ironwood address.",
 		],
 	},
 	{
@@ -153,13 +155,13 @@ for (const [i, seg] of SEGMENTS.entries()) {
 		filters.push(draw(f, 24, 48, "h-64", "", 400));
 	}
 	for (const [k, c] of caps.entries()) {
-		const lines = wrap(c.text, seg.right ? 36 : 52);
+		const lines = wrap(c.text, seg.left ? 44 : 52);
 		for (const [j, line] of lines.entries()) {
 			const f = join(work, `cap${i}_${k}_${j}.txt`);
 			writeFileSync(f, line);
 			const y = `h-${150 + 76 * (lines.length - 1 - j)}-${seg.label ? 70 : 0}`;
 			filters.push(
-				draw(f, 44, seg.right ? "1342-tw/2" : "(w-tw)/2", y, `between(t,${c.start},${c.end})`),
+				draw(f, 44, seg.left ? "792-tw/2" : "(w-tw)/2", y, `between(t,${c.start},${c.end})`),
 			);
 		}
 	}
@@ -230,13 +232,13 @@ run("ffmpeg", [
 	out,
 ]);
 if (poster) {
-	// The split screen with your shares lit, without captions.
+	// The Relayer View with your shares lit and the opened fill, without captions.
 	run("ffmpeg", [
 		"-loglevel",
 		"error",
 		"-y",
 		"-ss",
-		String(app.sent + 8),
+		String(app.fill + 3),
 		"-i",
 		join(dir, "app.mp4"),
 		"-frames:v",
