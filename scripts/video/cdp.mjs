@@ -23,11 +23,13 @@ export async function launch() {
 			"--mute-audio",
 			"--no-first-run",
 			"--force-color-profile=srgb",
+			// Numbers as 0.05, whatever the machine's locale.
+			"--lang=en-US",
 			// CI runners (Ubuntu 24.04) forbid the unprivileged user namespaces Chrome's sandbox needs.
 			...(process.env.CI ? ["--no-sandbox"] : []),
 			"about:blank",
 		],
-		{ stdio: ["ignore", "ignore", "pipe"] },
+		{ stdio: ["ignore", "ignore", "pipe"], env: { ...process.env, LANG: "en_US.UTF-8" } },
 	);
 	const port = await new Promise((ok, fail) => {
 		let err = "";

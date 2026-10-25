@@ -107,7 +107,7 @@
 		},
 		terminal(data) {
 			$(`<div class="term">
-				<div class="term__bar"><b>regtest</b><span>${esc(data.title)}</span></div>
+				<div class="term__bar"><b>${esc(data.badge)}</b><span>${esc(data.title)}</span></div>
 				<pre id="out"></pre>
 			</div>`);
 			return typeLines(document.getElementById("out"), data);
