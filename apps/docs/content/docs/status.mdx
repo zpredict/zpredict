@@ -45,6 +45,12 @@ zPredict is a ZECATHON 2026 testnet demo. Collateral and settlement are on **Zca
 | [#124](https://github.com/zpredict/zpredict/issues/124) | Deploy robustness after the relayer outage of 2026-10-23 |
 | [#75](https://github.com/zpredict/zpredict/issues/75) | Build the relayer image in CI to avoid deploy downtime |
 
+## Future: yield on idle collateral
+
+Escrowed collateral sits idle until markets resolve. We do **not** stake it today. Zcash is proof of work with no native staking, so earning yield now means moving ZEC out of the shielded pool, through a transparent address, a bridge or a custodian. That would publish the escrow's size and timing, and it would put payouts at the mercy of a lockup, slashing or a third party. Both break the privacy model.
+
+If Zcash adds proof-of-stake delegation (Crosslink, in research), the escrow could delegate from the shielded pool. The yield would be credited pro rata inside the MPC, so no relayer learns anyone's balance. Until then: none ([#169](https://github.com/zpredict/zpredict/issues/169)).
+
 ## Is it up?
 
 ```sh
