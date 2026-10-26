@@ -52,7 +52,11 @@ async function trade(m, a, b) {
 }
 
 for (let r = 0; r < Number(rounds); r++) {
-	const open = (await getMarkets(RELAYERS[0])).filter((m) => m.status === "open");
+	// Hourly markets are skipped: their positions must be paid out at every resolution, which
+	// holds the batch for minutes (#174). Markets with no price yet go first.
+	const open = (await getMarkets(RELAYERS[0]))
+		.filter((m) => m.status === "open" && !m.rolling)
+		.sort((x, y) => Number(x.lastPrice !== undefined) - Number(y.lastPrice !== undefined));
 	let filled = 0;
 	// Four pairs per batch: the circuit has 8 order slots.
 	for (let i = 0; i < open.length; i += 4) {
@@ -60,7 +64,7 @@ for (let r = 0; r < Number(rounds); r++) {
 		const res = await Promise.all(
 			open
 				.slice(i, i + 4)
-				.map((m, j) => trade(m, rich[j % 3], rich[3 + (j % 3)]).catch(() => false)),
+				.map((m, j) => trade(m, rich[j % 2], rich[2 + ((j + 1) % 2)]).catch(() => false)),
 		);
 		filled += res.filter(Boolean).length;
 	}
