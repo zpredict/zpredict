@@ -116,6 +116,8 @@ const ROUTES = [
 		(i, { res }) => send(res, 200, { relayer: i, memoKey: hex(memoKeys[i]) }),
 	],
 	["GET", /^\/markets$/, (_, { res }) => send(res, 200, markets)],
+	// A fixed display price; the real relayers fetch ZEC/USD spot every 5 min (price.rs).
+	["GET", /^\/price$/, (_, { res }) => send(res, 200, { zecUsd: 1237.34, source: "mock", at: 0 })],
 	[
 		"GET",
 		/^\/group-key$/,

@@ -216,3 +216,10 @@
 .amount {
 	white-space: nowrap;
 }
+
+/* The USD value beside a ZEC amount: a reference, so quieter than the amount. */
+.amount__usd {
+	margin-left: 0.5em;
+	color: var(--zp-muted);
+	font-size: 0.9em;
+}
