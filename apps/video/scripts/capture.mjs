@@ -27,6 +27,7 @@ async function take(b, file) {
 	return {
 		mark: (name) => {
 			marks[name] = +((Date.now() - t0) / 1000).toFixed(2);
+			console.error(`${file}: ${name} at ${marks[name]} s`);
 		},
 		stop: async () => ({ ...marks, length: await stop() }),
 	};
@@ -62,7 +63,14 @@ const shots = {
 		const r = await take(b, "trade.mp4");
 		await sleep(1500);
 		r.mark("judge");
-		await b.click("button", "Judge mode");
+		// The header CTA: "Judge mode" claims a demo account; with PROFILE reusing one it reads
+		// "Trade now" (the relayers' balance table never frees rows, so reuse when you can).
+		await b.click(
+			"button",
+			await b.evaluate(
+				`[...document.querySelectorAll("button")].some((e) => e.textContent.includes("Judge mode")) ? "Judge mode" : "Trade now"`,
+			),
+		);
 		await b.waitFor(
 			`location.pathname.startsWith("/trade") && document.querySelector("#amount")`,
 			60_000,

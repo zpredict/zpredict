@@ -17,11 +17,16 @@ export async function launch() {
 		[
 			"--headless=new",
 			"--remote-debugging-port=0",
-			`--user-data-dir=${mkdtempSync(join(tmpdir(), "zp-video-"))}`,
+			// PROFILE reuses a browser profile (e.g. one that already holds a judge account).
+			`--user-data-dir=${process.env.PROFILE || mkdtempSync(join(tmpdir(), "zp-video-"))}`,
 			`--window-size=${W},${H}`,
 			"--hide-scrollbars",
 			"--mute-audio",
 			"--no-first-run",
+			// A recorded page must never count as hidden: no timer throttling, no backgrounding.
+			"--disable-background-timer-throttling",
+			"--disable-renderer-backgrounding",
+			"--disable-backgrounding-occluded-windows",
 			"--force-color-profile=srgb",
 			// Numbers as 0.05, whatever the machine's locale.
 			"--lang=en-US",
