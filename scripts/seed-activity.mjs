@@ -1,26 +1,22 @@
-// Operator-seeded demo activity (#166): six judge-mode accounts (mock credit, never
-// withdrawable) trade every open market against each other in pairs through the live relayers and the
-// real MPC, near the Polymarket reference price, so no market page is empty.
+// Operator-seeded demo activity (#166): the operator's accounts, funded by real testnet
+// deposits (no judge credit, #186), trade every open market against each other through the
+// live relayers and the real MPC, one share at a time near the Polymarket reference price, so
+// no market page is empty.
 //   node scripts/seed-activity.mjs <keys file> [rounds=1]
-// The keys file holds the account tags (created on first run, mode 600); never print it.
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+// The keys file is a JSON array of funded account tags (mode 600); never print it.
+import { readFileSync } from "node:fs";
 import {
-	claimJudge,
 	getBalance,
 	getFill,
 	getMarkets,
-	newTag,
 	RELAYERS,
 	submitOrder,
 } from "../packages/sdk/dist/index.js";
 
 const [file, rounds = "1"] = process.argv.slice(2);
 if (!file) throw new Error("usage: seed-activity.mjs <keys file> [rounds]");
-const ACCOUNTS = 6; // judge credit is 25 units each; every claim takes a balance-table row (#64)
-const tags = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : [];
-while (tags.length < ACCOUNTS) tags.push(newTag());
-writeFileSync(file, JSON.stringify(tags), { mode: 0o600 });
-for (const tag of tags) await claimJudge(RELAYERS, tag);
+const tags = JSON.parse(readFileSync(file, "utf8"));
+if (tags.length < 2) throw new Error("need at least two funded accounts");
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const clamp = (p) => Math.min(97, Math.max(3, Math.round(p)));
@@ -36,7 +32,7 @@ async function richest() {
 /** A buys YES at p+1, B buys NO at 101-p: they cross, clearing near p. */
 async function trade(m, a, b) {
 	const p = clamp((m.reference?.price ?? m.lastPrice ?? 50) + (Math.random() * 4 - 2));
-	const size = 1 + Math.floor(Math.random() * 3);
+	const size = 1; // small: one share, one unit of collateral per pair
 	const [yes, no] = await Promise.all([
 		submitOrder(RELAYERS, { market: m.id, side: 0, price: p + 1, size, key: a }),
 		submitOrder(RELAYERS, { market: m.id, side: 1, price: 101 - p, size, key: b }),
@@ -64,7 +60,7 @@ for (let r = 0; r < Number(rounds); r++) {
 		const res = await Promise.all(
 			open
 				.slice(i, i + 4)
-				.map((m, j) => trade(m, rich[j % 2], rich[2 + ((j + 1) % 2)]).catch(() => false)),
+				.map((m, j) => trade(m, rich[j % 2], rich[(j + 1) % 2]).catch(() => false)),
 		);
 		filled += res.filter(Boolean).length;
 	}
