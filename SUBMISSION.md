@@ -8,7 +8,7 @@ Text for the ZECATHON submission form. Every sentence must stay true of `main` a
 - **Track:** Private Markets
 - **Code repository:** https://github.com/zpredict/zpredict
 - **Working demo:** https://app.zpredict.site (site: https://zpredict.site)
-- **Demo video:** https://zpredict.site/pitch/ (1:44)
+- **Demo video:** https://zpredict.site/pitch/ (1:14)
 
 ## Description (≤ 2,000 characters — paste as-is)
 
@@ -37,21 +37,21 @@ TRY IT
 app.zpredict.site → Judge mode → bet. Relayer View: what each relayer holds is noise.
 <!-- DESCRIPTION END -->
 
-## Video script (1:44)
+## Video script (1:14)
 
-Colosseum-style: a pitch, not a feature tour. One idea per shot. Built by `scripts/video/` (shots.mjs records, build.mjs edits; the lines below are its captions and voiceover).
+A pitch cut from real footage: the app is the hero, one idea per shot, captions only (no voiceover, no music). Built by `apps/video` (Remotion): `scripts/capture.mjs` records the live app, site and docs with headless Chrome, `src/config.ts` holds the cut. Shot list with cameras: `apps/video/SHOTLIST.md`.
 
-| Time | Shot | Line |
+| Time | Shot | Caption |
 |---|---|---|
-| 0:00–0:06 | Title card: the problem | "On today's prediction markets, every bet is public. And people get found." |
-| 0:06–0:18 | zpredict.site hero: the ASCII Z, lime strips | "zPredict is a prediction market on Zcash. The first where nobody can see that you bet: not who, not which side, not how much." |
-| 0:18–0:25 | app.zpredict.site market list: 21 Polymarket mirrors with images, Zcash-network and hourly rolling markets | "Live now: twenty-one Polymarket mirrors, plus markets on Zcash itself, every hour." |
-| 0:25–0:33 | Judge mode → the NU7 market, order ticket with an Amount in ZEC | "Judge mode gives you a demo account. No wallet needed. The market: will NU7 activate at this block?" |
-| 0:33–0:49 | Split & send (a second judge account buys NO in another browser). **Relayer View**: three panels, your shares lit lime; the order panel with the key bytes masked; the fill opens | "Buy YES, in ZEC. Your browser splits it into three random shares, one per relayer. Three relayers match orders inside multi-party computation. None of them knows what you bet. The fill: only your browser can open it." |
-| 0:49–0:56 | Resolved rolling market: outcome, block hash, "Signed by 2-of-3 relayers ✓" | "Markets resolve from Zcash chain data. This block decided the outcome. Anyone can check it." |
-| 0:56–1:14 | Regtest terminal: each relayer forges a withdrawal → refused; the payout (v6, Ironwood-only, 0 transparent) | "Settlement, on our regtest chain. Each relayer tried to forge the winner's withdrawal. All three were refused. The payout: one Ironwood transaction. Zero transparent inputs or outputs." |
-| 1:14–1:24 | Testnet card: deposit `8a4bc247…b62de82d` → fill → outcome YES FROST-signed 2-of-3 (mainnet block 3,529,392) → batched 2-of-3 payout `67d93312…10620a16` | "And on public testnet, the full cycle on the live demo: deposit, fill, a signed outcome, and a two-of-three payout to an Ironwood address." |
-| 1:24–1:38 | Threat-model table from PRIVACY.md | "Here is exactly what each party can and can't learn. Including what's still open: today's demo runs all three relayers on one server. Price public. Participants private." |
-| 1:38–1:44 | End card | "zPredict. Bet on Zcash, without being seen." |
+| 0:00–0:05 | Black, typed: the problem | "Every bet on Polymarket is public." / "Wallets get traced to real people." |
+| 0:05–0:10 | zpredict.site hero: the ASCII Z, lime strips | "zPredict: a prediction market on Zcash that hides who bet." |
+| 0:10–0:21 | app.zpredict.site home, then the market list: Polymarket mirrors with images | "No relayer, chain observer or counterparty learns who bet." / "Live markets mirrored from Polymarket. Prices public, bettors hidden." |
+| 0:21–0:30 | Judge mode → trade page (balance 0.25 ZEC); YES, type 0.1 ZEC, Split & send | "Judge mode: a demo account with mock collateral. No wallet." / "Pick a side, type an amount in ZEC, split & send." |
+| 0:30–0:42 | **Relayer View**: three panels, your share lit lime in each, key bytes masked | "Your browser splits the order into three random shares." / "Relayers match orders in 3-party MPC. One share alone decodes nothing." |
+| 0:42–0:48 | Close-up: R0, R1, R2 and the ⊕ row decoded in the browser | "Only your browser XORs them back: market 11 · YES · 92¢ · 10 contracts." |
+| 0:48–0:53 | Resolved hourly market: outcome, block hash, "Signed by 2-of-3 relayers ✓" | "Outcomes from Zcash blocks, signed 2-of-3, checked in your browser." |
+| 0:53–0:59 | app.zpredict.site/threat-model: who learns what | "Who learns what, including the demo's limit: one VM, three relayers." |
+| 0:59–1:05 | docs, Evidence: the testnet cycle, deposit `8a4bc247…b62de82d` → fill → FROST-signed outcome → 2-of-3 payout `67d93312…10620a16` | "On Zcash testnet: deposit, fill, signed outcome, 2-of-3 payout." |
+| 1:05–1:14 | app home; end card: zPredict, "Price public. Participants private.", zpredict.site | — |
 
-Record against the live demo (wait for `/health` peers `[true,true,true]` on r0, r1, r2). Full txids: docs, Evidence.
+This take has no fill on screen: the live relayers' batches were stalled (batch 19917) while it was recorded, so the order shows "Waiting for batch 19917 to clear…". The cut has a fill shot ready (`TRADE.fill` in `src/config.ts`); recapture once batches move and it cuts in. Record against the live demo (wait for `/health` peers `[true,true,true]` on r0, r1, r2 and a moving batch number). Full txids: docs, Evidence.
