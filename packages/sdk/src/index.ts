@@ -29,6 +29,9 @@ export const BALANCE_LEN = 8;
 /** Costs and balances are in half-ticks: 1 unit of collateral = 200 half-ticks. */
 export const HALF_TICKS_PER_UNIT = 200n;
 
+/** Half-ticks in 21 million ZEC, every ZEC there will ever be: no balance can exceed it. */
+export const MAX_BALANCE = 21_000_000n * 100n * HALF_TICKS_PER_UNIT;
+
 /** 0 = YES, 1 = NO. */
 export type Side = 0 | 1;
 
@@ -352,6 +355,8 @@ export async function getAccount(relayers: Relayers, tag: string) {
 		relayers.map((u, i) => call<AccountShare>(at(u, `/accounts/${id}?key=${toHex(shares[i])}`))),
 	);
 	const balance = decodeBalance(combine(res.map((r) => fromHex(r.balanceShare))));
+	// Shares from different batches XOR to noise (#188): no real balance exceeds all ZEC.
+	if (balance > MAX_BALANCE) throw new Error("relayers disagree on the balance");
 	return { balance, seat: res[0].seat ?? ("seated" as Seat), mock: res[0].mock ?? false };
 }
 

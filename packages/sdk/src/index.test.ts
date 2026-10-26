@@ -155,6 +155,15 @@ test("regression #99: a full table is a TableFullError; seats come from relayer 
 	});
 });
 
+test("regression #188: shares from different batches are refused, not shown", async (t) => {
+	const shares = ["ff".repeat(8), "00".repeat(8), "00".repeat(8)];
+	let i = 0;
+	t.mock.method(globalThis, "fetch", async () =>
+		Response.json({ balanceShare: shares[i++ % 3], seat: "seated" }),
+	);
+	await assert.rejects(getAccount(RELAYERS, "11".repeat(16)), /disagree on the balance/);
+});
+
 test("the demo counterparty always crosses, in the same market and size", async (t) => {
 	const o = order(v.orders[0]);
 	const c = counterOrder(o);
