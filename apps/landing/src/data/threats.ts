@@ -24,14 +24,6 @@ export const threats: ThreatRow[] = [
 		hidden: "Contents (TLS); your IP if you use Tor",
 	},
 	{
-		observer: "Cloudflare (as deployed)",
-		learns: [
-			{ em: "Everything sent to the relayers" },
-			", and your IP: TLS ends at Cloudflare until the relayers move to DNS-only (#88)",
-		],
-		hidden: "—",
-	},
-	{
 		observer: "VM operator (demo)",
 		learns: [{ em: "Everything" }, ": all three relayers run on one VM in this demo"],
 		hidden: "—",

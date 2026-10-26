@@ -26,9 +26,9 @@ export const NOTE =
 
 export const privacy: LegalDoc = {
 	title: "Privacy Policy",
-	updated: "2026-10-23",
+	updated: "2026-10-26",
 	summary:
-		"zPredict collects no accounts, cookies or analytics. Your account tag stays in your browser; each relayer holds only random shares. The hosted demo has two limits you should know: Cloudflare sits in front of it, and all three relayers run on one server.",
+		"zPredict collects no accounts, cookies or analytics. Your account tag stays in your browser; each relayer holds only random shares. The hosted demo has one limit you should know: all three relayers run on one server.",
 	sections: [
 		{
 			heading: "Who we are",
@@ -81,9 +81,9 @@ export const privacy: LegalDoc = {
 			heading: "Who else can see what (demo limits)",
 			paragraphs: [
 				[
-					"Cloudflare proxies the sites and relayers and terminates TLS, so it sees your IP address and, until ",
+					"Cloudflare only answers DNS lookups for our names: it does not proxy the sites or relayers, so TLS ends on our server and Cloudflare sees neither your requests nor your IP address (",
 					issue(88),
-					" is fixed, everything sent to the relayers in clear. It also adds an analytics script our security policy blocks, and a header asking your browser to report network errors to Cloudflare (",
+					", ",
 					issue(89),
 					").",
 				],
