@@ -14,7 +14,6 @@
 	display: grid;
 	grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
 	gap: 24px;
-	align-items: start;
 }
 
 .home__side {
@@ -49,9 +48,11 @@
 	text-underline-offset: 3px;
 }
 
-/* Featured carousel card: copy left, ASCII mark right; fixed height so data never shifts it. */
+/* Featured carousel card: copy left, ASCII mark right; a min-height so data never shifts it,
+   and it stretches to the side column so no gap opens under it. */
 .feat {
 	display: grid;
+	grid-template-rows: 1fr auto;
 	gap: 12px;
 }
 
