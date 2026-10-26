@@ -65,22 +65,22 @@ function StatusList({ status, down }: { status: FaucetStatus | null; down: boole
 	);
 }
 
-/** /faucet: 0.01 testnet ZEC into this browser's own account, credited like any deposit. */
+/** /faucet: 0.05 testnet ZEC into this browser's own account, credited like any deposit. */
 export default function FaucetScreen() {
-	const { status, down, phase, request, tag, mock } = useFaucet();
-	const { create, forget } = useAccount();
+	const { status, down, phase, request, tag } = useFaucet();
+	const { create } = useAccount();
 	const widget = useRef<HTMLDivElement>(null);
 	const busy = phase.k === "working" || phase.k === "sent" || phase.k === "mined";
-	const ready = Boolean(status?.enabled && tag && !mock && !busy);
+	const ready = Boolean(status?.enabled && tag && !busy);
 
 	return (
 		<Pane aria-labelledby="faucet-title" className="faucet" variant="dark">
 			<p className="faucet__eyebrow">[ testnet faucet ]</p>
 			<h1 className="faucet__title" id="faucet-title">
-				Get 0.01 testnet ZEC into your account.
+				Get 0.05 testnet ZEC into your account.
 			</h1>
 			<p>
-				The faucet sends one fixed 0.01 TAZ shielded deposit to the escrow with a memo this browser
+				The faucet sends one fixed 0.05 TAZ shielded deposit to the escrow with a memo this browser
 				builds for your account, so the relayers credit it like any deposit. You can trade with it
 				or withdraw it to your own shielded wallet. Testnet only: TAZ has no value.
 			</p>
@@ -92,14 +92,6 @@ export default function FaucetScreen() {
 					First create an account tag. It is made in this browser and never leaves it in clear.{" "}
 					<Button onClick={create} variant="ghost">
 						Create account tag
-					</Button>
-				</p>
-			) : mock ? (
-				<p>
-					This is a judge account with mock credit, which a real deposit can&apos;t join. Forget it
-					and create a fresh tag to receive testnet ZEC.{" "}
-					<Button onClick={forget} variant="ghost">
-						Forget this account
 					</Button>
 				</p>
 			) : (
@@ -116,7 +108,7 @@ export default function FaucetScreen() {
 
 			<p className="dim">
 				Anti-abuse: when you click, this page loads Cloudflare Turnstile, which sees your IP and
-				browser signals (never your orders or positions) and could link your IP to the time a 0.01
+				browser signals (never your orders or positions) and could link your IP to the time a 0.05
 				ZEC deposit was sent. Then a proof of work, one drop at a time for everyone and a daily cap.
 				The faucet itself keeps no IPs and no request logs, and never sees your tag.
 			</p>

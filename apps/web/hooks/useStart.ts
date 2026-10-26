@@ -1,36 +1,18 @@
 "use client";
-import { TableFullError } from "@zpredict/sdk";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { useAccount } from "./useAccount";
 
-/** Judge mode: one click claims a demo account (if none yet) and opens the trade page. */
-export function useJudge(market?: number) {
-	const { tag, claim } = useAccount();
+/**
+ * The header CTA. No funded account yet: create the tag here (it never leaves this browser
+ * in clear) and open the faucet, which sends a real testnet deposit to it. Funded: trade.
+ */
+export function useStart(market?: number) {
+	const { tag, balance, create } = useAccount();
 	const router = useRouter();
-	const [busy, setBusy] = useState(false);
-	const [error, setError] = useState("");
-
-	const start = async () => {
-		setError("");
-		if (!tag) {
-			setBusy(true);
-			try {
-				await claim();
-			} catch (e) {
-				setError(
-					e instanceof TableFullError
-						? "Demo accounts are all taken: the relayers' balance table is full."
-						: "Relayers unreachable",
-				);
-				return;
-			} finally {
-				setBusy(false);
-			}
-		}
-		router.push(market ? `/trade/?m=${market}` : "/trade/");
+	const funded = tag !== null && balance !== null && balance > 0n;
+	const start = () => {
+		if (!tag) create();
+		router.push(funded ? (market ? `/trade/?m=${market}` : "/trade/") : "/faucet/");
 	};
-
-	const label = busy ? "Funding…" : tag ? "Trade now" : "Judge mode";
-	return { start, busy, error, label, hasAccount: Boolean(tag) };
+	return { start, label: funded ? "Trade now" : "Get testnet ZEC" };
 }

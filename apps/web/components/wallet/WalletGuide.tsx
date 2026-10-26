@@ -13,7 +13,7 @@ import KeyBackup from "./KeyBackup";
  * receives withdrawals.
  */
 export default function WalletGuide() {
-	const { tag, mock, balance, refresh } = useAccount();
+	const { tag, balance, refresh } = useAccount();
 	return (
 		<div className="wguide">
 			<header className="wguide__head">
@@ -26,7 +26,6 @@ export default function WalletGuide() {
 				</p>
 				{tag && (
 					<p className="dim">
-						{mock ? "This browser holds a judge account (mock credit). " : ""}
 						Balance: {balance === null ? "…" : <Amount halfTicks={balance} />}{" "}
 						<Button onClick={refresh} variant="ghost">
 							Refresh

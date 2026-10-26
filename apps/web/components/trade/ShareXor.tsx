@@ -66,8 +66,8 @@ export default function ShareXor({ order, counter }: Props) {
 			</p>
 			{counter && (
 				<p className="xor__counter">
-					<Badge tone="mock">Mock</Badge> Demo counterparty (self-trade): your own{" "}
-					{sideName(counter.side)} {counter.size} × {counter.price}¢,{" "}
+					<Badge>Self-trade</Badge> Demo counterparty: your own {sideName(counter.side)}{" "}
+					{counter.size} × {counter.price}¢,{" "}
 					{counter.status === "pending" ? "pending" : counter.status}.
 				</p>
 			)}

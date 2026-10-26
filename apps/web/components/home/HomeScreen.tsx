@@ -10,8 +10,8 @@ import { useMarkets } from "@/hooks/useMarkets";
 import { useTip } from "@/hooks/useTip";
 
 /**
- * Markets home in Polymarket's layout: featured carousel with "closing soon" beside it (judge
- * mode is the header button), then all mirrored markets by topic, then the hourly
+ * Markets home in Polymarket's layout: featured carousel with "closing soon" beside it (getting
+ * started is the header button), then all mirrored markets by topic, then the hourly
  * demo-resolution markets with their history. Live from relayer 0.
  */
 export default function HomeScreen({ visual }: { visual: ReactNode }) {

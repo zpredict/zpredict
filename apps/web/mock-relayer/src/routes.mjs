@@ -86,8 +86,10 @@ const memoKeys = PORTS.map(() =>
 	Buffer.from(generateKeyPairSync("x25519").publicKey.export({ format: "jwk" }).x, "base64url"),
 );
 
-// Relayer i registers its share of a new account's tag; once all three hold one, the mock
-// (which sees everything) credits the combined tag. A real relayer never sees the tag.
+// Test fixture: relayer i registers its share of a new account's tag; once all three hold
+// one, the mock (which sees everything) credits the combined tag, standing in for a
+// deposit the mock can't scan. The hosted relayers have no such route (judge mode is off).
+// A real relayer never sees the tag.
 async function judgeClaim(i, req, res) {
 	const b = await readJson(req);
 	if (!b || !HEX(16).test(b.account) || !HEX(32).test(b.keyShare))
@@ -102,7 +104,6 @@ async function judgeClaim(i, req, res) {
 	if (k.every(Boolean)) {
 		const a = account(hex(xor(...k)));
 		a.bal += JUDGE_CREDIT;
-		a.mock = true; // judge credit: never withdrawable (#104)
 	}
 	send(res, 200, {});
 }

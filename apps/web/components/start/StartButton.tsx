@@ -1,13 +1,9 @@
 "use client";
 import Cta from "@/components/ui/Cta";
-import { useJudge } from "@/hooks/useJudge";
+import { useStart } from "@/hooks/useStart";
 
-/** Compact judge-mode CTA: "Judge mode" until there is a demo account, then "Trade now". */
-export default function JudgeButton() {
-	const { start, busy, error, label } = useJudge();
-	return (
-		<Cta disabled={busy} onClick={start}>
-			{error || label}
-		</Cta>
-	);
+/** "Get testnet ZEC" until this browser's account holds a balance, then "Trade now". */
+export default function StartButton() {
+	const { start, label } = useStart();
+	return <Cta onClick={start}>{label}</Cta>;
 }

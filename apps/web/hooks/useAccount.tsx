@@ -12,7 +12,7 @@ import {
 	useState,
 } from "react";
 import { jitter, POLL_MS } from "@/lib/config";
-import { claimJudge, fetchAccount } from "@/lib/relayer";
+import { fetchAccount } from "@/lib/relayer";
 import { KEYS, load, save } from "@/lib/storage";
 import { usePoll } from "./usePoll";
 
@@ -23,7 +23,6 @@ interface Account {
 	seat: Seat | null;
 	/** Judge-mode account (the relayers' `mock` flag): never withdrawable (#104). Null until read. */
 	mock: boolean | null;
-	claim: () => Promise<void>;
 	/** A fresh tag made in this browser, for a real deposit; never sent anywhere in clear. */
 	create: () => string;
 	forget: () => void;
@@ -92,18 +91,6 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 		}, jitter(POLL_MS.afterBatch));
 	}, []);
 
-	// One account per browser: a claim that failed halfway is retried with the same tag,
-	// which the relayers accept without a second credit (or a second table row).
-	const claim = useCallback(async () => {
-		const t = load(KEYS.claim) ?? newTag();
-		save(KEYS.claim, t);
-		await claimJudge(t);
-		save(KEYS.tag, t);
-		save(KEYS.claim, null);
-		setTag(t);
-		setMock(true);
-	}, []);
-
 	const create = useCallback(() => {
 		const t = newTag();
 		save(KEYS.tag, t);
@@ -135,7 +122,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 
 	return (
 		<Ctx.Provider
-			value={{ tag, balance, seat, mock, claim, create, forget, restore, refresh, refreshSoon }}
+			value={{ tag, balance, seat, mock, create, forget, restore, refresh, refreshSoon }}
 		>
 			{children}
 		</Ctx.Provider>

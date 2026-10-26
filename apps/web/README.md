@@ -1,8 +1,8 @@
 # @zpredict/web
 
-The zPredict trading app: markets, order ticket, **Relayer View** (the split screen), judge mode and the threat model. Next.js App Router, `output: "export"`: a static site that talks to the three relayers directly from the browser. No Next server, no analytics, no third-party requests.
+The zPredict trading app: markets, order ticket, **Relayer View** (the split screen), the faucet and the threat model. Next.js App Router, `output: "export"`: a static site that talks to the three relayers directly from the browser. No Next server, no analytics, no third-party requests.
 
-UI follows the MotionSites **ASCII Studio** template (`ascii-studio`, issue #62): tokens from `@zpredict/brand/tokens.css`, JetBrains Mono 500 only (self-hosted via `next/font/local`, preloaded), lime on `#050505`, square corners, no shadows, lime CTA blocks, a top-sheet menu, lime/paper sections and text scramble (`lib/scramble.ts`). Pages follow Polymarket's **layout** (#117), not its branding: the home has a featured carousel, a side column (judge CTA, markets closing soon), "All markets" with topic tabs, search and a 4-column grid of binary and grouped event cards; the market detail (`/trade/?m=<id>`) has a price chart with a crosshair (pointer, touch drag, arrow keys) and range selector, outcome rows, rules, tabs (Relayer View, your positions, price history), FAQ, and a sticky order ticket with related markets. Volume, holders, activity and comments don't exist here by design. The featured card's visual is `@zpredict/ascii`: `components/hero/AsciiHero.tsx` (server) renders the build-time snapshot, the LCP and the no-WebGL / reduced-motion view; `AsciiLive.tsx` loads Three.js in its own chunk after `load` + idle and fades the live canvas in.
+UI follows the MotionSites **ASCII Studio** template (`ascii-studio`, issue #62): tokens from `@zpredict/brand/tokens.css`, JetBrains Mono 500 only (self-hosted via `next/font/local`, preloaded), lime on `#050505`, square corners, no shadows, lime CTA blocks, a top-sheet menu, lime/paper sections and text scramble (`lib/scramble.ts`). Pages follow Polymarket's **layout** (#117), not its branding: the home has a featured carousel, a side column (markets closing soon), "All markets" with topic tabs, search and a 4-column grid of binary and grouped event cards; the market detail (`/trade/?m=<id>`) has a price chart with a crosshair (pointer, touch drag, arrow keys) and range selector, outcome rows, rules, tabs (Relayer View, your positions, price history), FAQ, and a sticky order ticket with related markets. Volume, holders, activity and comments don't exist here by design. The featured card's visual is `@zpredict/ascii`: `components/hero/AsciiHero.tsx` (server) renders the build-time snapshot, the LCP and the no-WebGL / reduced-motion view; `AsciiLive.tsx` loads Three.js in its own chunk after `load` + idle and fades the live canvas in.
 
 ## Run it
 
@@ -11,9 +11,7 @@ pnpm install
 pnpm --filter @zpredict/web dev:mock   # 3 mock relayers on :4101-4103 + next dev on :3000
 ```
 
-Open http://localhost:3000, click **Judge mode** (mock credit of 0.25 ZEC), enter an amount in ZEC, and watch the three relayer panels. A fill shows up within one batch (5 s).
-
-Judge mode makes one account per browser (its tag lives in `localStorage`; a claim that fails halfway is retried with the same tag, so it never takes a second table row). The relayers' balance table has a fixed number of rows (`table_rows`). When it is full, Judge mode says so instead of creating an account, and an account that only has a row past the cap (a deposit that arrived after the table filled) gets a clear notice on the order ticket rather than orders that never fill.
+On the hosted demo, **Get testnet ZEC** makes the account tag in the browser (it lives in `localStorage`) and opens the faucet, which sends a real deposit for it. Every order goes out with its opposite from the same account (a labelled self-trade), so it fills in the next batch. The mock relayers can't scan deposits; the e2e funds a tag through the mock's test-credit route. The relayers' balance table has a fixed number of rows (`table_rows`): an account that only has a row past the cap gets a clear notice on the order ticket rather than orders that never fill.
 
 Other scripts:
 
@@ -22,7 +20,7 @@ Other scripts:
 | `pnpm --filter @zpredict/web mock` | only the mock relayers (`MOCK_PORTS`, `MOCK_BATCH_MS`, `MOCK_BOT_MS`; `MOCK_ESCROW_EMPTY=1` keeps payouts `retrying`) |
 | `pnpm --filter @zpredict/web build` | static export to `out/`, then the privacy gate |
 | `pnpm --filter @zpredict/web test` | mock clearing rule against `packages/core` test vectors |
-| `pnpm --filter @zpredict/web e2e` | builds against mock relayers on :4911-4913 and drives judge mode → fill → chart → withdraw → deposit in headless Chrome (`CHROME=` the binary), with the deploy CSP and no request outside localhost |
+| `pnpm --filter @zpredict/web e2e` | builds against mock relayers on :4911-4913 and drives a funded account → fill → chart → withdraw → deposit in headless Chrome (`CHROME=` the binary), with the deploy CSP and no request outside localhost |
 
 Relayer URLs are baked in at build time from `NEXT_PUBLIC_RELAYERS="url0,url1,url2"`; the default is the hosted testnet relayers `https://r{0,1,2}.zpredict.site`. For Tor Browser, `NEXT_PUBLIC_RELAYERS_ONION="http://….onion,…,…"` (optional, three onion origins) is used instead whenever the app itself is opened from a `.onion` host, e.g. this static export served as an onion service. The build gate allows exactly those onion hosts, and the Dockerfile adds them to the CSP's `connect-src` (#90).
 
@@ -30,12 +28,12 @@ The balance is read on load, on window focus, on Refresh (wallet page) and once 
 
 **Deposits** (trade page, "Deposit") work like this:
 1. Pick 0.01, 0.05 or 0.25 ZEC.
-2. Create an account tag in the browser, or keep the judge tag.
+2. Create an account tag in the browser.
 3. Copy or open the ZIP 321 payment request: the escrow UA, the exact amount, and a memo giving each relayer (encrypted to its `GET /memo-key`) the account id and its own share of the tag, never the tag. Every view builds a fresh memo.
 
-The escrow address is baked in from `NEXT_PUBLIC_ESCROW_UA` (published by the DKG). Without it, the flow says it isn't live yet and points to judge mode. Try it locally with `NEXT_PUBLIC_ESCROW_UA=utest1… pnpm --filter @zpredict/web dev:mock`: the mock relayers serve memo keys, but they don't scan deposits.
+The escrow address is baked in from `NEXT_PUBLIC_ESCROW_UA` (published by the DKG). Without it, the flow says it isn't live yet. Try it locally with `NEXT_PUBLIC_ESCROW_UA=utest1… pnpm --filter @zpredict/web dev:mock`: the mock relayers serve memo keys, but they don't scan deposits.
 
-**Withdrawals** (trade page, "Withdraw", once the account has a tag): an amount in the deposit sizes (0.01/0.05/0.25 ZEC; any other amount only after "I understand this amount is distinctive", #91) and a fresh unified address, with a warning if this browser paid out to it before with an Ironwood (Orchard) receiver. Each relayer receives only a fresh XOR share of the tag with the public amount and address (`submitWithdrawal`), so no relayer learns whose withdrawal it is or can forge one; the status (`pending → debited → paying → paid`, or `refused` if the balance doesn't cover it) comes from relayer 0, with the txid once broadcast. The mock relayers combine the shares, debit and report a made-up txid. A judge-mode tag gets a short explanation instead of the form: its credit is mock collateral, so it is never withdrawable (#104).
+**Withdrawals** (trade page, "Withdraw", once the account has a tag): an amount in the deposit sizes (0.01/0.05/0.25 ZEC; any other amount only after "I understand this amount is distinctive", #91) and a fresh unified address, with a warning if this browser paid out to it before with an Ironwood (Orchard) receiver. Each relayer receives only a fresh XOR share of the tag with the public amount and address (`submitWithdrawal`), so no relayer learns whose withdrawal it is or can forge one; the status (`pending → debited → paying → paid`, or `refused` if the balance doesn't cover it) comes from relayer 0, with the txid once broadcast. The mock relayers combine the shares, debit and report a made-up txid.
 
 ## Privacy gate
 
@@ -47,14 +45,14 @@ The escrow address is baked in from `NEXT_PUBLIC_ESCROW_UA` (published by the DK
 
 Rolling markets follow the relayers' scheme (a window every 48 mock blocks, one block per batch) and resolve unsigned, as the hosted relayers do before the key ceremony. Two past windows are replayed from `packages/settle/testdata/outcome-vectors.json` with their real FROST 2-of-3 test signatures, and `/group-key` serves that test group key, so "Signed by 2-of-3 relayers ✓" is checked in the browser against real data.
 
-**Mock:** the three relayers share one process and combine shares in the clear; the real ones run the batch inside 3-party MPC and never see each other's shares. Judge mode credits balance directly instead of a testnet deposit; the tag is still made in the browser, and each relayer gets only its share (`claimJudge`).
+**Mock:** the three relayers share one process and combine shares in the clear; the real ones run the batch inside 3-party MPC and never see each other's shares.
 
 ## Layout
 
 ```
 app/          routes only (compose components)
 components/   ui/ primitives, then one folder per feature
-hooks/        data hooks (account, orders, markets, relayer view, health, judge)
+hooks/        data hooks (account, orders, markets, relayer view, health, start)
 lib/          config, relayer client over @zpredict/sdk, formatting, share XOR, storage
 content/      static copy (threat model)
 styles/       tokens + one stylesheet per area
