@@ -6,7 +6,6 @@ import Card from "@/components/ui/Card";
 import Cta from "@/components/ui/Cta";
 import { useOrderTicket } from "@/hooks/useOrderTicket";
 import { sideName } from "@/lib/format";
-import CounterpartyToggle from "./CounterpartyToggle";
 import NumberField from "./NumberField";
 import SideToggle from "./SideToggle";
 
@@ -78,14 +77,6 @@ export default function OrderTicket({ market, initialSide }: Props) {
 					above your limit.
 				</p>
 			</details>
-			{t.canCounter && (
-				<CounterpartyToggle
-					on={t.counterparty}
-					onChange={t.setCounter}
-					otherSide={t.side === 0 ? "NO" : "YES"}
-					sideName={name}
-				/>
-			)}
 			<dl className="ticket__sum">
 				<dt>Shares</dt>
 				<dd className="num">{t.shares}</dd>
@@ -93,16 +84,8 @@ export default function OrderTicket({ market, initialSide }: Props) {
 				<dd className="num">≤ {t.price}¢</dd>
 				<dt>Cost</dt>
 				<dd>
-					<Amount halfTicks={t.cost} />
+					<Amount halfTicks={t.worst} />
 				</dd>
-				{t.counterparty && (
-					<>
-						<dt>Worst-case cost (pair)</dt>
-						<dd>
-							<Amount halfTicks={t.worst} />
-						</dd>
-					</>
-				)}
 				<dt className="ticket__win">To win</dt>
 				<dd className="ticket__win">
 					<Amount halfTicks={t.payout} />
@@ -120,7 +103,9 @@ export default function OrderTicket({ market, initialSide }: Props) {
 			)}
 			<p aria-live="polite" className={t.error ? "ticket__err" : "ticket__hint"}>
 				{t.error ||
-					"Your browser splits the order into three random shares and sends one to each relayer. Orders cross only inside the 5-second batch they land in, so a fill needs someone on the other side in the same batch; both pay the midpoint."}
+					(t.counterparty
+						? "Your browser splits the order into three random shares and sends one to each relayer. Demo account: the opposite order goes from the same account, so you see a fill (a labelled self-trade that nets out)."
+						: "Your browser splits the order into three random shares and sends one to each relayer. Orders cross only inside the 5-second batch they land in, so a fill needs someone on the other side in the same batch; both pay the midpoint.")}
 			</p>
 		</Card>
 	);

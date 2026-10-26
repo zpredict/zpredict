@@ -18,7 +18,7 @@ function unfilledText(o: MyOrder): string {
 		return o.retry
 			? "Not filled. Try again."
 			: "Not filled: a batch boundary fell between your order and its counter-order. Retrying the pair once…";
-	return "Not filled: nobody took the other side in this batch, and an unfilled order is dropped unopened. In judge mode, tick “Take the other side (demo)” to see a fill; otherwise someone has to take the other side in the same batch.";
+	return "Not filled: nobody took the other side in this batch, and an unfilled order is dropped unopened. Someone has to take the other side in the same batch.";
 }
 
 function fillText(o: MyOrder, fill: Fill | null): string {

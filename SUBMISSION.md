@@ -31,10 +31,10 @@ WHY IT DOES NOT LEAK
 
 WHAT IS REAL / WHAT IS A MOCK
 Real: 3-party MPC matching, in-circuit balances and credentials, FROST DKG, chain-data resolution, live relayers, and a full testnet cycle on the live demo: deposit 8a4bc247… → fill → signed outcome → 2-of-3 Ironwood payout 67d93312… (docs: Evidence).
-Demo limits: judge mode credits mock collateral (not withdrawable); a lone judge can add a labelled self-trade counterparty to see a fill; all three relayers and the DKG ran on one VM, whose operator sees what they see (the model needs independent operators); relayers see deposit/withdrawal amounts and timing.
+Demo limits: judge mode credits mock collateral (not withdrawable); judge orders fill against a labelled self-trade; operator-seeded demo trades set prices; all three relayers and the DKG ran on one VM, whose operator sees what they see (the model needs independent operators); relayers see deposit/withdrawal amounts and timing.
 
 TRY IT
-app.zpredict.site → Judge mode → bet (alone? tick "take the other side (demo)"). Relayer View: what each relayer holds is noise.
+app.zpredict.site → Judge mode → bet. Relayer View: what each relayer holds is noise.
 <!-- DESCRIPTION END -->
 
 ## Video script (1:44)
