@@ -13,17 +13,20 @@ import { useTip } from "@/hooks/useTip";
 
 /**
  * Markets home in Polymarket's layout: featured carousel with the demo CTA and "closing soon"
- * beside it, then all markets by topic, then resolved history. Live from relayer 0.
+ * beside it, then all mirrored markets by topic, then the hourly demo-resolution markets with
+ * their history. Live from relayer 0.
  */
 export default function HomeScreen({ visual }: { visual: ReactNode }) {
 	const { markets, down } = useMarkets();
 	const tip = useTip();
 	const groupKey = useGroupKey();
 	const all = markets ?? [];
+	const listed = all.filter((m) => !m.rolling);
+	const hourly = all.filter((m) => m.rolling);
 	return (
 		<>
 			<div className="home__top">
-				<Featured markets={markets} visual={visual} />
+				<Featured markets={markets && listed} visual={visual} />
 				<aside aria-label="Get started" className="home__side">
 					<section className="home__cta">
 						<h1 className="home__title">
@@ -35,16 +38,26 @@ export default function HomeScreen({ visual }: { visual: ReactNode }) {
 						</p>
 						<JudgeCta />
 					</section>
-					<ClosingSoon markets={all} tip={tip} />
+					<ClosingSoon markets={listed} tip={tip} />
 				</aside>
 			</div>
 			{down && <RelayersDown />}
 			<AllMarkets
 				loading={!markets && !down}
-				markets={all.filter((m) => m.status !== "resolved")}
+				markets={listed.filter((m) => m.status !== "resolved")}
 				tip={tip}
 			/>
-			<ResolvedList groupKey={groupKey} markets={all.filter((m) => m.status === "resolved")} />
+			<ResolvedList
+				groupKey={groupKey}
+				markets={listed.filter((m) => m.status === "resolved")}
+				title="Resolved"
+			/>
+			<ResolvedList
+				groupKey={groupKey}
+				markets={hourly}
+				sub="An hourly market on Zcash mainnet block data, so you can watch a market close, resolve and pay out today: the mirrored markets settle only when Polymarket does. Each relayer reads its own node; only outcomes all three agree on are signed, and your browser checks the signature."
+				title="Demo resolution"
+			/>
 		</>
 	);
 }

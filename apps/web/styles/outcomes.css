@@ -79,6 +79,10 @@
 	text-transform: uppercase;
 }
 
+.resolved__open {
+	color: var(--zp-lime);
+}
+
 .resolved__q:hover {
 	color: var(--zp-lime);
 }
