@@ -8,6 +8,7 @@ import { motionOk } from "@/lib/scramble";
 const NAV = [
 	{ href: "/", label: "Markets" },
 	{ href: "/trade/", label: "Relayer View" },
+	{ href: "/portfolio/", label: "Portfolio" },
 	{ href: "/wallet/", label: "Your wallet" },
 	{ href: "/threat-model/", label: "Threat model" },
 	{ href: DOCS_URL, label: "Docs" },
