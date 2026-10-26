@@ -21,39 +21,30 @@
 	gap: 16px;
 }
 
-.home__cta {
-	display: grid;
-	gap: 16px;
-	padding: 22px;
-	border: 1px solid var(--line);
-}
-
-.home__title {
-	font-size: clamp(20px, 1.7vw, 26px);
-	line-height: 1.5;
-	letter-spacing: -0.02em;
-}
-
-.home__title span {
-	padding: 2px 7px;
-	background: var(--zp-lime);
-	color: var(--zp-ink);
-	-webkit-box-decoration-break: clone;
-	box-decoration-break: clone;
-}
-
-.home__cta a {
-	color: var(--zp-lime);
-	text-decoration: underline;
-	text-underline-offset: 3px;
-}
-
-/* Featured carousel card: copy left, ASCII mark right; a min-height so data never shifts it,
-   and it stretches to the side column so no gap opens under it. */
+/* Featured carousel card: copy left, ASCII mark right; a min-height so data never shifts it. */
 .feat {
 	display: grid;
-	grid-template-rows: 1fr auto;
 	gap: 12px;
+}
+
+/* Desktop: the card and Closing soon share the first row (same height, no gap under either);
+   the carousel nav takes a row of its own under the card. */
+@media (min-width: 1100px) {
+	.home__top {
+		row-gap: 12px;
+	}
+	.feat {
+		display: contents;
+	}
+	.feat__card {
+		grid-area: 1 / 1;
+	}
+	.feat__nav {
+		grid-area: 2 / 1;
+	}
+	.home__side {
+		grid-area: 1 / 2;
+	}
 }
 
 .feat__card {
@@ -208,21 +199,6 @@
 
 .ascii-hero__live.is-live {
 	opacity: 1;
-}
-
-.judge {
-	display: grid;
-	justify-items: start;
-	gap: 14px;
-}
-
-.judge__note {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	color: var(--zp-muted);
-	font-size: 12px;
-	line-height: 1.5;
 }
 
 @media (max-width: 1099.98px) {

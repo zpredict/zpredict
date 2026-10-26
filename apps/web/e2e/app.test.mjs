@@ -97,9 +97,9 @@ const text = (selector) =>
 test("judge mode to a fill, chart, withdraw and deposit", async () => {
 	await b.goto(`${base}/`);
 	await b.waitFor(
-		`[...document.querySelectorAll(".judge button")].some((e) => e.textContent.includes("Judge mode"))`,
+		`[...document.querySelectorAll(".topbar__right button")].some((e) => e.textContent.includes("Judge mode"))`,
 	);
-	await click(".judge button", "Judge mode");
+	await click(".topbar__right button", "Judge mode");
 	await b.waitFor(`location.pathname === "/trade/"`);
 	await b.goto(`${base}/trade/?m=1`);
 
