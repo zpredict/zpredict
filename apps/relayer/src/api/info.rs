@@ -1,4 +1,4 @@
-//! `GET /health`, `GET /markets`, `GET /view`, `GET /memo-key`, `GET /group-key`.
+//! `GET /health`, `GET /markets`, `GET /price`, `GET /view`, `GET /memo-key`, `GET /group-key`.
 
 use axum::Json;
 use axum::extract::{Query, State};
@@ -55,6 +55,14 @@ pub async fn markets(State(api): State<Api>) -> Response {
         })
         .collect();
     Json(list).into_response()
+}
+
+/// ZEC/USD spot for display only, as this relayer last fetched it; 503 before the first.
+pub async fn price(State(api): State<Api>) -> Response {
+    match api.price.lock().expect("price lock").clone() {
+        Some(spot) => Json(spot).into_response(),
+        None => fail(StatusCode::SERVICE_UNAVAILABLE, "no price yet"),
+    }
 }
 
 #[derive(Deserialize)]

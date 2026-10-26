@@ -139,6 +139,7 @@ async fn group_key_is_served_only_with_a_share() {
         group_key: Some([7; 32]),
         escrow: None,
         references: Default::default(),
+        price: Default::default(),
     });
     let (_, body) = call(&signed, "GET", "/group-key", None).await;
     assert_eq!(
@@ -192,7 +193,18 @@ async fn a_polymarket_resolution_is_signed_over_its_source() {
                 .collect::<BTreeMap<_, _>>()
                 .into(),
         ),
+        price: Arc::new(
+            Some(crate::price::Spot {
+                zec_usd: 1237.34,
+                source: "coinbase",
+                at: 1,
+            })
+            .into(),
+        ),
     });
+    let (_, price) = call(&http, "GET", "/price", None).await;
+    assert_eq!(price["zecUsd"], 1237.34);
+    assert_eq!(price["source"], "coinbase");
     let (_, list) = call(&http, "GET", "/markets", None).await;
     let m = &list[0];
     assert_eq!(m["source"], "polymarket");
