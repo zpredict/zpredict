@@ -16,6 +16,8 @@ const APP = process.env.APP || "https://app.zpredict.site";
 const DOCS = process.env.DOCS || "https://docs.zpredict.site";
 const LANDING = process.env.LANDING || "https://zpredict.site";
 const RELAYER = process.env.RELAYER || "https://r0.zpredict.site";
+/** Seconds to wait for the fill (a batch normally clears in ~25 s). */
+const FILL_WAIT = Number(process.env.FILL_WAIT || 180);
 
 /** Starts recording; mark(name) notes the time into the clip, stop() returns all marks. */
 async function take(b, file) {
@@ -94,14 +96,18 @@ const shots = {
 		await sleep(3000);
 		r.mark("view");
 		await b
-			.waitFor(`document.querySelector(".xor__fill.is-filled")`, 180_000)
-			.catch(() => console.error("trade: no fill within 3 min"));
+			.waitFor(`document.querySelector(".xor__fill.is-filled")`, FILL_WAIT * 1000)
+			.catch(() => console.error(`trade: no fill within ${FILL_WAIT} s`));
 		r.mark("fill");
 		await sleep(6000);
-		// The close-up: the three shares, their XOR and the fill, whole.
-		await b.evaluate(
-			`document.querySelector(".xor").scrollIntoView({ behavior: "smooth", block: "end" })`,
-		);
+		// The close-up: the three shares, their XOR and the fill, whole and clear of the caption band.
+		// The trader's column scrolls on its own (.detail__side): bring the XOR card to its top.
+		await b.evaluate(`(() => {
+			const side = document.querySelector(".detail__side");
+			const xor = document.querySelector(".xor");
+			const top = side.scrollTop + xor.getBoundingClientRect().top - side.getBoundingClientRect().top;
+			side.scrollTo({ top: top - 12, behavior: "smooth" });
+		})()`);
 		await sleep(1500);
 		r.mark("close");
 		await sleep(7000);

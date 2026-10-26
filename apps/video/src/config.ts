@@ -42,10 +42,23 @@ export type Shot =
 	  }
 	| { kind: "end"; dur: number };
 
-/** Marks in trade.mp4 (public/footage/shots.json, "trade"), seconds into the clip. */
-const TRADE = { judge: 1.5, send: 9.03, shares: 10.49, view: 14.99, fill: 40, close: 47.5 };
-/** Real seconds between Split & send and the fill, shown on the cut that skips them. */
-const WAIT = Math.round(TRADE.fill - TRADE.send);
+/** Marks in trade.mp4 (public/footage/shots.json, "trade"), seconds into the clip. `fill` is
+ *  null when the take has no fill (the relayers' batches were stalled): the fill shot is left out
+ *  rather than faked. */
+const TRADE: Record<"judge" | "send" | "shares" | "view" | "close", number> & {
+	fill: number | null;
+} = { judge: 1.5, send: 9.03, shares: 9.99, view: 14.49, fill: null, close: 47.64 };
+
+/** The fill landing, with the real seconds the cut skipped since Split & send. */
+const fillShot = (fill: number): Shot => ({
+	kind: "clip",
+	dur: 5.5,
+	clip: "trade",
+	at: fill - 0.6,
+	source: "your browser",
+	caption: "Matched inside 3-party MPC. Only your browser can open the fill.",
+	skipped: `+${Math.round(fill - TRADE.send)} s`,
+});
 
 export const SHOTS: Shot[] = [
 	// A: the problem, then the product.
@@ -114,33 +127,25 @@ export const SHOTS: Shot[] = [
 		at: TRADE.view + 0.5,
 		cam: { x: 750, y: 380, from: 1.04, to: 1.14 },
 		source: "relayer view · live",
-		caption: "Each relayer holds one share. Alone, it decodes nothing.",
+		caption: "Relayers match orders in 3-party MPC. One share alone decodes nothing.",
 	},
-	{
-		kind: "clip",
-		dur: 5.5,
-		clip: "trade",
-		at: TRADE.fill - 0.6,
-		source: "your browser",
-		caption: "Matched inside 3-party MPC. Only your browser can open the fill.",
-		skipped: `+${WAIT} s`,
-	},
+	...(TRADE.fill === null ? [] : [fillShot(TRADE.fill)]),
 	// D: details.
 	{
 		kind: "clip",
 		dur: 6,
 		clip: "trade",
 		at: TRADE.close,
-		cam: { x: 1680, y: 700, from: 1.1, to: 1.25 },
+		cam: { x: 1880, y: 540, from: 1.1, to: 1.3 },
 		source: "your browser",
-		caption: "R0 ⊕ R1 ⊕ R2 = your order. No relayer ever holds all three.",
+		caption: "Only your browser XORs them back: market 11 · YES · 92¢ · 10 contracts.",
 	},
 	{
 		kind: "clip",
 		dur: 5.5,
 		clip: "resolved",
 		at: 0.5,
-		cam: { x: 48, y: 470, from: 1.1, to: 1.25 },
+		cam: { x: 48, y: 525, from: 1.15, to: 1.35 },
 		source: "hourly market · resolved",
 		caption: "Outcomes from Zcash blocks, signed 2-of-3, checked in your browser.",
 	},
