@@ -80,8 +80,10 @@ pub struct Batcher<M: Matcher> {
 pub async fn run<M: Matcher>(b: Batcher<M>) {
     loop {
         sleep(until_next_window(b.window)).await;
-        // Generous: a batch takes seconds; a payout adds proving and a broadcast.
-        let budget = (b.window * 4).max(Duration::from_secs(180));
+        // Generous: a batch takes seconds, but a clearing run preprocessed inline (none held)
+        // took over 180 s on the shared VPS (#174), and a timeout throws the whole run away,
+        // so every retry starts over. A payout adds proving and a broadcast.
+        let budget = (b.window * 4).max(Duration::from_secs(900));
         match timeout(budget, b.once()).await {
             Ok(Ok(_)) => {}
             // Errors name no order, share or address: only what failed.
@@ -205,9 +207,16 @@ impl<M: Matcher> Batcher<M> {
             mock: &mock,
         };
         let done = if run {
+            let (t, inline) = (Instant::now(), pre.is_none());
             let pre = pre.map(|(_, p)| p);
-            self.clear(&links, &a.lead.markets, first, shares, pre)
-                .await?
+            let done = self
+                .clear(&links, &a.lead.markets, first, shares, pre)
+                .await?;
+            eprintln!(
+                "batch: cleared in {:.0?} (preprocessed inline: {inline})",
+                t.elapsed()
+            );
+            done
         } else {
             Default::default()
         };
@@ -240,10 +249,12 @@ impl<M: Matcher> Batcher<M> {
             return Ok(ids);
         }
         if self.pre.lock().expect("pre lock").is_none() {
+            let t = Instant::now();
             let pre = self
                 .matcher
                 .preprocess(&links, self.slots, self.rows)
                 .await?;
+            eprintln!("batch: preprocessed in {:.0?}", t.elapsed());
             *self.pre.lock().expect("pre lock") = Some((a.batch, pre));
         }
         Ok(ids)
