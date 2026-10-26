@@ -39,7 +39,7 @@ memo_key_file = "/data/escrow/memo.pub"
 # new "Will mainnet block H contain ≥ N shielded actions?" with H one hour ahead (48 blocks
 # at 75 s; 144 at 25 s from NU7) and N the median of the 24 blocks before, so YES/NO are
 # about even. Ids are 1,000,000 + window number, the same on all three relayers.
-# Cap: one MPC run clears 24 markets (DEFAULT_MARKETS) = the 23 markets below + 1 rolling
+# Cap: one MPC run clears 24 markets (DEFAULT_MARKETS) = the 21 markets below + 1 rolling
 # market, which interval = horizon guarantees. Resolved ones stay 24 h as history.
 [rolling]
 plugin = "shielded-actions"
@@ -50,30 +50,8 @@ sample_blocks = 24
 keep_resolved = 24
 fast_from = 3543405
 
-# 24 markets (DEFAULT_MARKETS = 24, one MPC run, DESIGN.md "Market capacity"): NU7 and
-# Ironwood below, 21 mirrored Polymarket markets, and the hourly rolling market.
-[[markets]]
-id = 1
-question = "Will NU7 activate on mainnet at block 3,543,405?"
-plugin = "nu7-activation"
-params = { activationHeight = 3543405 }
-closeHeight = 3543000
-resolveHeight = 3543405
-status = "open"
-category = "Zcash network"
-rules = "Resolves YES if the coinbase transaction of mainnet block 3,543,405 carries the NU7 consensus branch ID, read by each relayer from its own node 10 blocks later. Trading closes at block 3,543,000."
-
-[[markets]]
-id = 2
-question = "Will the Ironwood pool hold ≥ 900,000 notes at block 3,560,000?"
-plugin = "ironwood-pool"
-params = { minNotes = 900000 }
-closeHeight = 3559000
-resolveHeight = 3560000
-status = "open"
-category = "Zcash network"
-rules = "Resolves YES if the Ironwood note commitment tree holds at least 900,000 notes at the end of mainnet block 3,560,000, read by each relayer from its own node 10 blocks later. Trading closes at block 3,559,000."
-
+# Up to 24 markets per MPC run (DEFAULT_MARKETS = 24, DESIGN.md "Market capacity"): the 21
+# mirrored Polymarket markets below and the hourly rolling market (#164).
 # Mirrored Polymarket markets (packages/plugins/polymarket, #114, #148): same question, our
 # own private book. The oracle is Polymarket (UMA): YES iff Polymarket settles "Yes" to 1.
 # Each relayer reads gamma-api.polymarket.com itself; the outcome is signed only if all
