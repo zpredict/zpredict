@@ -28,6 +28,7 @@ still means "one party can see everything" (see Accepted limitations).
 | Testnet faucet (`faucet.zpredict.site`, #133) | The time and IP of a drop request (not logged or stored), that a 0.01 ZEC deposit went to the escrow, and its txid | The account tag or id (it passes the memo through and cannot open the slots), orders, positions, balances |
 | **Cloudflare Turnstile (faucet only)** | Faucet only: your IP and browser signals when you request testnet ZEC; it can link your IP to the time a 0.01 ZEC deposit was sent | Orders, positions, balances, your tag. It loads only on `/faucet/`, only after you click "Get testnet ZEC" |
 | Polymarket (`gamma-api`, `clob`) | The relayer VM's IP fetching public market records and price history for the mirrored markets, about once per market per 5 min | Users, orders, anything about zPredict's book. Market images are fetched once at catalog build by the operator, not at runtime. The browser never contacts Polymarket |
+| Coinbase (`api.coinbase.com`, ZEC/USD spot) | The relayer VM's IP fetching the public ZEC/USD spot price every 5 min, for the "≈ $x" shown beside ZEC amounts (`apps/relayer/src/price.rs`) | Users, orders, balances. The browser reads the price from relayer 0 only, and nothing in clearing or payouts uses it |
 
 ## Data flows
 
