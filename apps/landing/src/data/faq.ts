@@ -18,7 +18,7 @@ export const faq: Faq[] = [
 	},
 	{
 		q: "How is a market resolved?",
-		a: "From Zcash chain data at a fixed block height. Each relayer reads the block, two of three FROST-sign the outcome, and it is published with the block hash, so anyone can recompute it.",
+		a: "Mirrored markets follow Polymarket's public result; the hourly demo market reads Zcash chain data at a fixed block height. Each relayer reads the source on its own, two of three FROST-sign the outcome, and your browser checks the signature.",
 	},
 	{
 		q: "How do winners get paid?",

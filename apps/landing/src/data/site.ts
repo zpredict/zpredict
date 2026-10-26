@@ -30,7 +30,7 @@ export const heroLines = [
 	"Nobody sees you.",
 	"Price public.",
 	"Participants private.",
-	"Resolved from Zcash chain data.",
+	"Outcomes signed 2-of-3.",
 ];
 
 export const menuInfo = {

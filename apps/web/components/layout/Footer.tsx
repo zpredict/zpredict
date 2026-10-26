@@ -31,7 +31,7 @@ export default function Footer() {
 				<div>
 					<p className="sitefoot__head">zPredict</p>
 					<a href={`${SITE}/`}>About</a>
-					<a href={`${SITE}/pitch/`}>2-minute pitch</a>
+					<a href={`${SITE}/pitch/`}>Pitch video</a>
 					<a href={DOCS_URL}>Docs</a>
 				</div>
 			</nav>
