@@ -101,7 +101,7 @@ function Caption({ source, text, skipped }: { source?: string; text?: string; sk
 						whiteSpace: "nowrap",
 					}}
 				>
-					{skipped} later
+					{skipped}
 				</div>
 			)}
 		</div>

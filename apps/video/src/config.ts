@@ -42,22 +42,25 @@ export type Shot =
 	  }
 	| { kind: "end"; dur: number };
 
-/** Marks in trade.mp4 (public/footage/shots.json, "trade"), seconds into the clip. `fill` is
- *  null when the take has no fill (the relayers' batches were stalled): the fill shot is left out
- *  rather than faked. */
+/** Marks in trade.mp4 (public/footage/shots.json, "trade"), seconds into the clip. `fill` is just
+ *  before the fill shares land in the Relayer View (found by eye); null when a take has no fill,
+ *  and then the fill shot is left out rather than faked. This take was recorded on a loaded
+ *  machine, so the clip's clock is not the relayers' clock: the cut says "batch cleared" instead
+ *  of a number of seconds. */
 const TRADE: Record<"judge" | "send" | "shares" | "view" | "close", number> & {
 	fill: number | null;
-} = { judge: 1.5, send: 9.03, shares: 9.99, view: 14.49, fill: null, close: 47.64 };
+} = { judge: 1.51, send: 104.25, shares: 105.2, view: 109.72, fill: 437.6, close: 445.8 };
 
-/** The fill landing, with the real seconds the cut skipped since Split & send. */
+/** The fill landing: each relayer's FILL row gets its share of the fill. */
 const fillShot = (fill: number): Shot => ({
 	kind: "clip",
-	dur: 5.5,
+	dur: 6,
 	clip: "trade",
-	at: fill - 0.6,
-	source: "your browser",
-	caption: "Matched inside 3-party MPC. Only your browser can open the fill.",
-	skipped: `+${Math.round(fill - TRADE.send)} s`,
+	at: fill,
+	cam: { x: 750, y: 330, from: 1.04, to: 1.1 },
+	source: "relayer view · live",
+	caption: "Matched inside 3-party MPC. The fill comes back as three shares too.",
+	skipped: "Batch cleared",
 });
 
 export const SHOTS: Shot[] = [
@@ -82,7 +85,7 @@ export const SHOTS: Shot[] = [
 		dur: 4,
 		clip: "home",
 		at: 0.4,
-		cam: { x: 1570, y: 250, from: 1, to: 1.05 },
+		cam: { x: 480, y: 300, from: 1, to: 1.05 },
 		source: "app.zpredict.site · live",
 		caption: "No relayer, chain observer or counterparty learns who bet.",
 	},
@@ -138,7 +141,7 @@ export const SHOTS: Shot[] = [
 		at: TRADE.close,
 		cam: { x: 1880, y: 540, from: 1.1, to: 1.3 },
 		source: "your browser",
-		caption: "Only your browser XORs them back: market 11 · YES · 92¢ · 10 contracts.",
+		caption: "Only your browser XORs the shares back: filled 10 YES at 92¢.",
 	},
 	{
 		kind: "clip",
