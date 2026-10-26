@@ -1,6 +1,6 @@
 # zpredict-faucet
 
-The testnet faucet at https://faucet.zpredict.site. A drip sends one fixed 1-unit (0.01 TAZ) shielded deposit to the escrow, carrying a deposit memo the browser built for its own account, so the relayers credit it like any other deposit. The faucet never sees the account tag.
+The testnet faucet at https://faucet.zpredict.site. A drip sends one fixed 5-unit (0.05 TAZ) shielded deposit (a deposit denomination) to the escrow, carrying a deposit memo the browser built for its own account, so the relayers credit it like any other deposit. The faucet never sees the account tag.
 
 ```sh
 cargo run -p zpredict-faucet   # configured by FAUCET_* env vars (see src/main.rs)

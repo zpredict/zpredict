@@ -15,7 +15,7 @@ export default function DetailFaq({ market: m }: { market: Market }) {
 		],
 		[
 			"Why did my order not fill?",
-			"Orders cross only inside the 5-second batch they land in, so a fill needs someone on the other side in that batch. In judge mode your demo account places that counter-order itself, a labelled self-trade.",
+			"Orders cross only inside the 5-second batch they land in, so a fill needs someone on the other side in that batch. On the demo the app places that counter-order from your own account, a labelled self-trade, so your order fills.",
 		],
 		[
 			"How is it resolved?",

@@ -41,11 +41,10 @@ Its group key `a0cff44d86411e03d1ae3a76982d38bf0aac73db9568a2496324167486dbc534`
 
 Relayers do see each withdrawal's amount, address and time (they need them to pay), so amount and timing can link a deposit to a payout at the relayers ([#91](https://github.com/zpredict/zpredict/issues/91)). The app therefore withdraws in the deposit sizes (0.01, 0.05 or 0.25 ZEC) by default; any other amount needs "I understand this amount is distinctive". It also warns when you reuse a payout address (checked against digests kept in your browser). Timing is not hidden: wait a while after a deposit if that matters to you.
 
-## Judge credits are not money
+## Judge mode is off on the hosted demo
 
-Judge mode (testnet only) opens an account with **mock** credit: 0.25 ZEC, no deposit. Because a judge claim shows every relayer the new account's id, each relayer flags that row as mock, feeds its flags into the circuit as private input, and the circuit refuses any withdrawal from a flagged row if any relayer flagged it ([#104](https://github.com/zpredict/zpredict/issues/104), test `mock_rows_never_withdraw`). The refusal looks like any uncovered withdrawal. A judge account that later receives a real deposit stays mock: deposit with a fresh tag. Mainnet builds refuse judge mode.
+The hosted relayers run with `judge = false`: every balance is a real deposit. The relayer still supports judge mode for local and regtest setups (testnet only) opens an account with **mock** credit: 0.25 ZEC, no deposit. Because a judge claim shows every relayer the new account's id, each relayer flags that row as mock, feeds its flags into the circuit as private input, and the circuit refuses any withdrawal from a flagged row if any relayer flagged it ([#104](https://github.com/zpredict/zpredict/issues/104), test `mock_rows_never_withdraw`). The refusal looks like any uncovered withdrawal. A judge account that later receives a real deposit stays mock: deposit with a fresh tag. Mainnet builds refuse judge mode.
 
 ## Limits on the demo
 
-- The balance table has 48 rows on the hosted demo (one per funded account); when it is full, Judge mode answers "table full". Rows are not reclaimed yet ([#64](https://github.com/zpredict/zpredict/issues/64)).
-- Mock and real accounts trade in the same markets, so a real account can win mock credit, and the escrow can hold less than real accounts are owed. A payout it can't cover is retried. That is acceptable on testnet only.
+- The balance table has 48 rows on the hosted demo (one per funded account); when it is full, new accounts wait for a row. Rows are not reclaimed yet ([#64](https://github.com/zpredict/zpredict/issues/64)).

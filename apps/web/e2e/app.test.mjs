@@ -1,6 +1,6 @@
 // The app in headless Chrome against the mock relayers, served like production (static
-// export, the deploy's CSP): judge mode → an order (auto demo counterparty) → its fill →
-// chart crosshair → withdraw (judge note) → deposit (escrow address in the request). Every
+// export, the deploy's CSP): a funded account → an order (auto demo counterparty) → its fill →
+// chart crosshair → withdraw form → deposit (escrow address in the request). Every
 // request the page makes must go to localhost. Run `pnpm --filter @zpredict/web e2e`
 // (builds with the ports below first). CHROME= the browser binary (default: macOS Chrome).
 import assert from "node:assert/strict";
@@ -10,6 +10,7 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { extname, join } from "node:path";
 import { after, before, test } from "node:test";
+import { claimJudge, newTag } from "@zpredict/sdk";
 import { launch } from "../../../scripts/video/cdp.mjs";
 
 const MOCK_PORTS = [4911, 4912, 4913];
@@ -94,16 +95,22 @@ const click = (selector, text = "") =>
 const text = (selector) =>
 	b.evaluate(`document.querySelector(${JSON.stringify(selector)})?.textContent ?? ""`);
 
-test("judge mode to a fill, chart, withdraw and deposit", async () => {
+test("a funded account to a fill, chart, withdraw and deposit", async () => {
+	// No judge mode: an account is funded by a deposit, which the mock relayers can't scan, so
+	// the test credits a fresh tag through the mock's fixture route and hands it to the page.
 	await b.goto(`${base}/`);
 	await b.waitFor(
-		`[...document.querySelectorAll(".topbar__right button")].some((e) => e.textContent.includes("Judge mode"))`,
+		`[...document.querySelectorAll(".topbar__right button")].some((e) => e.textContent.includes("Get testnet ZEC"))`,
 	);
-	await click(".topbar__right button", "Judge mode");
-	await b.waitFor(`location.pathname === "/trade/"`);
+	const tag = newTag();
+	await claimJudge(
+		MOCK_PORTS.map((p) => `http://localhost:${p}`),
+		tag,
+	);
+	await b.evaluate(`localStorage.setItem("zp.tag", ${JSON.stringify(tag)})`);
 	await b.goto(`${base}/trade/?m=1`);
 
-	// A judge account always gets the demo counterparty: no toggle to tick.
+	// Every order gets the demo counterparty: no toggle to tick.
 	assert.equal(await b.evaluate(`document.querySelector("#counterparty")`), null);
 	await b.waitFor(
 		`[...document.querySelectorAll(".ticket button.cta")].some((e) => e.textContent.includes("Split & send") && !e.disabled)`,
@@ -124,7 +131,7 @@ test("judge mode to a fill, chart, withdraw and deposit", async () => {
 		await text(".xor__fill"),
 		/^Filled \d+ shares for \d+\.\d+ ZEC \(\d+\.\d¢ average\)/,
 	);
-	assert.match(await text(".xor__counter"), /Demo counterparty \(self-trade\)/);
+	assert.match(await text(".xor__counter"), /Self-trade\s*Demo counterparty: your own/);
 
 	// The account key never shows, in the plaintext or in any of the three shares (#153).
 	const keys = await b.evaluate(
@@ -151,17 +158,12 @@ test("judge mode to a fill, chart, withdraw and deposit", async () => {
 	await b.waitFor(`document.querySelector(".pchart__hover .pchart__time")?.textContent`);
 	assert.match(await text(".pchart__hover .pchart__pct"), /^\d+%$/);
 
-	// Withdraw: a judge account gets the note, never the form.
+	// Withdraw: a funded account gets the form.
 	await click(".dtabs__tab", "Your positions");
 	await click(".dtabs__pos summary", "Withdraw");
-	await b.waitFor(`document.querySelector(".dtabs__pos details[open]")`);
-	const withdraw = await b.evaluate(
-		`[...document.querySelectorAll(".dtabs__pos details")].find((d) => d.textContent.startsWith("Withdraw")).textContent`,
-	);
-	assert.match(withdraw, /judge-mode credit can.t be withdrawn/);
-	assert.ok(!(await b.evaluate(`!!document.querySelector("#withdraw-address")`)));
+	await b.waitFor(`document.querySelector("#withdraw-address")`);
 
-	// Deposit: a fresh (non-judge) tag gets a payment request to the escrow address.
+	// Deposit: a fresh tag gets a payment request to the escrow address.
 	await click(".dtabs__pos summary", "Deposit");
 	await click(".dtabs__pos button", "Forget this account");
 	await b.waitFor(

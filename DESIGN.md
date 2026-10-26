@@ -163,4 +163,4 @@ zpredict/
 - Three relayers on one VPS (Coolify), each with its own sealed key share and store key; testnet escrow from a FROST DKG run once in a throwaway container. See [deploy/README.md](deploy/README.md).
 - Markets: two Zcash headline markets and an hourly rolling market, resolved from mainnet block data (lightwalletd `zec.rocks`), plus 21 mirrored Polymarket markets picked by `scripts/polymarket-catalog.mjs` (top volume, mixed categories), resolved per Polymarket; collateral and settlement on testnet (`testnet.zec.rocks`).
 - MPC per batch: 8 order slots, 48 account rows, up to 24 markets. polytune preprocessing runs between batches, so a fill takes one online pass (~25 s live, mostly waiting for the window).
-- Judge mode credits mock testnet collateral without a deposit and cannot be withdrawn on-chain.
+- Judge mode (mock credit) exists for local and regtest runs; the hosted demo has it off, so every balance is a real testnet deposit.

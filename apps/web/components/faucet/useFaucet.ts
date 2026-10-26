@@ -9,7 +9,6 @@ import {
 	faucetDrip,
 	getFaucetChallenge,
 	getFaucetStatus,
-	HALF_TICKS_PER_UNIT,
 	solveFaucetPow,
 } from "@zpredict/sdk";
 import { useCallback, useEffect, useState } from "react";
@@ -38,7 +37,7 @@ function errorText(e: unknown) {
 }
 
 export function useFaucet() {
-	const { tag, mock, balance } = useAccount();
+	const { tag, balance } = useAccount();
 	const [status, setStatus] = useState<FaucetStatus | null>(null);
 	const [down, setDown] = useState(false);
 	const [phase, setPhase] = useState<Phase>({ k: "idle" });
@@ -63,7 +62,7 @@ export function useFaucet() {
 
 	useEffect(() => {
 		if ((phase.k === "sent" || phase.k === "mined") && balance !== null) {
-			if (balance >= phase.from + HALF_TICKS_PER_UNIT) {
+			if (balance > phase.from) {
 				setPhase({ k: "credited", txid: phase.txid });
 			}
 		}
@@ -71,7 +70,7 @@ export function useFaucet() {
 
 	const request = useCallback(
 		async (widget: HTMLElement) => {
-			if (!tag || mock) return;
+			if (!tag) return;
 			const from = balance ?? 0n;
 			try {
 				setPhase({ k: "working", step: "Building the memo for your account…" });
@@ -87,8 +86,8 @@ export function useFaucet() {
 				setPhase({ k: "error", msg: errorText(e) });
 			}
 		},
-		[tag, mock, balance, status],
+		[tag, balance, status],
 	);
 
-	return { status, down, phase, request, tag, mock };
+	return { status, down, phase, request, tag };
 }

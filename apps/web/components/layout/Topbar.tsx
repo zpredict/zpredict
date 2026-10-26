@@ -1,12 +1,12 @@
 "use client";
 import Link from "next/link";
 import { useRef } from "react";
-import JudgeButton from "@/components/judge/JudgeButton";
 import Menu from "@/components/menu/Menu";
+import StartButton from "@/components/start/StartButton";
 import { useOnLight } from "@/hooks/useOnLight";
 import BalancePill from "./BalancePill";
 
-/** Fixed header: logo, Menu, balance and the judge CTA. Turns dark over lime and paper sections. */
+/** Fixed header: logo, Menu, balance and the get-started CTA. Turns dark over lime and paper sections. */
 export default function Topbar() {
 	const ref = useRef<HTMLElement>(null);
 	const light = useOnLight(ref);
@@ -26,7 +26,7 @@ export default function Topbar() {
 			<Menu />
 			<div className="topbar__right">
 				<BalancePill />
-				<JudgeButton />
+				<StartButton />
 			</div>
 		</header>
 	);

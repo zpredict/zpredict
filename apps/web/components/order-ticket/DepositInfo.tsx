@@ -17,9 +17,9 @@ import { useDeposit } from "@/hooks/useDeposit";
  * ZIP 321 request (QR, copy, or open in a wallet), with live status. `open` shows it expanded.
  */
 export default function DepositInfo({ open = false }: { open?: boolean }) {
-	const { tag, mock, create, forget } = useAccount();
+	const { tag, create, forget } = useAccount();
 	const [units, setUnits] = useState<Denomination>(5);
-	const { request, error, escrowReady } = useDeposit(mock ? null : tag, units);
+	const { request, error, escrowReady } = useDeposit(tag, units);
 	const zec = unitsToZec(units);
 
 	return (
@@ -32,9 +32,7 @@ export default function DepositInfo({ open = false }: { open?: boolean }) {
 					<DenominationPicker onChange={setUnits} units={units} />
 				</li>
 				<li>
-					{tag && mock ? (
-						"This is a judge account: its credit is mock, and a deposit to it would stay mock (never withdrawable). Use Forget this account below, then create a fresh tag."
-					) : tag ? (
+					{tag ? (
 						"Your account tag stays in this browser. It is the only key to your balance: back it up (Account key)."
 					) : (
 						<>
@@ -79,7 +77,7 @@ export default function DepositInfo({ open = false }: { open?: boolean }) {
 			{!escrowReady && (
 				<p className="dim">
 					<Badge tone="mock">Not live</Badge> The escrow address is published after the
-					relayers&apos; key ceremony. Until then, use judge mode for a demo balance.
+					relayers&apos; key ceremony.
 				</p>
 			)}
 			{error && <p className="dim">{error}</p>}

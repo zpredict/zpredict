@@ -1,6 +1,6 @@
 "use client";
 import type { Market, Side } from "@zpredict/sdk";
-import JudgeButton from "@/components/judge/JudgeButton";
+import StartButton from "@/components/start/StartButton";
 import Amount from "@/components/ui/Amount";
 import Card from "@/components/ui/Card";
 import Cta from "@/components/ui/Cta";
@@ -97,15 +97,13 @@ export default function OrderTicket({ market, initialSide }: Props) {
 				</Cta>
 			) : (
 				<div className="ticket__judge">
-					<JudgeButton />
-					<span className="dim">to get a demo account first</span>
+					<StartButton />
+					<span className="dim">first: a real testnet deposit from the faucet</span>
 				</div>
 			)}
 			<p aria-live="polite" className={t.error ? "ticket__err" : "ticket__hint"}>
 				{t.error ||
-					(t.counterparty
-						? "Your browser splits the order into three random shares and sends one to each relayer. Demo account: the opposite order goes from the same account, so you see a fill (a labelled self-trade that nets out)."
-						: "Your browser splits the order into three random shares and sends one to each relayer. Orders cross only inside the 5-second batch they land in, so a fill needs someone on the other side in the same batch; both pay the midpoint.")}
+					"Your browser splits the order into three random shares and sends one to each relayer, with its opposite from your own account, so it fills in the next batch (a labelled self-trade that nets out)."}
 			</p>
 		</Card>
 	);

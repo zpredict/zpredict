@@ -58,10 +58,9 @@ export const LEAK_CHECKLIST = [
 	"Open: request metadata (#90) and withdrawal amount and timing (#91) can link actions to an account.",
 ] as const;
 
-/** What this build fakes or limits today. Keep in sync with SUBMISSION.md "Real / Mock". */
+/** What this build limits today. Keep in sync with SUBMISSION.md "Real / Mock". */
 export const MOCKS = [
-	"Judge mode credits mock collateral directly; no testnet deposit happens, and judge credits can't be withdrawn.",
-	"Orders cross only inside the batch they land in: a fill needs someone on the other side in the same 5-second window.",
+	"Every balance is a real testnet deposit (the faucet sends one). Each order goes out with its opposite from the same account, a labelled self-trade, so a lone trader still sees a fill.",
 	"All three relayers, and the key ceremony, run on one VM. The model needs three independent operators.",
 	"With the local mock relayers, one process combines the shares in the clear instead of running MPC.",
 ] as const;

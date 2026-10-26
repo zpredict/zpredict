@@ -1,6 +1,6 @@
 "use client";
 import type { Market, Side } from "@zpredict/sdk";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { zec } from "@/lib/format";
 import { defaultPrice, sideCents } from "@/lib/markets";
 import { PAYOUT, quote, zecToHalfTicks } from "@/lib/ticket";
@@ -39,26 +39,22 @@ function ticketProblem({ seat, price, amount, shares, each, worst, balance }: Ch
  * for the chosen side (see defaultPrice) and follows the side.
  */
 export function useOrderTicket(market: Market, initialSide: Side = 0) {
-	const { tag, balance, seat, mock } = useAccount();
+	const { tag, balance, seat } = useAccount();
 	const { place } = useOrders();
 	const [side, setSideState] = useState<Side>(initialSide);
-	const [price, setPrice] = useState(() => defaultPrice(market, initialSide));
-	const [amount, setAmount] = useState(0.05);
+	const [price, setPrice] = useState(() => defaultPrice(market, initialSide, 0));
+	const [amount, setAmount] = useState(0.01);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState("");
-	// DEMO counterparty (#103): always on for judge accounts (a lone judge never fills
-	// otherwise), never for funded ones. The fill is labelled a self-trade.
-	const counterparty = mock === true;
-
-	const edge = counterparty ? 0 : undefined;
+	// Demo counterparty (#103), for every account: each order goes out with its exact
+	// opposite from the same account, so it fills in the next batch even with nobody else
+	// trading (a self-trade with real testnet funds that nets out; the fill is labelled).
+	// Edge 0: a self-trade fills at its own limit, which becomes the public price.
+	const counterparty = true;
 	const setSide = (s: Side) => {
 		setSideState(s);
-		setPrice(defaultPrice(market, s, edge));
+		setPrice(defaultPrice(market, s, 0));
 	};
-	// Re-default the limit when the counterparty switches (edge 0 for a self-trade); later
-	// price polls must not overwrite what the trader typed, so `market` isn't a dependency.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reset only on the toggle
-	useEffect(() => setPrice(defaultPrice(market, side, edge)), [counterparty]);
 
 	const priced = Number.isInteger(price) && price >= 1 && price <= 99;
 	const { each, shares, cost, payout } = priced

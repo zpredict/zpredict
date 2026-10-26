@@ -49,18 +49,8 @@ export default function WithdrawForm() {
 	const [amount, setAmount] = useState(1);
 	const [address, setAddress] = useState("");
 	const { submit, status, error, pending } = useWithdraw(tag);
-	// Nothing until the relayers say whether this is a judge account, so no enabled form flashes.
+	// Nothing until the relayers have answered for this account, so no enabled form flashes.
 	if (!tag || mock === null) return null;
-	if (mock)
-		return (
-			<details className="deposit">
-				<summary>Withdraw</summary>
-				<p className="dim">
-					Mock: judge-mode credit can&apos;t be withdrawn; the relayers refuse it inside the MPC. To
-					try a real withdrawal, deposit testnet ZEC with a new account tag (Deposit).
-				</p>
-			</details>
-		);
 	const halfTicks = BigInt(Number.isNaN(amount) ? 0 : amount) * HALF_TICKS_PER_UNIT;
 	const max = Number((balance ?? 0n) / HALF_TICKS_PER_UNIT);
 	const zec = zatsToZec(halfTicks > WITHDRAWAL_FEE ? payoutZats(halfTicks) : 0n);

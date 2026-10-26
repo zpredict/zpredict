@@ -27,8 +27,8 @@ table_rows = 48
 window_secs = 5
 # Batches, not seconds: ~30 s for a browser's three POSTs to all arrive.
 expire_batches = 6
-judge = true
-judge_credit = 5000 # 25 units in half-ticks
+# No mock credit (#186): every balance is a real testnet deposit, from a wallet or the faucet.
+judge = false
 data_dir = "/data"
 insecure_matcher = false
 # Key ceremony output (#78, deploy/production/ceremony.sh) in each relayer's own volume.

@@ -51,7 +51,7 @@ This page summarises [PRIVACY.md](https://github.com/zpredict/zpredict/blob/main
 ## Accepted limitations
 
 - **Single-VM demo** (above).
-- **Demo counterparty.** A judge account sends its order and its exact opposite together from the same account, so a relayer can guess they came from one browser. It still can't read either.
+- **Demo counterparty.** The app sends each order and its exact opposite together from the same account, so a relayer can guess they came from one browser. It still can't read either.
 - **Relayers see deposit and withdrawal amounts**, addresses and times, and the account id behind each deposit.
 - **Key-burn DoS.** A dishonest relayer can pre-register shares for an id it learned and burn that row: funds locked, never stolen.
 - **Public price** per market per crossing batch, and order arrival counts through `/view`.

@@ -1,7 +1,6 @@
 // Thin wrapper over @zpredict/sdk bound to the configured relayers.
 // Each relayer only ever receives its own share; requests carry no cookies and no referrer.
 import {
-	claimJudge as claim,
 	getAccount,
 	getFill,
 	getGroupKey,
@@ -36,9 +35,6 @@ export const fetchMarkets = () => json<Market[]>(at(relayers[0], "/markets"));
 
 /** ZEC/USD for display, from relayer 0 (which fetched it from its source). */
 export const fetchPrice = () => json<Price>(at(relayers[0], "/price"));
-
-/** Mock, testnet only: opens account `tag` with demo balance; relayer i gets only its share. */
-export const claimJudge = (tag: string) => claim(relayers, tag);
 
 /** Balance and seat (whether the account's orders can fill: see `Seat`). */
 export const fetchAccount = (tag: string) => getAccount(relayers, tag);
