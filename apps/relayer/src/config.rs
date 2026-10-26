@@ -245,7 +245,7 @@ pub(crate) mod tests {
             (3600, 3600, 3_543_405)
         );
         // The configured markets plus one rolling market fit one MPC run.
-        assert_eq!(c.markets.len() + 1, zpredict_circuit::DEFAULT_MARKETS);
+        assert!(c.markets.len() < zpredict_circuit::DEFAULT_MARKETS);
         assert_eq!(c.frost_share_file, None, "until the key ceremony (#78)");
     }
 

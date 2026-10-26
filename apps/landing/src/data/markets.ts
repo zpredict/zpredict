@@ -1,6 +1,6 @@
 /**
- * The markets the hosted relayers serve: the markets in deploy/production/relayer.toml (same
- * ids, questions and heights; 11-13 mirror Polymarket) plus the hourly rolling series. No
+ * A few of the Polymarket markets the hosted relayers mirror (deploy/production/relayer.toml,
+ * same ids and questions). The hourly demo-resolution market is app-only (#164). No
  * prices here, ours or Polymarket's: the live ones are only in the app, so the landing can't
  * disagree and makes no request to anyone.
  */
@@ -28,18 +28,6 @@ export const resolvedBy = (m: Market) =>
 
 export const markets: Market[] = [
 	{
-		id: 1,
-		plugin: "nu7-activation",
-		question: "Will NU7 activate on mainnet at block 3,543,405?",
-		resolve: "Block 3,543,405",
-	},
-	{
-		id: 2,
-		plugin: "ironwood-pool",
-		question: "Will the Ironwood pool hold ≥ 900,000 notes at block 3,560,000?",
-		resolve: "Block 3,560,000",
-	},
-	{
 		id: 11,
 		plugin: "polymarket",
 		question: "Will the Democratic Party control the House after the 2026 Midterm elections?",
@@ -58,9 +46,9 @@ export const markets: Market[] = [
 		resolve: "US midterms, Nov 3",
 	},
 	{
-		plugin: "shielded-actions",
-		question:
-			"Every hour: will a mainnet block an hour ahead contain at least the recent median of shielded actions?",
-		resolve: "Hourly",
+		id: 700056,
+		plugin: "polymarket",
+		question: "Will the Democratic Party control the Senate after the 2026 Midterm elections?",
+		resolve: "US midterms, Nov 3",
 	},
 ];
