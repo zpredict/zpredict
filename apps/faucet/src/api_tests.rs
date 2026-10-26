@@ -121,7 +121,7 @@ async fn status_headers_and_cors() {
     assert_eq!(code, StatusCode::OK);
     assert_eq!(v["enabled"], true);
     assert_eq!(v["balance"], 500_000_000);
-    assert_eq!(v["drop"], 1_000_000);
+    assert_eq!(v["drop"], 5_000_000);
     assert_eq!(v["turnstile"], true);
     let h = res.headers();
     assert_eq!(h[header::ACCESS_CONTROL_ALLOW_ORIGIN], APP);
@@ -155,7 +155,7 @@ async fn drip_pays_the_escrow_once_per_interval() {
     assert_eq!(code, StatusCode::OK, "{v}");
     assert_eq!(v["txid"], TXID);
     let log = std::fs::read_to_string(d.join("pay.log")).unwrap();
-    let uri = format!("zcash:{ESCROW}?amount=0.01000000&memo={memo_param}");
+    let uri = format!("zcash:{ESCROW}?amount=0.05000000&memo={memo_param}");
     assert!(log.contains(&uri), "{log}");
     assert!(log.contains("--disable-confirmation"));
 
