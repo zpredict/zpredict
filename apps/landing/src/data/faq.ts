@@ -26,6 +26,6 @@ export const faq: Faq[] = [
 	},
 	{
 		q: "Is it on mainnet?",
-		a: "Not yet. It runs on Zcash testnet for Zecathon 2026. Judge mode credits a mock demo balance (not withdrawable), so there is nothing to install.",
+		a: "Not yet. It runs on Zcash testnet for Zecathon 2026. One click gets you real testnet ZEC from our faucet, so there is nothing to install.",
 	},
 ];

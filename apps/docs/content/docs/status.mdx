@@ -19,13 +19,12 @@ zPredict is a ZECATHON 2026 testnet demo. Collateral and settlement are on **Zca
 | Hourly rolling markets | Hosted relayers |
 | Mirrored Polymarket markets (US midterms), resolved per Polymarket | Hosted relayers; oracle trust in [Markets](/docs/markets#mirrored-polymarket-markets) |
 
-## Mock, and labelled as such
+## Demo aids, labelled as such
 
 | Piece | Why |
 |---|---|
-| **Judge mode** credit | 0.25 ZEC of mock testnet collateral without a deposit, so judges can trade without a faucet. Flagged by every relayer and never withdrawable ([Your money](/docs/your-money#judge-credits-are-not-money)). Testnet only |
-| **Demo counterparty** (judge accounts, automatic) | A lone judge has nobody to cross with; the app adds the exact opposite order from the same account, a self-trade that nets out. No bot, resting book or relayer-side liquidity exists |
-| **Seeded activity** ([`scripts/seed-activity.mjs`](https://github.com/zpredict/zpredict/blob/main/scripts/seed-activity.mjs)) | The operator's judge accounts (mock credit) trade each market against each other near its Polymarket price through the real MPC, so markets show a price and history. They are ordinary orders; nothing is written to the market data directly |
+| **Demo counterparty** (every order, automatic) | A lone trader has nobody to cross with; the app adds the exact opposite order from the same account, a self-trade with real testnet funds that nets out. No bot, resting book or relayer-side liquidity exists |
+| **Seeded activity** ([`scripts/seed-activity.mjs`](https://github.com/zpredict/zpredict/blob/main/scripts/seed-activity.mjs)) | The operator's accounts trade each market against each other near its Polymarket price through the real MPC, so markets show a price and history. They are ordinary orders; nothing is written to the market data directly |
 | `pnpm --filter @zpredict/web dev:mock` | Local mock relayers that combine shares in the clear, for UI work only |
 
 ## Demo limits

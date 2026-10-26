@@ -26,7 +26,7 @@ export const NOTE =
 
 export const privacy: LegalDoc = {
 	title: "Privacy Policy",
-	updated: "2026-10-26",
+	updated: "2026-10-27",
 	summary:
 		"zPredict collects no accounts, cookies or analytics. Your account tag stays in your browser; each relayer holds only random shares. The hosted demo has one limit you should know: all three relayers run on one server.",
 	sections: [
@@ -52,7 +52,7 @@ export const privacy: LegalDoc = {
 			heading: "What stays in your browser",
 			paragraphs: [
 				[
-					"The app keeps your account tag (the only key to your balance), your orders with their shares and read tokens, and a judge claim in progress, in your browser's localStorage. The tag is never sent anywhere whole.",
+					"The app keeps your account tag (the only key to your balance), your orders with their shares and read tokens, in your browser's localStorage. The tag is never sent anywhere whole.",
 				],
 				[
 					"“Forget this account” (under Deposit) or clearing the site's data deletes them. Nobody, including us, can restore a lost tag, so a balance tied to it is lost too.",
@@ -140,7 +140,7 @@ export const terms: LegalDoc = {
 			heading: "What this is",
 			paragraphs: [
 				[
-					"zPredict is a demo built for Zecathon 2026. It runs on Zcash testnet: testnet ZEC has no monetary value, and no real-money markets are offered. Judge-mode credits are mock collateral, not ZEC, and can never be withdrawn.",
+					"zPredict is a demo built for Zecathon 2026. It runs on Zcash testnet: testnet ZEC has no monetary value, and no real-money markets are offered.",
 				],
 			],
 		},

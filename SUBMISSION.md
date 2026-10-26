@@ -18,10 +18,10 @@ The first prediction market on Zcash where nobody can see that you bet. Polymark
 
 HOW
 - Orders: XOR-shared in your browser, one share per relayer.
-- Matching: three relayers cross YES/NO at the midpoint inside 3-party MPC (polytune), checking balances in-circuit. Only fills and a public clearing price come out.
+- Matching: three relayers cross YES/NO at the midpoint inside 3-party MPC, checking balances in-circuit. Only fills and a public clearing price come out.
 - Accounts: your account secret never leaves the browser whole; the circuit checks it, so no relayer can spend for you.
 - Escrow: FROST 2-of-3 Ironwood address from a DKG; batched payouts, each signer re-derives the sighash.
-- Resolution: Zcash mainnet block data (incl. hourly markets) or Polymarket for 21 mirrored markets; outcomes FROST-signed, checked in the browser.
+- Resolution: 20 markets mirror Polymarket; hourly ones read Zcash blocks. Outcomes FROST-signed, checked in the browser.
 
 WHY IT DOES NOT LEAK
 - Chain: shielded (Ironwood) only; no transparent address in any path.
@@ -31,10 +31,10 @@ WHY IT DOES NOT LEAK
 
 WHAT IS REAL / WHAT IS A MOCK
 Real: 3-party MPC matching, in-circuit balances and credentials, FROST DKG, chain-data resolution, live relayers, and a full testnet cycle on the live demo: deposit 8a4bc247… → fill → signed outcome → 2-of-3 Ironwood payout 67d93312… (docs: Evidence).
-Demo limits: judge mode credits mock collateral (not withdrawable); judge orders fill against a labelled self-trade; operator-seeded demo trades set prices; all three relayers and the DKG ran on one VM, whose operator sees what they see (the model needs independent operators); relayers see deposit/withdrawal amounts and timing.
+No mock credit: every balance is a real testnet deposit (one-click faucet). Demo limits: each order is paired with its opposite from the same account (labelled self-trade) so it fills; seeded trades set prices; all three relayers and the DKG ran on one VM, whose operator sees what they see (the model needs independent operators); relayers see deposit/withdrawal amounts and timing.
 
 TRY IT
-app.zpredict.site → Judge mode → bet. Relayer View: what each relayer holds is noise.
+app.zpredict.site → Get testnet ZEC → bet → withdraw. Relayer View: each relayer holds noise.
 <!-- DESCRIPTION END -->
 
 ## Video script (1:26)

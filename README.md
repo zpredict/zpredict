@@ -4,7 +4,7 @@
 
 Shielded prediction market on Zcash. Price public, participants private: nobody learns that you bet, which side, or how much.
 
-**[Try it](https://app.zpredict.site)** (Judge mode) · [Docs](https://docs.zpredict.site) · [Pitch video](https://zpredict.site/pitch/) · [Site](https://zpredict.site) · [Design](DESIGN.md) · [Privacy audit](PRIVACY.md)
+**[Try it](https://app.zpredict.site)** (one-click testnet faucet) · [Docs](https://docs.zpredict.site) · [Pitch video](https://zpredict.site/pitch/) · [Site](https://zpredict.site) · [Design](DESIGN.md) · [Privacy audit](PRIVACY.md)
 
 ## How it works
 
@@ -13,7 +13,7 @@ Shielded prediction market on Zcash. Price public, participants private: nobody 
 3. Collateral sits in a FROST 2-of-3 Ironwood escrow; withdrawals are batched and every signer re-derives the sighash before signing.
 4. Markets resolve from Zcash mainnet block data, or per Polymarket for markets mirrored from it (`scripts/polymarket-catalog.mjs`); outcomes are FROST-signed and verified in the browser.
 
-Reading orders needs all three relayers; moving funds needs two. Demo limits (one VM, judge-mode credits) are in [PRIVACY.md](PRIVACY.md).
+Reading orders needs all three relayers; moving funds needs two. Demo limits (one VM, self-trade counterparty) are in [PRIVACY.md](PRIVACY.md).
 
 ## Repository
 
