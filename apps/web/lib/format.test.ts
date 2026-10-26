@@ -14,8 +14,16 @@ import {
 	unitsToZec,
 	viewDigest,
 } from "@zpredict/sdk";
-import { avgCents, ORDER_FIELDS, zatsToZec, zec } from "./format.ts";
+import { avgCents, ORDER_FIELDS, usd, zatsToZec, zec } from "./format.ts";
 import { digestsOf, openFill, openOrder, xorHex } from "./shares.ts";
+
+test("USD for display: half-ticks at a ZEC/USD price", () => {
+	assert.equal(usd(5000, 1237.34), "≈ $309.34"); // 0.25 ZEC
+	assert.equal(usd(HALF_TICKS_PER_UNIT, 1237.34), "≈ $12.37"); // 0.01 ZEC
+	assert.equal(usd(20_000_000n, 1237.34), "≈ $1,237,340.00"); // 1,000 ZEC
+	assert.equal(usd(0, 1237.34), "≈ $0.00");
+	assert.equal(usd(1, 1), "< $0.01");
+});
 
 test("1 unit = 200 half-ticks = 0.01 ZEC, exact", () => {
 	assert.equal(zec(HALF_TICKS_PER_UNIT), "0.01");

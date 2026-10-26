@@ -2,11 +2,14 @@
 import type { ReactNode } from "react";
 import { AccountProvider } from "@/hooks/useAccount";
 import { OrdersProvider } from "@/hooks/useOrders";
+import { PriceProvider } from "@/hooks/usePrice";
 
 export default function Providers({ children }: { children: ReactNode }) {
 	return (
 		<AccountProvider>
-			<OrdersProvider>{children}</OrdersProvider>
+			<OrdersProvider>
+				<PriceProvider>{children}</PriceProvider>
+			</OrdersProvider>
 		</AccountProvider>
 	);
 }

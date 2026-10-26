@@ -123,9 +123,13 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
         tokio::task::spawn_blocking(move || crate::escrow::scan::poll(e, &url, s));
     }
     // Market progress and resolution read the oracle (mainnet) chain only; mirrored
-    // markets read Polymarket, and "" for the oracle turns both off.
+    // markets read Polymarket, the display price reads Coinbase, and "" for the oracle
+    // turns all three off.
     let references = crate::reference::References::default();
+    let price = crate::price::Price::default();
     if !c.oracle_lightwalletd.is_empty() {
+        let p = price.clone();
+        tokio::task::spawn_blocking(move || crate::price::poll(p));
         let pm = Polymarket::default();
         let (p, list) = (pm.clone(), c.markets.clone());
         tokio::task::spawn_blocking(move || crate::reference::check(&p, &list))
@@ -150,6 +154,7 @@ pub async fn serve<M: Matcher + Send + 'static>(c: Config, matcher: M) -> Result
         group_key,
         escrow,
         references,
+        price,
     });
     axum::serve(http, app).await?;
     Ok(())

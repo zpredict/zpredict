@@ -381,6 +381,17 @@ export class TableFullError extends Error {
 
 export const getMarkets = (url: string) => call<Market[]>(at(url, "/markets"));
 
+/** `GET /price`: ZEC/USD spot for display only. The relayer fetches it from its source; the
+ * browser never contacts the source, and nothing in clearing or payouts reads it. */
+export interface Price {
+	zecUsd: number;
+	source: string;
+	/** When the relayer fetched it (unix seconds). */
+	at: number;
+}
+
+export const getPrice = (url: string) => call<Price>(at(url, "/price"));
+
 export const getView = (url: string, after = 0) => call<View>(at(url, `/view?after=${after}`));
 
 /** `GET /memo-key`: the relayer's X25519 public key for its deposit-memo slot. */

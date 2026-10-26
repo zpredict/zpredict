@@ -15,6 +15,7 @@ pub mod markets;
 pub mod mpc;
 pub mod outcome;
 pub mod peers;
+pub mod price;
 pub mod reference;
 pub mod server;
 pub mod state;

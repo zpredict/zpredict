@@ -51,6 +51,8 @@ export const POLL_MS = {
 	view: 900,
 	health: 4000,
 	markets: 10000,
+	/** The relayers refresh ZEC/USD every 5 min. */
+	price: 300000,
 	groupKey: 60000,
 };
 

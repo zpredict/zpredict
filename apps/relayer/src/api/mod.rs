@@ -43,12 +43,15 @@ pub struct Api {
     pub escrow: Option<Arc<crate::escrow::Escrow>>,
     /// Mirrored markets' Polymarket reference prices (`reference.rs`).
     pub references: crate::reference::References,
+    /// ZEC/USD for display (`price.rs`).
+    pub price: crate::price::Price,
 }
 
 pub fn router(api: Api) -> Router {
     Router::new()
         .route("/health", get(info::health))
         .route("/markets", get(info::markets))
+        .route("/price", get(info::price))
         .route("/view", get(info::view))
         .route("/memo-key", get(info::memo_key))
         .route("/group-key", get(info::group_key))

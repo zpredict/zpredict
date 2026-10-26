@@ -4250,6 +4250,7 @@ dependencies = [
  "getrandom 0.3.4",
  "hex",
  "polytune",
+ "reqwest",
  "serde",
  "serde_json",
  "snow",

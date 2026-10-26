@@ -10,6 +10,7 @@ import {
 	getWithdrawal,
 	type Health,
 	type Market,
+	type Price,
 	type Side,
 	submitOrder,
 	submitWithCounterparty,
@@ -32,6 +33,9 @@ const at = (base: string, path: string) => base.replace(/\/+$/, "") + path;
 export const fetchHealth = (i: number) => json<Health>(at(relayers[i], "/health"));
 
 export const fetchMarkets = () => json<Market[]>(at(relayers[0], "/markets"));
+
+/** ZEC/USD for display, from relayer 0 (which fetched it from its source). */
+export const fetchPrice = () => json<Price>(at(relayers[0], "/price"));
 
 /** Mock, testnet only: opens account `tag` with demo balance; relayer i gets only its share. */
 export const claimJudge = (tag: string) => claim(relayers, tag);

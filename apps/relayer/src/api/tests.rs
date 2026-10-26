@@ -31,6 +31,7 @@ pub fn app(index: usize, name: &str, judge: bool) -> (Router, crate::state::Shar
         group_key: None,
         escrow: None,
         references: Default::default(),
+        price: Default::default(),
     };
     (router(api), state)
 }

@@ -35,6 +35,7 @@ async fn withdrawals_contract() {
             fvk,
         ))),
         references: Default::default(),
+        price: Default::default(),
     });
     let (id, share) = ("ab".repeat(16), "5a".repeat(16));
     let body = |amount: u64, address: &str| json!({"withdrawalId": id, "share": share, "amount": amount, "address": address});

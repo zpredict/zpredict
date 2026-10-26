@@ -12,6 +12,20 @@ export function zatsToZec(zats: bigint): string {
 export const zec = (halfTicks: bigint | number) =>
 	zatsToZec(BigInt(halfTicks) * ZATS_PER_HALF_TICK);
 
+const usdFormat = new Intl.NumberFormat("en-US", {
+	style: "currency",
+	currency: "USD",
+	minimumFractionDigits: 2,
+	maximumFractionDigits: 2,
+});
+
+/** "≈ $309.34": half-ticks at `zecUsd` dollars per ZEC; "< $0.01" for dust. Display only. */
+export function usd(halfTicks: bigint | number, zecUsd: number): string {
+	const value = (Number(halfTicks) * Number(ZATS_PER_HALF_TICK) * zecUsd) / 1e8;
+	if (value !== 0 && Math.abs(value) < 0.01) return "< $0.01";
+	return `≈ ${usdFormat.format(value)}`;
+}
+
 /** Average fill price in cents per contract: totalCost (half-ticks) / size / 2. */
 export const avgCents = (f: Fill) => (f.size ? f.totalCost / f.size / 2 : 0);
 

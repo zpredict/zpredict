@@ -18,6 +18,7 @@ Each relayer is its own origin: `https://r0.zpredict.site`, `https://r1.zpredict
 |---|---|
 | `GET /health` | `{relayer: 0\|1\|2, height, batch, peers: boolean[]}` |
 | `GET /markets` | `Market[]` (below) |
+| `GET /price` | `{zecUsd, source, at}`: ZEC/USD spot for display only, fetched by the relayer every 5 min; `503` before the first fetch |
 | `POST /orders` `{orderId: hex32, share: hex52, token: hex32}` | `202 {batch}`: the batch the share joins. `token` is fresh and random per order and relayer. A second share for the same orderId is `409` |
 | `GET /orders/:orderId?token=hex32` | `{status: "pending"\|"filled"\|"unfilled", fillShare?: hex20}`. A missing or wrong token answers `404` like an unknown order, so one relayer (which knows every orderId) can't collect the other fill shares |
 | `GET /accounts/:id?key=hex32` | `{balanceShare: hex16, seat?: "seated"\|"waiting"\|"none", mock?: boolean}`. `id` is hex16 (u64 LE), `key` this relayer's share of the tag, else `403`; unknown ids hold a zero share |
