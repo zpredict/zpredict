@@ -90,7 +90,7 @@ const shots = {
 		// on the same market, with its own judge account. Both untick the demo self-trade, so
 		// the fill is a real cross between two accounts. The video says so.
 		const ready = `location.pathname.startsWith("/trade") && document.querySelector("#counterparty")`;
-		const untick = `document.querySelector("#counterparty").checked && document.querySelector("#counterparty").click()`;
+		const untick = `document.querySelector("#counterparty")?.checked && document.querySelector("#counterparty").click()`;
 		const other = await launch();
 		await other.goto(APP);
 		await other.click("button", "Judge mode");
