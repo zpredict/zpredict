@@ -1,26 +1,31 @@
 "use client";
+import Link from "next/link";
 import Amount, { USD_NOTE } from "@/components/ui/Amount";
 import { useAccount } from "@/hooks/useAccount";
+import { usePortfolio } from "@/hooks/usePortfolio";
 import { usePrice } from "@/hooks/usePrice";
-import { usd } from "@/lib/format";
+import { usd, zec } from "@/lib/format";
 
-/** The demo account's balance, combined in this browser from three XOR shares. */
+/** The header's portfolio total (cash + holdings, all from this browser), linking to /portfolio. */
 export default function BalancePill() {
-	const { tag, balance } = useAccount();
+	const { tag } = useAccount();
+	const { total, cash } = usePortfolio();
 	const price = usePrice();
 	if (!tag) return null;
 	return (
-		<p
+		<Link
 			className="balance"
+			href="/portfolio/"
 			title={[
-				"Combined in your browser from three XOR balance shares.",
-				balance !== null && price ? `${usd(balance, price.zecUsd)}. ${USD_NOTE}` : "",
+				cash === null ? "" : `Cash ${zec(cash)} ZEC.`,
+				"Combined in your browser from three XOR shares.",
+				total !== null && price ? `${usd(total, price.zecUsd)}. ${USD_NOTE}` : "",
 			]
 				.filter(Boolean)
 				.join(" ")}
 		>
-			<span className="balance__k">Balance</span>
-			{balance === null ? "…" : <Amount halfTicks={balance} usd={false} />}
-		</p>
+			<span className="balance__k">Portfolio</span>
+			{total === null ? "…" : <Amount halfTicks={total} usd={false} />}
+		</Link>
 	);
 }
