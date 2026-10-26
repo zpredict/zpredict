@@ -2,6 +2,8 @@
 // Footage comes from scripts/capture.mjs (real headless-Chrome recordings of the live app);
 // `at` is where a shot starts in its clip, taken from the marks in public/footage/shots.json.
 
+import voice from "./voice.json" with { type: "json" };
+
 export const VIDEO = { width: 1920, height: 1080, fps: 30 } as const;
 
 /** apps/web tokens (packages/brand/tokens.css). */
@@ -18,15 +20,18 @@ export const TOKENS = {
 	band: 156,
 } as const;
 
-/** A slow push from `from` to `to` scale, anchored on a focal point in source pixels. */
+/** A push-in on the region that matters, in source pixels: centre (x, y), `w` wide. The shot
+ *  opens on the framed window and eases in `at` seconds into it, then holds; `at: 0` opens
+ *  already in (a cut-in). */
 export interface Camera {
 	x: number;
 	y: number;
-	from: number;
-	to: number;
+	w: number;
+	at?: number;
 }
 
-export type Shot =
+/** `vo`: the narration over the shot (scripts/voice.mjs speaks it; src/voice.json has the lengths). */
+export type Shot = { vo?: string } & (
 	| { kind: "type"; dur: number; lines: string[] }
 	| {
 			kind: "clip";
@@ -40,7 +45,8 @@ export type Shot =
 			/** Elapsed real time skipped by the cut into this shot, shown honestly. */
 			skipped?: string;
 	  }
-	| { kind: "end"; dur: number };
+	| { kind: "end"; dur: number }
+);
 
 /** Marks in trade.mp4 (public/footage/shots.json, "trade"), seconds into the clip. `fill` is just
  *  before the fill shares land in the Relayer View (found by eye); null when a take has no fill,
@@ -57,10 +63,11 @@ const fillShot = (fill: number): Shot => ({
 	dur: 6,
 	clip: "trade",
 	at: fill,
-	cam: { x: 750, y: 330, from: 1.04, to: 1.1 },
+	cam: { x: 500, y: 330, w: 980, at: 0 },
 	source: "relayer view · live",
 	caption: "Matched inside 3-party MPC. The fill comes back as three shares too.",
 	skipped: "Batch cleared",
+	vo: "The fill comes back the same way, as three shares.",
 });
 
 export const SHOTS: Shot[] = [
@@ -69,15 +76,16 @@ export const SHOTS: Shot[] = [
 		kind: "type",
 		dur: 5.2,
 		lines: ["Every bet on Polymarket is public.", "Wallets get traced to real people."],
+		vo: "Every bet on Polymarket is public. Wallets get traced back to real people.",
 	},
 	{
 		kind: "clip",
 		dur: 5,
 		clip: "landing",
 		at: 1,
-		cam: { x: 960, y: 560, from: 1, to: 1.04 },
 		source: "zpredict.site",
 		caption: "zPredict: a prediction market on Zcash that hides who bet.",
+		vo: "zPredict is a prediction market on Zcash that hides who bet.",
 	},
 	// B: the live markets.
 	{
@@ -85,9 +93,9 @@ export const SHOTS: Shot[] = [
 		dur: 4,
 		clip: "home",
 		at: 0.4,
-		cam: { x: 480, y: 300, from: 1, to: 1.05 },
 		source: "app.zpredict.site · live",
 		caption: "No relayer, chain observer or counterparty learns who bet.",
+		vo: "No relayer, no chain observer and no counterparty learns who you are.",
 	},
 	{
 		kind: "clip",
@@ -96,6 +104,7 @@ export const SHOTS: Shot[] = [
 		at: 3.8,
 		source: "app.zpredict.site · live",
 		caption: "Live markets mirrored from Polymarket. Prices public, bettors hidden.",
+		vo: "The markets mirror Polymarket. Prices stay public. Bettors stay hidden.",
 	},
 	// C: the core workflow, one real order through the live relayers.
 	{
@@ -105,15 +114,17 @@ export const SHOTS: Shot[] = [
 		at: TRADE.judge - 0.7,
 		source: "judge mode · mock collateral",
 		caption: "Judge mode: a demo account with mock collateral. No wallet.",
+		vo: "Judges get a demo account in one click. No wallet needed.",
 	},
 	{
 		kind: "clip",
 		dur: 4.6,
 		clip: "trade",
 		at: TRADE.send - 4.4,
-		cam: { x: 1680, y: 420, from: 1, to: 1.12 },
+		cam: { x: 1500, y: 420, w: 1330, at: 0.4 },
 		source: "order ticket",
 		caption: "Pick a side, type an amount in ZEC, split & send.",
+		vo: "Pick a side, enter an amount in ZEC, and send.",
 	},
 	{
 		kind: "clip",
@@ -122,15 +133,17 @@ export const SHOTS: Shot[] = [
 		at: TRADE.shares - 0.2,
 		source: "relayer view · live",
 		caption: "Your browser splits the order into three random shares.",
+		vo: "Your browser splits the order into three random shares, one for each relayer.",
 	},
 	{
 		kind: "clip",
 		dur: 6,
 		clip: "trade",
 		at: TRADE.view + 0.5,
-		cam: { x: 750, y: 380, from: 1.04, to: 1.14 },
+		cam: { x: 750, y: 440, w: 1450, at: 0.3 },
 		source: "relayer view · live",
 		caption: "Relayers match orders in 3-party MPC. One share alone decodes nothing.",
+		vo: "The relayers match orders inside multi-party computation. Each one sees only noise.",
 	},
 	...(TRADE.fill === null ? [] : [fillShot(TRADE.fill)]),
 	// D: details.
@@ -139,41 +152,53 @@ export const SHOTS: Shot[] = [
 		dur: 6,
 		clip: "trade",
 		at: TRADE.close,
-		cam: { x: 1880, y: 540, from: 1.1, to: 1.3 },
+		cam: { x: 1680, y: 560, w: 780, at: 0.3 },
 		source: "your browser",
 		caption: "Only your browser XORs the shares back: filled 10 YES at 92¢.",
+		vo: "Only your browser can put them back together: ten YES shares, at ninety-two cents.",
 	},
 	{
 		kind: "clip",
 		dur: 5.5,
 		clip: "resolved",
 		at: 0.5,
-		cam: { x: 48, y: 525, from: 1.15, to: 1.35 },
+		cam: { x: 450, y: 470, w: 900, at: 0.3 },
 		source: "hourly market · resolved",
 		caption: "Outcomes from Zcash blocks, signed 2-of-3, checked in your browser.",
+		vo: "Outcomes are signed by two of three relayers, and your browser checks the signature.",
 	},
 	{
 		kind: "clip",
 		dur: 6,
 		clip: "threat",
 		at: 0.5,
-		cam: { x: 1340, y: 520, from: 1, to: 1.05 },
+		cam: { x: 1050, y: 600, w: 1100, at: 0.6 },
 		source: "app.zpredict.site/threat-model",
 		caption: "Who learns what, including the demo's limit: one VM, three relayers.",
+		vo: "Here is exactly who learns what, including today's limit: one server runs all three relayers.",
 	},
 	{
 		kind: "clip",
 		dur: 6,
 		clip: "evidence",
 		at: 0.5,
-		cam: { x: 960, y: 500, from: 1, to: 1.05 },
+		cam: { x: 960, y: 540, w: 1500, at: 0.6 },
 		source: "docs.zpredict.site · evidence",
 		caption: "On Zcash testnet: deposit, fill, signed outcome, 2-of-3 payout.",
+		vo: "And it works end to end on Zcash testnet: deposit, fill, signed outcome, and payout.",
 	},
 	// E: resolution.
-	{ kind: "clip", dur: 3.5, clip: "home", at: 0.2, cam: { x: 960, y: 400, from: 1.05, to: 1 } },
-	{ kind: "end", dur: 5 },
+	{ kind: "clip", dur: 3.5, clip: "home", at: 0.2 },
+	{ kind: "end", dur: 5, vo: "zPredict. Price public. Participants private." },
 ];
+
+/** Narration starts this long into a shot and the shot runs at least this long after it. */
+export const VO_LEAD = 0.25;
+const VO_TAIL = 0.6;
+
+/** A shot's length: its own `dur`, stretched when its narration needs longer. */
+export const shotDur = (shot: Shot, i: number) =>
+	Math.max(shot.dur, VO_LEAD + ((voice as Record<string, number>)[i] ?? 0) + VO_TAIL);
 
 /** Frames a caption takes to fade in or out. */
 export const FADE = 8;

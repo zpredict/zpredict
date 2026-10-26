@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import {
 	AbsoluteFill,
+	Audio,
 	continueRender,
 	delayRender,
 	Easing,
@@ -13,10 +14,9 @@ import {
 	useVideoConfig,
 } from "remotion";
 import mark from "../../../packages/brand/white/android-chrome-512x512.png";
-import { type Camera, FADE, SHOTS, type Shot, TOKENS } from "./config";
+import { type Camera, FADE, SHOTS, type Shot, shotDur, TOKENS, VIDEO, VO_LEAD } from "./config";
 
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
-const gentle = Easing.bezier(0.33, 0, 0.67, 1);
 
 const base: CSSProperties = {
 	backgroundColor: TOKENS.bg,
@@ -33,25 +33,73 @@ function useFade(delay = 6, hold = false) {
 	return Math.min(interpolate(frame, [delay, delay + FADE], [0, 1], clamp), hold ? 1 : out);
 }
 
-function Footage({ clip, at, cam }: { clip: string; at: number; cam?: Camera }) {
+/** Source footage size (scripts/capture.mjs records at 1920x1080). */
+const SRC = { w: 1920, h: 1080 };
+/** Margin around the framed window when it is not zoomed. */
+const MARGIN = 40;
+const PUSH = 0.9;
+const push = Easing.bezier(0.65, 0, 0.35, 1);
+
+/**
+ * The app in a framed window on the stage (the area above the caption band). With a camera, the
+ * window eases once into the region that matters and holds there; it never drifts, and once in,
+ * it always covers the stage, so no background shows at the edges.
+ */
+function Footage({
+	clip,
+	at,
+	cam,
+	stageH,
+}: {
+	clip: string;
+	at: number;
+	cam?: Camera;
+	stageH: number;
+}) {
 	const frame = useCurrentFrame();
-	const { durationInFrames, fps } = useVideoConfig();
-	const scale = cam
-		? interpolate(frame, [0, durationInFrames], [cam.from, cam.to], { ...clamp, easing: gentle })
-		: 1;
+	const { fps, width } = useVideoConfig();
+	const fit = Math.min((width - 2 * MARGIN) / SRC.w, (stageH - 2 * MARGIN) / SRC.h);
+	const wide = { s: fit, x: (width - fit * SRC.w) / 2, y: (stageH - fit * SRC.h) / 2 };
+	let view = wide;
+	if (cam) {
+		const s = Math.max(fit, width / cam.w);
+		const pin = (t: number, span: number, src: number) =>
+			span >= s * src ? (span - s * src) / 2 : Math.min(0, Math.max(span - s * src, t));
+		const zoomed = {
+			s,
+			x: pin(width / 2 - s * cam.x, width, SRC.w),
+			y: pin(stageH / 2 - s * cam.y, stageH, SRC.h),
+		};
+		const start = (cam.at ?? 0.4) * fps;
+		const p =
+			cam.at === 0
+				? 1
+				: interpolate(frame, [start, start + PUSH * fps], [0, 1], { ...clamp, easing: push });
+		const mix = (a: number, b: number) => a + (b - a) * p;
+		view = { s: mix(wide.s, zoomed.s), x: mix(wide.x, zoomed.x), y: mix(wide.y, zoomed.y) };
+	}
 	return (
-		<AbsoluteFill
-			style={{
-				transform: `scale(${scale})`,
-				transformOrigin: cam ? `${cam.x}px ${cam.y}px` : "center",
-			}}
-		>
-			<OffthreadVideo
-				muted
-				src={staticFile(`footage/${clip}.mp4`)}
-				trimBefore={Math.round(at * fps)}
-			/>
-		</AbsoluteFill>
+		<div style={{ position: "absolute", inset: 0, height: stageH, overflow: "hidden" }}>
+			<div
+				style={{
+					position: "absolute",
+					width: SRC.w,
+					height: SRC.h,
+					transform: `translate(${view.x}px, ${view.y}px) scale(${view.s})`,
+					transformOrigin: "0 0",
+					borderRadius: 14 / view.s,
+					border: `${1 / view.s}px solid ${TOKENS.line}`,
+					overflow: "hidden",
+					boxShadow: "0 24px 80px rgba(0, 0, 0, 0.6)",
+				}}
+			>
+				<OffthreadVideo
+					muted
+					src={staticFile(`footage/${clip}.mp4`)}
+					trimBefore={Math.round(at * fps)}
+				/>
+			</div>
+		</div>
 	);
 }
 
@@ -170,6 +218,7 @@ function EndCard() {
 					<div style={{ ...row, color: TOKENS.text }}>zpredict.site</div>
 					<div style={row}>app.zpredict.site · docs.zpredict.site</div>
 				</div>
+				<div style={{ ...row, marginTop: 40, fontSize: 20 }}>Voice: ElevenLabs</div>
 			</div>
 		</AbsoluteFill>
 	);
@@ -180,7 +229,12 @@ function Scene({ shot }: { shot: Shot }) {
 	if (shot.kind === "end") return <EndCard />;
 	return (
 		<AbsoluteFill style={base}>
-			<Footage at={shot.at} cam={shot.cam} clip={shot.clip} />
+			<Footage
+				at={shot.at}
+				cam={shot.cam}
+				clip={shot.clip}
+				stageH={VIDEO.height - (shot.caption ? TOKENS.band : 0)}
+			/>
 			{shot.caption && <Caption skipped={shot.skipped} source={shot.source} text={shot.caption} />}
 		</AbsoluteFill>
 	);
@@ -203,11 +257,16 @@ export function Demo() {
 	return (
 		<AbsoluteFill style={base}>
 			{SHOTS.map((shot, i) => {
-				const frames = Math.round(shot.dur * fps);
+				const frames = Math.round(shotDur(shot, i) * fps);
 				const seq = (
 					// biome-ignore lint/suspicious/noArrayIndexKey: the shot list is static
 					<Sequence durationInFrames={frames} from={from} key={i}>
 						<Scene shot={shot} />
+						{shot.vo && (
+							<Sequence from={Math.round(VO_LEAD * fps)}>
+								<Audio src={staticFile(`voice/${i}.mp3`)} volume={1.6} />
+							</Sequence>
+						)}
 					</Sequence>
 				);
 				from += frames;
