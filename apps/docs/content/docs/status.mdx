@@ -29,7 +29,7 @@ zPredict is a ZECATHON 2026 testnet demo. Collateral and settlement are on **Zca
 
 ## Demo limits
 
-- **One VM, behind Cloudflare.** All three relayers and the DKG run on one machine, and Cloudflare terminates TLS for all three ([#88](https://github.com/zpredict/zpredict/issues/88)). Either can see everything. The model needs independent operators.
+- **One VM.** All three relayers and the DKG run on one machine, whose operator can see everything. Cloudflare only serves DNS ([#88](https://github.com/zpredict/zpredict/issues/88), fixed 2026-10-26). The model needs independent operators.
 - **48 accounts** in the balance table; rows are not reclaimed yet ([#64](https://github.com/zpredict/zpredict/issues/64)).
 - **24 open markets** per MPC run.
 - A fill shows about 25 s after the order on the hosted VPS.
@@ -38,7 +38,6 @@ zPredict is a ZECATHON 2026 testnet demo. Collateral and settlement are on **Zca
 
 | Issue | What |
 |---|---|
-| [#88](https://github.com/zpredict/zpredict/issues/88), [#89](https://github.com/zpredict/zpredict/issues/89) | Cloudflare TLS termination; injected beacon and NEL headers |
 | [#90](https://github.com/zpredict/zpredict/issues/90), [#91](https://github.com/zpredict/zpredict/issues/91) | Request metadata and withdrawal amount/timing linkage |
 | [#64](https://github.com/zpredict/zpredict/issues/64) | Reclaim balance-table rows after a full withdrawal |
 | [#121](https://github.com/zpredict/zpredict/issues/121) | Relayers serve `historyAt` for price history |

@@ -13,10 +13,9 @@ From [DESIGN.md "Threat model"](https://github.com/zpredict/zpredict/blob/main/D
 | All 3 colluding | Everything | — |
 | Counterparty | That a fill happened at the midpoint | Who you are, your size beyond the fill |
 | Network observer | That someone talks to a zPredict relayer | Contents (TLS); your IP if you use Tor |
-| Cloudflare (as deployed, until #88) | Everything the three relayers receive, in clear, plus client IPs: in effect all three colluding | — once the relayer hostnames are DNS-only |
 | Demo VM operator | Everything: all three relayers and the DKG ran on one machine | — with three independent operators |
 
-**Stated up front:** funds are 2-of-3, order privacy is 3-of-3. The demo concentrates all three relayers on one VM behind Cloudflare.
+**Stated up front:** funds are 2-of-3, order privacy is 3-of-3. The demo concentrates all three relayers on one VM. Cloudflare only serves DNS: TLS ends on that VM ([#88](https://github.com/zpredict/zpredict/issues/88), fixed 2026-10-26).
 
 ## MPC security
 
@@ -40,7 +39,5 @@ The escrow's spend authority `ak` is the FROST group key, so its viewing key can
 
 | Issue | Effect |
 |---|---|
-| [#88](https://github.com/zpredict/zpredict/issues/88) | Cloudflare terminates TLS for all three relayers |
-| [#89](https://github.com/zpredict/zpredict/issues/89) | Cloudflare injects an analytics beacon (CSP blocks it) and NEL headers |
 | [#90](https://github.com/zpredict/zpredict/issues/90) | Connection-level metadata can link orders and withdrawals to an account id |
 | [#91](https://github.com/zpredict/zpredict/issues/91) | Withdrawal amount and timing can link deposits to payouts at the relayers |

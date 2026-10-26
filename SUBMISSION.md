@@ -31,7 +31,7 @@ WHY IT DOES NOT LEAK
 
 WHAT IS REAL / WHAT IS A MOCK
 Real: 3-party MPC matching, in-circuit balances and credentials, FROST DKG, chain-data resolution, live relayers, and a full testnet cycle on the live demo: deposit 8a4bc247… → fill → signed outcome → 2-of-3 Ironwood payout 67d93312… (docs: Evidence).
-Demo limits: judge mode credits mock collateral (not withdrawable); a lone judge can add a labelled self-trade counterparty to see a fill; all three relayers and the DKG ran on one VM behind Cloudflare, which sees what they see (the model needs independent operators); relayers see deposit/withdrawal amounts and timing.
+Demo limits: judge mode credits mock collateral (not withdrawable); a lone judge can add a labelled self-trade counterparty to see a fill; all three relayers and the DKG ran on one VM, whose operator sees what they see (the model needs independent operators); relayers see deposit/withdrawal amounts and timing.
 
 TRY IT
 app.zpredict.site → Judge mode → bet (alone? tick "take the other side (demo)"). Relayer View: what each relayer holds is noise.
@@ -51,7 +51,7 @@ Colosseum-style: a pitch, not a feature tour. One idea per shot. Built by `scrip
 | 0:49–0:56 | Resolved rolling market: outcome, block hash, "Signed by 2-of-3 relayers ✓" | "Markets resolve from Zcash chain data. This block decided the outcome. Anyone can check it." |
 | 0:56–1:14 | Regtest terminal: each relayer forges a withdrawal → refused; the payout (v6, Ironwood-only, 0 transparent) | "Settlement, on our regtest chain. Each relayer tried to forge the winner's withdrawal. All three were refused. The payout: one Ironwood transaction. Zero transparent inputs or outputs." |
 | 1:14–1:24 | Testnet card: deposit `8a4bc247…b62de82d` → fill → outcome YES FROST-signed 2-of-3 (mainnet block 3,529,392) → batched 2-of-3 payout `67d93312…10620a16` | "And on public testnet, the full cycle on the live demo: deposit, fill, a signed outcome, and a two-of-three payout to an Ironwood address." |
-| 1:24–1:38 | Threat-model table from PRIVACY.md | "Here is exactly what each party can and can't learn. Including what's still open: today's demo runs on one server, behind Cloudflare. Price public. Participants private." |
+| 1:24–1:38 | Threat-model table from PRIVACY.md | "Here is exactly what each party can and can't learn. Including what's still open: today's demo runs all three relayers on one server. Price public. Participants private." |
 | 1:38–1:44 | End card | "zPredict. Bet on Zcash, without being seen." |
 
 Record against the live demo (wait for `/health` peers `[true,true,true]` on r0, r1, r2). Full txids: docs, Evidence.

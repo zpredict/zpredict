@@ -19,12 +19,6 @@ export const THREATS = [
 		not: "Contents (TLS); your IP if you use Tor",
 	},
 	{
-		observer: "Cloudflare (as deployed) ⚠",
-		learns:
-			"Everything sent to the relayers, in clear: all three shares of every order, key and withdrawal, so every order and account tag; and your IP. TLS ends at Cloudflare until the relayers move to DNS-only (#88)",
-		not: "—",
-	},
-	{
 		observer: "VM operator (demo) ⚠",
 		learns: "Everything: all three relayers run on one VM in this demo",
 		not: "—",
@@ -61,13 +55,13 @@ export const LEAK_CHECKLIST = [
 	"Public feeds publish digests, never shares; a fill share is served only with this browser's read token.",
 	"Frontends are static and self-hosted: no third-party requests, no analytics, self-only CSP. No IP logs.",
 	"Viewing keys and key shares stay sealed on the relayers; never in the UI or logs.",
-	"Open: TLS ends at Cloudflare, not at each relayer (#88); request metadata (#90) and withdrawal amount and timing (#91) can link actions to an account.",
+	"Open: request metadata (#90) and withdrawal amount and timing (#91) can link actions to an account.",
 ] as const;
 
 /** What this build fakes or limits today. Keep in sync with SUBMISSION.md "Real / Mock". */
 export const MOCKS = [
 	"Judge mode credits mock collateral directly; no testnet deposit happens, and judge credits can't be withdrawn.",
 	"Orders cross only inside the batch they land in: a fill needs someone on the other side in the same 5-second window.",
-	"All three relayers, and the key ceremony, run on one VM behind Cloudflare. The model needs three independent operators.",
+	"All three relayers, and the key ceremony, run on one VM. The model needs three independent operators.",
 	"With the local mock relayers, one process combines the shares in the clear instead of running MPC.",
 ] as const;

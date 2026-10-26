@@ -97,7 +97,7 @@ const SEGMENTS = [
 		min: 13,
 		lines: [
 			"Here is exactly what each party can and can't learn.",
-			"Including what's still open: today's demo runs on one server, behind Cloudflare.",
+			"Including what's still open: today's demo runs all three relayers on one server.",
 			"Price public. Participants private.",
 		],
 	},

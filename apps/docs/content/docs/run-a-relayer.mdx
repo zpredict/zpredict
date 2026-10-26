@@ -59,7 +59,7 @@ KEEP=1 scripts/relayer-e2e.sh         # leave regtest and the relayers running
 | r0–r2.zpredict.site | compose `relayers` ([`compose.yaml`](https://github.com/zpredict/zpredict/blob/main/deploy/production/compose.yaml)) | 3172–3174 |
 | docs.zpredict.site | `docs` ([`apps/docs/Dockerfile`](https://github.com/zpredict/zpredict/blob/main/apps/docs/Dockerfile)) | 3175 |
 
-- Request path: browser → Cloudflare → host nginx on the VPS (TLS, [`nginx.conf`](https://github.com/zpredict/zpredict/blob/main/deploy/production/nginx.conf): no access log, client-IP headers stripped) → container on `127.0.0.1:<port>`. Coolify builds the images on the VPS from `main`; nothing goes to a registry.
+- Request path: browser → (DNS-only) host nginx on the VPS (TLS, [`nginx.conf`](https://github.com/zpredict/zpredict/blob/main/deploy/production/nginx.conf): no access log, client-IP headers stripped) → container on `127.0.0.1:<port>`. Coolify builds the images on the VPS from `main`; nothing goes to a registry.
 - A merge to `main` runs CI, then [`deploy.yml`](https://github.com/zpredict/zpredict/blob/main/.github/workflows/deploy.yml) asks Coolify to deploy every uuid in `COOLIFY_RESOURCES`.
 - The three relayers share one image ([`relayer.Dockerfile`](https://github.com/zpredict/zpredict/blob/main/deploy/production/relayer.Dockerfile), distroless, non-root) and one [`relayer.toml`](https://github.com/zpredict/zpredict/blob/main/deploy/production/relayer.toml); `ZPREDICT_INDEX` picks the party. Noise keys and store keys are Coolify secrets mounted under `/run/secrets`. Each has its own data volume; never delete one while orders are open.
 - Health: `https://rN.zpredict.site/health` (`peers` all `true` once a batch ran).
