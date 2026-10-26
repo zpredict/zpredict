@@ -85,7 +85,6 @@ const shots = {
 			await sleep(220);
 		}
 		await sleep(1500);
-		const box = await b.evaluate(`document.querySelector("#counterparty") ? "checkbox" : "none"`);
 		r.mark("send");
 		await b.click("button", "Split & send");
 		await b.waitFor(`document.querySelector(".xor")`, 30_000);
@@ -98,14 +97,16 @@ const shots = {
 			.waitFor(`document.querySelector(".xor__fill.is-filled")`, 180_000)
 			.catch(() => console.error("trade: no fill within 3 min"));
 		r.mark("fill");
-		await sleep(9000);
-		const fill = await b.evaluate(`document.querySelector(".xor__fill")?.textContent`);
-		return {
-			...(await r.stop()),
-			fill,
-			counterpartyToggle: box,
-			url: await b.evaluate("location.href"),
-		};
+		await sleep(6000);
+		// The close-up: the three shares, their XOR and the fill, whole.
+		await b.evaluate(
+			`document.querySelector(".xor").scrollIntoView({ behavior: "smooth", block: "end" })`,
+		);
+		await sleep(1500);
+		r.mark("close");
+		await sleep(7000);
+		const fillText = await b.evaluate(`document.querySelector(".xor__fill")?.textContent`);
+		return { ...(await r.stop()), fillText, url: await b.evaluate("location.href") };
 	},
 	async resolved(b) {
 		const markets = await (await fetch(`${RELAYER}/markets`)).json();
@@ -114,6 +115,8 @@ const shots = {
 			markets.filter((m) => m.status === "resolved" && m.outcomeSig).at(-1)?.id;
 		await b.goto(`${APP}/trade/?m=${id}`);
 		await b.waitFor(`document.querySelector(".proof")`);
+		// The rules and the signed outcome mid-frame, above the caption band.
+		await b.evaluate(`document.querySelector(".proof").scrollIntoView({ block: "center" })`);
 		await sleep(1500);
 		const r = await take(b, "resolved.mp4");
 		await sleep(9000);
