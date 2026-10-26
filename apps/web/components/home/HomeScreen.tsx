@@ -1,7 +1,5 @@
 "use client";
-import Link from "next/link";
 import type { ReactNode } from "react";
-import JudgeCta from "@/components/judge/JudgeCta";
 import AllMarkets from "@/components/markets/AllMarkets";
 import ClosingSoon from "@/components/markets/ClosingSoon";
 import Featured from "@/components/markets/Featured";
@@ -12,9 +10,9 @@ import { useMarkets } from "@/hooks/useMarkets";
 import { useTip } from "@/hooks/useTip";
 
 /**
- * Markets home in Polymarket's layout: featured carousel with the demo CTA and "closing soon"
- * beside it, then all mirrored markets by topic, then the hourly demo-resolution markets with
- * their history. Live from relayer 0.
+ * Markets home in Polymarket's layout: featured carousel with "closing soon" beside it (judge
+ * mode is the header button), then all mirrored markets by topic, then the hourly
+ * demo-resolution markets with their history. Live from relayer 0.
  */
 export default function HomeScreen({ visual }: { visual: ReactNode }) {
 	const { markets, down } = useMarkets();
@@ -25,19 +23,10 @@ export default function HomeScreen({ visual }: { visual: ReactNode }) {
 	const hourly = all.filter((m) => m.rolling);
 	return (
 		<>
+			<h1 className="sr-only">zPredict markets</h1>
 			<div className="home__top">
 				<Featured markets={markets && listed} visual={visual} />
-				<aside aria-label="Get started" className="home__side">
-					<section className="home__cta">
-						<h1 className="home__title">
-							<span>Bet on Zcash.</span> <span>Without being seen.</span>
-						</h1>
-						<p className="dim">
-							No one learns who bet, which side or how much. Prices are public.{" "}
-							<Link href="/threat-model/">Who learns what →</Link>
-						</p>
-						<JudgeCta />
-					</section>
+				<aside aria-label="Closing soon" className="home__side">
 					<ClosingSoon markets={listed} tip={tip} />
 				</aside>
 			</div>
