@@ -79,6 +79,16 @@
 	text-transform: uppercase;
 }
 
+.resolved__more > summary {
+	padding: 12px 0;
+	color: var(--zp-muted);
+	cursor: pointer;
+}
+
+.resolved__more > summary:hover {
+	color: var(--zp-lime);
+}
+
 .resolved__open {
 	color: var(--zp-lime);
 }

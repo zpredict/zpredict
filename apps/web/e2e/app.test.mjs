@@ -1,5 +1,5 @@
 // The app in headless Chrome against the mock relayers, served like production (static
-// export, the deploy's CSP): judge mode → an order with the demo counterparty → its fill →
+// export, the deploy's CSP): judge mode → an order (auto demo counterparty) → its fill →
 // chart crosshair → withdraw (judge note) → deposit (escrow address in the request). Every
 // request the page makes must go to localhost. Run `pnpm --filter @zpredict/web e2e`
 // (builds with the ports below first). CHROME= the browser binary (default: macOS Chrome).
@@ -103,8 +103,8 @@ test("judge mode to a fill, chart, withdraw and deposit", async () => {
 	await b.waitFor(`location.pathname === "/trade/"`);
 	await b.goto(`${base}/trade/?m=1`);
 
-	// A judge account gets the demo counterparty, on by default.
-	await b.waitFor(`document.querySelector("#counterparty")?.checked === true`);
+	// A judge account always gets the demo counterparty: no toggle to tick.
+	assert.equal(await b.evaluate(`document.querySelector("#counterparty")`), null);
 	await b.waitFor(
 		`[...document.querySelectorAll(".ticket button.cta")].some((e) => e.textContent.includes("Split & send") && !e.disabled)`,
 	);

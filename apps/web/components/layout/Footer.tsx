@@ -9,8 +9,8 @@ export default function Footer() {
 				<p className="sitefoot__name">zPredict</p>
 				<p className="dim">Price public. Participants private.</p>
 				<p className="dim">
-					Zcash testnet demo for Zecathon 2026. Markets resolve from Zcash mainnet data, or per
-					Polymarket for mirrored markets.
+					Zcash testnet demo for Zecathon 2026. Markets mirror Polymarket and resolve per its
+					result; hourly demo markets resolve from Zcash mainnet data.
 				</p>
 			</div>
 			<nav aria-label="Footer" className="sitefoot__cols">

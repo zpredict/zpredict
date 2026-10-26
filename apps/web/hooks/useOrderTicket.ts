@@ -46,10 +46,9 @@ export function useOrderTicket(market: Market, initialSide: Side = 0) {
 	const [amount, setAmount] = useState(0.05);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState("");
-	// DEMO counterparty (#103): offered to judge accounts only, on by default there (a lone
-	// judge never fills otherwise); `null` = untouched, so it follows `mock` once that loads.
-	const [counterChoice, setCounter] = useState<boolean | null>(null);
-	const counterparty = mock === true && (counterChoice ?? true);
+	// DEMO counterparty (#103): always on for judge accounts (a lone judge never fills
+	// otherwise), never for funded ones. The fill is labelled a self-trade.
+	const counterparty = mock === true;
 
 	const edge = counterparty ? 0 : undefined;
 	const setSide = (s: Side) => {
@@ -109,9 +108,7 @@ export function useOrderTicket(market: Market, initialSide: Side = 0) {
 		error: error || problem,
 		canSubmit: Boolean(tag) && !problem && !busy,
 		hasAccount: Boolean(tag),
-		canCounter: mock === true,
 		counterparty,
-		setCounter,
 		submit,
 	};
 }
