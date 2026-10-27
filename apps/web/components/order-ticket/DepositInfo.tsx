@@ -24,6 +24,7 @@ function breakdown(parts: number[]): string {
 
 /** Whole units (0.01 ZEC) in a typed ZEC amount; null unless it is a positive multiple of 0.01. */
 function toUnits(text: string): number | null {
+	if (!/^\s*\d+([.,]\d+)?\s*$/.test(text)) return null; // no 1e3, 0x10 or -1
 	const zec = Number(text.replace(",", "."));
 	const units = Math.round(zec * 100);
 	return Number.isFinite(zec) && units >= 1 && Math.abs(zec * 100 - units) < 1e-6 ? units : null;
@@ -138,7 +139,7 @@ export default function DepositInfo({ open = false }: { open?: boolean }) {
 					)}
 				</li>
 				<li>
-					Credited after 10 confirmations (about 12 min).
+					Credited after 10 confirmations (about 5–7 min).
 					{request && <DepositStatus />}
 				</li>
 				<li>

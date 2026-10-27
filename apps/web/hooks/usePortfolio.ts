@@ -12,8 +12,8 @@ export function usePortfolio() {
 	const { markets } = useMarkets();
 	return useMemo(() => {
 		const held = positions(orders, markets ?? []);
-		// A holding with no price yet counts at what it cost.
-		const invested = held.reduce((n, p) => n + (p.value ?? p.cost), 0);
+		// Open holdings only (settled ones are already in the balance); no price yet counts at cost.
+		const invested = held.reduce((n, p) => (p.settled ? n : n + (p.value ?? p.cost)), 0);
 		const total = balance === null ? null : Number(balance) + invested;
 		return { cash: balance, held, invested, total, markets: markets ?? [] };
 	}, [balance, orders, markets]);

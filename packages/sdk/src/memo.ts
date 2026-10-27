@@ -128,6 +128,9 @@ export const MAX_DEPOSIT_NOTES = 12;
  */
 export function splitDeposit(units: number): Denomination[] {
 	if (!Number.isInteger(units) || units < 1) throw new RangeError("deposit at least 1 unit");
+	// Before the loop: a huge float (1e20 - 2500 === 1e20) would never count down.
+	if (units > MAX_DEPOSIT_NOTES * DENOMINATIONS[DENOMINATIONS.length - 1])
+		throw new RangeError("too many notes for one request");
 	const parts: Denomination[] = [];
 	let left = units;
 	for (const d of [...DENOMINATIONS].reverse()) {

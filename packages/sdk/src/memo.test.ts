@@ -88,6 +88,7 @@ test("any amount splits into the fewest credited notes, paid in one request", ()
 	assert.deepEqual(splitDeposit(2500), [2500]);
 	assert.throws(() => splitDeposit(0), RangeError);
 	assert.throws(() => splitDeposit(1.5), RangeError);
+	assert.throws(() => splitDeposit(1e20), RangeError); // would never count down as a float
 	assert.throws(() => splitDeposit(2500 * 13), RangeError);
 	const memo = new Uint8Array(512).fill(1);
 	const one = depositRequest("utest1escrow", [{ units: 5, memo }]);

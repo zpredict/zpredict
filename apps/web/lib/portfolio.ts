@@ -16,6 +16,8 @@ export interface Position {
 	value: number | null;
 	/** Shares bought by the demo counterparty (a self-trade), which hedge the trader's own. */
 	hedged: boolean;
+	/** Paid out already: the market resolved (winnings are in the balance) or left `/markets`. */
+	settled: boolean;
 }
 
 /** The value of `shares` of `side`: resolved, 1 unit per winning share; else at the last price. */
@@ -38,15 +40,25 @@ export function positions(orders: MyOrder[], markets: Market[]): Position[] {
 		const side = o.fill.side;
 		const hedged = Boolean(o.counterOf);
 		const key = `${o.market}:${side}:${hedged}`;
-		const p = held.get(key) ?? { market: o.market, side, shares: 0, cost: 0, value: null, hedged };
+		const p = held.get(key) ?? {
+			market: o.market,
+			side,
+			shares: 0,
+			cost: 0,
+			value: null,
+			hedged,
+			settled: false,
+		};
 		p.shares += o.fill.size;
 		p.cost += o.fill.totalCost;
 		held.set(key, p);
 	}
-	return [...held.values()].map((p) => ({
-		...p,
-		value: worth(byId.get(p.market), p.side, p.shares),
-	}));
+	return [...held.values()].map((p) => {
+		const m = byId.get(p.market);
+		// Resolved markets stay listed 24 h; one missing from a loaded list resolved before that.
+		const settled = m ? m.status === "resolved" : markets.length > 0;
+		return { ...p, value: worth(m, p.side, p.shares), settled };
+	});
 }
 
 /** One step of the P&L curve: unix seconds and P&L in half-ticks. */
@@ -93,7 +105,9 @@ export function pnlSeries(orders: MyOrder[], markets: Market[], now: number): Pn
 			let v = 0;
 			for (const f of fills) {
 				if (f.t > t || !f.fill) continue;
-				const yes = yesAt(byId.get(f.market), t, now) ?? f.fill.totalCost / f.fill.size / 2;
+				// No public price yet: the fill's own average, as a YES price.
+				const avg = f.fill.totalCost / f.fill.size / 2;
+				const yes = yesAt(byId.get(f.market), t, now) ?? (f.fill.side === 0 ? avg : 100 - avg);
 				const cents = f.fill.side === 0 ? yes : 100 - yes;
 				v += Math.round((f.fill.size * cents * PAYOUT) / 100) - f.fill.totalCost;
 			}
