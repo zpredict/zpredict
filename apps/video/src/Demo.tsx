@@ -218,7 +218,6 @@ function EndCard() {
 					<div style={{ ...row, color: TOKENS.text }}>zpredict.site</div>
 					<div style={row}>app.zpredict.site · docs.zpredict.site</div>
 				</div>
-				<div style={{ ...row, marginTop: 40, fontSize: 20 }}>Voice: ElevenLabs</div>
 			</div>
 		</AbsoluteFill>
 	);
