@@ -30,12 +30,16 @@ export function loadJson<T>(key: string, fallback: T): T {
 /**
  * `backup`: set once the account key was copied or saved, so the backup prompt stops.
  * `payouts`: digests of the payout addresses this browser withdrew to (#91).
+ * `notes`: the in-app notifications (lib/notify.ts).
  */
 export const KEYS = {
 	tag: "zp.tag",
 	orders: "zp.orders",
 	backup: "zp.backup",
 	payouts: "zp.payouts",
+	notes: "zp.notes",
+	/** Id of the announcement this browser dismissed. */
+	announce: "zp.announce",
 } as const;
 
 // Payout addresses are kept only as digests, so this browser's storage doesn't list them.
