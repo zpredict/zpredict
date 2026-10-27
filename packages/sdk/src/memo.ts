@@ -20,7 +20,7 @@ export const MEMO_LEN = 512;
 /** Zatoshis in one unit of collateral (0.01 ZEC). Mirrors `zpredict_settle::UNIT_ZATS`. */
 export const UNIT_ZATS = 1_000_000n;
 /** The only deposit sizes the relayers credit, in units. Anything else is never credited. */
-export const DENOMINATIONS = [1, 5, 25] as const;
+export const DENOMINATIONS = [1, 5, 25, 100, 500, 2500] as const;
 export type Denomination = (typeof DENOMINATIONS)[number];
 
 /** The three relayers' memo public keys (hex64), in relayer order. */
@@ -117,6 +117,45 @@ export function unitsToZec(units: Denomination): string {
 export function depositUri(escrow: string, units: Denomination, memo: Uint8Array): string {
 	if (!DENOMINATIONS.includes(units)) throw new RangeError("not a deposit denomination");
 	return `zcash:${escrow}?amount=${unitsToZec(units)}&memo=${memoParam(memo)}`;
+}
+
+/** Most notes one deposit request splits into; past it, deposit in more than one go. */
+export const MAX_DEPOSIT_NOTES = 12;
+
+/**
+ * Any amount of whole units as deposit denominations, largest first: the fewest notes, each a
+ * size the relayers credit. 37 → [25, 5, 5, 1, 1]. Throws past `MAX_DEPOSIT_NOTES`.
+ */
+export function splitDeposit(units: number): Denomination[] {
+	if (!Number.isInteger(units) || units < 1) throw new RangeError("deposit at least 1 unit");
+	const parts: Denomination[] = [];
+	let left = units;
+	for (const d of [...DENOMINATIONS].reverse()) {
+		while (left >= d) {
+			parts.push(d);
+			left -= d;
+		}
+	}
+	if (parts.length > MAX_DEPOSIT_NOTES) throw new RangeError("too many notes for one request");
+	return parts;
+}
+
+/**
+ * One ZIP 321 request paying several denominations to the escrow in one transaction, each note
+ * with its own memo (`address.i`, `amount.i`, `memo.i`). One part is the plain `depositUri`.
+ */
+export function depositRequest(
+	escrow: string,
+	parts: readonly { units: Denomination; memo: Uint8Array }[],
+): string {
+	if (parts.length === 0) throw new RangeError("no deposit parts");
+	if (parts.length === 1) return depositUri(escrow, parts[0].units, parts[0].memo);
+	const params = parts.map(({ units, memo }, i) => {
+		if (!DENOMINATIONS.includes(units)) throw new RangeError("not a deposit denomination");
+		const k = i === 0 ? "" : `.${i}`;
+		return `address${k}=${escrow}&amount${k}=${unitsToZec(units)}&memo${k}=${memoParam(memo)}`;
+	});
+	return `zcash:?${params.join("&")}`;
 }
 
 function base64urlToHex(s: string): string {

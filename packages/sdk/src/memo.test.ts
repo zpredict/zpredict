@@ -6,12 +6,14 @@ import { getMemoKeys, type Relayers } from "./index.js";
 import {
 	accountHex,
 	DENOMINATIONS,
+	depositRequest,
 	depositUri,
 	encodeMemo,
 	keyShares,
 	MEMO_LEN,
 	type MemoKeys,
 	memoParam,
+	splitDeposit,
 	UNIT_ZATS,
 	unitsToZec,
 } from "./memo.js";
@@ -51,7 +53,7 @@ test("bad tags and keys are refused", async () => {
 test("denominations and the ZIP 321 request match settle", () => {
 	assert.equal(UNIT_ZATS, BigInt(v.unitZats));
 	assert.deepEqual([...DENOMINATIONS], v.denominations);
-	assert.deepEqual(DENOMINATIONS.map(unitsToZec), ["0.01", "0.05", "0.25"]);
+	assert.deepEqual(DENOMINATIONS.map(unitsToZec), ["0.01", "0.05", "0.25", "1", "5", "25"]);
 	const memo = fromHex(v.memos[0].memo.padEnd(MEMO_LEN * 2, "0"));
 	assert.equal(
 		depositUri("utest1escrow", 5, memo),
@@ -78,4 +80,24 @@ test("memo keys come one per relayer, in order", async () => {
 	globalThis.fetch = (async () => new Response(JSON.stringify(reply(0)))) as typeof fetch;
 	await assert.rejects(getMemoKeys(relayers), /relayer 1 returned a bad memo key/);
 	await assert.rejects(getMemoKeys([relayers[0], relayers[0], relayers[2]]), /distinct/);
+});
+
+test("any amount splits into the fewest credited notes, paid in one request", () => {
+	assert.deepEqual(splitDeposit(37), [25, 5, 5, 1, 1]);
+	assert.deepEqual(splitDeposit(730), [500, 100, 100, 25, 5]);
+	assert.deepEqual(splitDeposit(2500), [2500]);
+	assert.throws(() => splitDeposit(0), RangeError);
+	assert.throws(() => splitDeposit(1.5), RangeError);
+	assert.throws(() => splitDeposit(2500 * 13), RangeError);
+	const memo = new Uint8Array(512).fill(1);
+	const one = depositRequest("utest1escrow", [{ units: 5, memo }]);
+	assert.equal(one, depositUri("utest1escrow", 5, memo));
+	const two = depositRequest("utest1escrow", [
+		{ units: 25, memo },
+		{ units: 1, memo },
+	]);
+	assert.match(
+		two,
+		/^zcash:\?address=utest1escrow&amount=0\.25&memo=[\w-]+&address\.1=utest1escrow&amount\.1=0\.01&memo\.1=[\w-]+$/,
+	);
 });
