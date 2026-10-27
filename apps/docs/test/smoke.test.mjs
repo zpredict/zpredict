@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { after, before, test } from "node:test";
-import { fetchedUrls, foreignFetches } from "../scripts/third-party.mjs";
+import { ANALYTICS, fetchedUrls, foreignFetches } from "../scripts/third-party.mjs";
 
 const root = new URL("../", import.meta.url).pathname;
 const pages = JSON.parse(readFileSync(`${root}content/docs/meta.json`, "utf8")).pages.filter(
@@ -59,14 +59,18 @@ async function page(path) {
 	const csp = res.headers.get("content-security-policy") ?? "";
 	assert.match(csp, /default-src 'none'/, `${path}: CSP`);
 	assert.match(csp, /script-src 'self' 'nonce-[A-Za-z0-9+/=]+' 'strict-dynamic'/, `${path}: nonce`);
-	assert.doesNotMatch(csp, /https?:|unsafe-eval|\*/, `${path}: CSP names no remote origin`);
+	// The only remote origins: GA4's (#226), and only where gtag.js needs them.
+	for (const o of csp.match(/https?:\/\/[^\s;]+/g) ?? [])
+		assert.match(new URL(o.replace("*.", "x.")).hostname, ANALYTICS, `${path}: CSP origin ${o}`);
+	assert.doesNotMatch(csp, /frame-src|unsafe-eval|unsafe-hashes/, `${path}: CSP`);
+	assert.doesNotMatch(csp.replace(/https:\/\/\*\./g, ""), /\*/, `${path}: CSP wildcard`);
 	const nonce = csp.match(/'nonce-([^']+)'/)[1];
 	for (const [tag] of html.matchAll(/<script\b[^>]*>/g)) {
 		if (/type="application\/(ld\+)?json"/.test(tag)) continue;
 		assert.ok(tag.includes(`nonce="${nonce}"`), `${path}: script without nonce: ${tag}`);
 	}
 	assert.deepEqual(foreignFetches(fetchedUrls(html)), [], `${path}: third-party fetches`);
-	assert.doesNotMatch(html, /google-analytics|googletagmanager|plausible|cloudflareinsights/);
+	assert.doesNotMatch(html, /plausible|cloudflareinsights/);
 	return html;
 }
 
@@ -84,6 +88,7 @@ test("/docs/introduction renders the brand, the content and the security headers
 	assert.match(html, /Price public, participants private/);
 	assert.match(html, /\/white\/android-chrome-192x192\.png/);
 	assert.match(html, /jetbrains_mono[^"]*\.woff2/i, "self-hosted font");
+	assert.match(html, /googletagmanager\.com\/gtag\/js\?id=G-W949LN2MSJ/, "GA4 loader (#226)");
 	const res = await get("/docs/introduction");
 	assert.equal(res.headers.get("referrer-policy"), "no-referrer");
 	assert.equal(res.headers.get("x-frame-options"), "DENY");

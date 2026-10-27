@@ -33,3 +33,12 @@ test("foreignFetches lets relative, data: and our own URLs through", () => {
 	);
 	assert.deepEqual(foreignFetches(["//evil.example/x.js"]), ["//evil.example/x.js"]);
 });
+
+test("GA4's hosts are the one allowed third party (#226)", () => {
+	const gtag = "https://www.googletagmanager.com/gtag/js?id=G-W949LN2MSJ";
+	const beacon = "https://region1.google-analytics.com/g/collect";
+	assert.deepEqual(foreignFetches([gtag, beacon]), []);
+	assert.deepEqual(foreignUrls(`a("${gtag}") b("https://www.google.com/x.js")`), [
+		"https://www.google.com/x.js",
+	]);
+});
