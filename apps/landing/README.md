@@ -10,4 +10,4 @@ pnpm --filter @zpredict/landing test    # legal pages
 
 - Page copy lives in `src/data/` (markets, threats, legal), so it is reviewable in one place.
 - `public/pitch.mp4` and `pitch-poster.jpg` are rendered by `apps/video`.
-- No analytics, cookies or third-party requests; the build fails if a third-party URL appears.
+- Google Analytics 4 is the only third party (#226, `src/layouts/Base.astro`, production builds); the build fails on any other third-party URL (`privacy.mjs --analytics`).

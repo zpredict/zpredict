@@ -26,9 +26,9 @@ export const NOTE =
 
 export const privacy: LegalDoc = {
 	title: "Privacy Policy",
-	updated: "2026-10-27",
+	updated: "2026-10-28",
 	summary:
-		"zPredict collects no accounts, cookies or analytics. Your account tag stays in your browser; each relayer holds only random shares. The hosted demo has one limit you should know: all three relayers run on one server.",
+		"The app collects no accounts, cookies or analytics; this site and the docs count page views with Google Analytics. Your account tag stays in your browser; each relayer holds only random shares. The hosted demo has one limit you should know: all three relayers run on one server.",
 	sections: [
 		{
 			heading: "Who we are",
@@ -44,7 +44,20 @@ export const privacy: LegalDoc = {
 			heading: "What we don't collect",
 			paragraphs: [
 				[
-					"No accounts, names, emails or KYC. No cookies. No analytics or trackers in our code. Our web servers keep no access logs, and fonts and scripts are self-hosted: the pages make no requests to third parties.",
+					"No accounts, names, emails or KYC. The app (app.zpredict.site) sets no cookies, has no analytics or trackers and makes no requests to third parties. Our web servers keep no access logs, and fonts and scripts are self-hosted.",
+				],
+			],
+		},
+		{
+			heading: "Analytics on this site and the docs",
+			paragraphs: [
+				[
+					"zpredict.site and docs.zpredict.site use Google Analytics 4 to count visits (",
+					issue(226),
+					"). Google learns which pages you view and when, your IP address, your browser and device, and the page that sent you, and sets its own cookies (_ga) on these two sites. Google processes this under its own privacy policy. Blocking googletagmanager.com or google-analytics.com in your browser turns it off; nothing else breaks.",
+				],
+				[
+					"The app never loads it: app.zpredict.site makes no requests to Google or any other third party, and Google never sees your orders, positions, balances, deposits or account tag.",
 				],
 			],
 		},
