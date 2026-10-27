@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Market } from "@zpredict/sdk";
 import type { MyOrder } from "../hooks/useOrders.tsx";
-import { positions } from "./portfolio.ts";
+import { pnlSeries, positions } from "./portfolio.ts";
 
 const order = (o: Partial<MyOrder>): MyOrder =>
 	({
@@ -44,4 +44,22 @@ test("resolved markets pay 1 unit per winning share; no price yet is unknown", (
 	assert.equal(won.value, 400);
 	assert.equal(unpriced.value, null);
 	assert.equal(positions(orders, [market({ status: "resolved", outcome: "no" })])[0].value, 0);
+});
+
+test("P&L over time follows the public price after each fill; self-trade legs are left out", () => {
+	const orders = [
+		order({ at: 1000_000, fill: fill(0, 2, 200) }), // 2 YES at 50¢, t = 1000
+		order({ at: 1000_000, counterOf: "x", side: 1, fill: fill(1, 2, 200) }),
+	];
+	const m = market({ history: [50, 60, 40], historyAt: [900, 1500, 2000] });
+	const s = pnlSeries(orders, [m], 3000);
+	assert.deepEqual(s, [
+		{ t: 1000, v: 0 },
+		{ t: 1500, v: 40 },
+		{ t: 2000, v: -40 },
+		{ t: 3000, v: -40 },
+	]);
+	assert.deepEqual(pnlSeries([], [m], 3000), []);
+	const won = pnlSeries(orders.slice(0, 1), [market({ status: "resolved", outcome: "yes" })], 3000);
+	assert.equal(won.at(-1)?.v, 200);
 });

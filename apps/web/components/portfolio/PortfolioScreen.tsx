@@ -13,7 +13,8 @@ import { type MyOrder, useOrders } from "@/hooks/useOrders";
 import { usePortfolio } from "@/hooks/usePortfolio";
 import { usePrice } from "@/hooks/usePrice";
 import { sideName, usd, zec } from "@/lib/format";
-import type { Position } from "@/lib/portfolio";
+import { type Position, pnlSeries } from "@/lib/portfolio";
+import PnlChart from "./PnlChart";
 
 const signed = (v: number) => `${v >= 0 ? "+" : "−"}${zec(Math.abs(v))}`;
 const tone = (v: number) => (v > 0 ? "is-up" : v < 0 ? "is-down" : "");
@@ -265,6 +266,8 @@ export default function PortfolioScreen() {
 					value={`${signed(pnl)} ZEC`}
 				/>
 			</div>
+
+			<PnlChart points={pnlSeries(orders, markets, Math.floor(Date.now() / 1000))} />
 
 			{withdraw && (
 				<div className="pwithdraw" id="withdraw">
