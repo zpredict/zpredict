@@ -27,7 +27,7 @@ WHY IT DOES NOT LEAK
 - Chain: shielded (Ironwood) only; no transparent address in any path.
 - One relayer sees only random shares and digests. Reading orders needs all three; moving funds needs two.
 - Deposits of any amount, split into fixed notes (0.01–25 ZEC); batched payouts to fresh addresses.
-- Static frontend, strict CSP; no third-party requests, analytics or IP logs. Audit: PRIVACY.md.
+- Static app, strict CSP; no third-party requests, analytics or IP logs (GA4 only on the landing and docs sites). Audit: PRIVACY.md.
 
 WHAT IS REAL / WHAT IS A MOCK
 Real: 3-party MPC matching, in-circuit balances and credentials, FROST DKG, chain-data resolution, live relayers, and a full testnet cycle on the live demo: deposit 8a4bc247… → fill → signed outcome → 2-of-3 Ironwood payout 67d93312…; again Oct 27: 3-note deposit 6978b674…, payout a61b3005… (docs: Evidence).

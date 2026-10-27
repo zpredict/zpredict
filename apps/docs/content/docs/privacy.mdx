@@ -25,6 +25,7 @@ This page summarises [PRIVACY.md](https://github.com/zpredict/zpredict/blob/main
 | All three relayers | Everything | — |
 | Counterparty | Its own fill at the midpoint; if a single pair crossed, the midpoint and its own limit give yours | Who you are |
 | lightwalletd operators (`zec.rocks`, `testnet.zec.rocks`) | The relayer VM's IP syncing and broadcasting | Users |
+| **Google Analytics 4 (zpredict.site and these docs only)** | Which pages you view and when, your IP (GA4 does not store it), browser and device, referrer, its first-party `_ga` cookies | Anything on app.zpredict.site: the app never loads it. Never orders, positions, balances or your tag |
 | Polymarket | The relayer VM's IP fetching public records for the mirrored markets, about every 5 min | Users, orders. Market images are fetched once by the operator when the catalog is built and served from our origin. The browser never contacts Polymarket |
 | Coinbase (ZEC/USD) | The relayer VM's IP fetching the spot price every 5 min, for the "≈ $x" beside ZEC amounts | Users, orders, balances. The browser reads the price from relayer 0 only; clearing and payouts never use it |
 
@@ -41,8 +42,8 @@ This page summarises [PRIVACY.md](https://github.com/zpredict/zpredict/blob/main
 | ✅ | One relayer can't collect fill shares | Per-relayer read token ([`orders.rs`](https://github.com/zpredict/zpredict/blob/main/apps/relayer/src/api/orders.rs)) |
 | ✅ | One relayer can't read balances or act as an account | `?key=sᵢ` gate; the circuit checks the 128-bit key (`a_relayer_cannot_act_as_an_account`) |
 | ✅ | TLS ends at the relayers' host | DNS-only since 2026-10-26 ([#88](https://github.com/zpredict/zpredict/issues/88)); on the demo that host is one VM |
-| ✅ | No third-party requests from the frontends | Self-only CSP; build gates; these docs too (below) |
-| ✅ | No analytics | We ship none; Cloudflare's beacon and NEL headers are off since 2026-10-26 ([#89](https://github.com/zpredict/zpredict/issues/89)) |
+| ✅ | No third-party requests from the app | Self-only CSP and build gate on app.zpredict.site. zpredict.site and these docs load Google Analytics 4 only (below, [#226](https://github.com/zpredict/zpredict/issues/226)) |
+| ✅ | No analytics in the app | None on app.zpredict.site; GA4 on zpredict.site and these docs only. Cloudflare's beacon and NEL headers are off since 2026-10-26 ([#89](https://github.com/zpredict/zpredict/issues/89)) |
 | ✅ | No IP logs | nginx `access_log off`, `error_log /dev/null`, client-IP headers stripped; Caddy and the relayers log no addresses |
 | ⚠️ | Request metadata doesn't link actions to an account | Poll jitter, no balance read on fill, no constant balance poll (on load, focus, Refresh, and once after a batch you were in); optional onion relayers. Same-connection linkage accepted ([#90](https://github.com/zpredict/zpredict/issues/90)) |
 | ✅ | Viewing keys and key shares never leave the relayers or appear in logs | Sealed at rest ([Settlement & FROST](/docs/settlement#secrets-at-rest)) |
@@ -61,7 +62,7 @@ This page summarises [PRIVACY.md](https://github.com/zpredict/zpredict/blob/main
 
 ## These docs
 
-docs.zpredict.site makes no third-party requests: the font (JetBrains Mono) and every image are self-hosted, search runs on this server, and there are no analytics or cookies. Each page carries a CSP with a per-request script nonce and `default-src 'none'`, no remote origin anywhere. `pnpm build` fails if the client bundle references a third-party host, and the smoke test fails if a rendered page would fetch one ([`apps/docs`](https://github.com/zpredict/zpredict/tree/main/apps/docs)). Links to GitHub and elsewhere are plain links; nothing loads until you click.
+docs.zpredict.site uses Google Analytics 4 to count page views ([#226](https://github.com/zpredict/zpredict/issues/226)), as zpredict.site does: Google learns which pages you view, your IP address, browser and device, and sets its first-party `_ga` cookies. It is the only third party. The font (JetBrains Mono) and every image are self-hosted and search runs on this server. Each page carries a CSP with a per-request script nonce and `default-src 'none'`; its only remote origins are GA4's (`www.googletagmanager.com`, `*.google-analytics.com`, `*.analytics.google.com`). `pnpm build` fails if the client bundle references any other third-party host, and the smoke test fails if a rendered page would fetch one. The app at app.zpredict.site never loads analytics ([`apps/docs`](https://github.com/zpredict/zpredict/tree/main/apps/docs)). Links to GitHub and elsewhere are plain links; nothing loads until you click.
 
 ## Verify it yourself
 

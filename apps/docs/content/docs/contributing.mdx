@@ -27,8 +27,8 @@ pnpm check && pnpm build && pnpm test
 A leak disqualifies the project, so every PR keeps to these:
 
 - No transparent addresses anywhere.
-- No third-party requests from the frontends (these docs included).
-- No analytics, no IP logs.
+- No third-party requests and no analytics from the app. The landing and docs load Google Analytics 4 only (#226); nothing else.
+- No IP logs.
 - Never send two order shares to the same origin.
 - Never commit keys or seeds.
 

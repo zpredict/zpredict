@@ -53,7 +53,7 @@ export const LEAK_CHECKLIST = [
 	"Memos carry no order data and never the account tag: each slot holds the account id and one relayer's share, sealed to that relayer.",
 	"Each order share goes only to its own relayer's origin (in this demo all three run on one VM).",
 	"Public feeds publish digests, never shares; a fill share is served only with this browser's read token.",
-	"Frontends are static and self-hosted: no third-party requests, no analytics, self-only CSP. No IP logs.",
+	"The app is static and self-hosted: no third-party requests, no analytics, self-only CSP. No IP logs.",
 	"Viewing keys and key shares stay sealed on the relayers; never in the UI or logs.",
 	"Open: request metadata (#90) and withdrawal amount and timing (#91) can link actions to an account.",
 ] as const;
