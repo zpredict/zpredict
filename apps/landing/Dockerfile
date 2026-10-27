@@ -7,7 +7,7 @@ WORKDIR /repo
 COPY . .
 RUN pnpm install --frozen-lockfile --filter @zpredict/landing... \
 	&& pnpm --filter @zpredict/landing build \
-	&& node deploy/static/prepare.mjs apps/landing/dist /csp.caddy
+	&& node deploy/static/prepare.mjs --analytics apps/landing/dist /csp.caddy
 
 FROM caddy:2.11.7-alpine@sha256:24ec7b05bc532c7bb57f727030c5056e257ff7138b4b50460306819ff79362bd
 COPY deploy/static/Caddyfile /etc/caddy/Caddyfile

@@ -45,6 +45,26 @@ const ogImage = new URL(site.ogImage, Astro.site);
 			})();
 		</script>
 		<link rel="preload" href={mono} as="font" type="font/woff2" crossorigin />
+		<!--
+			Google Analytics 4 (#226), production builds only. This site and the docs only: the app
+			(app.zpredict.site) contacts no third party. The CSP allows GA's origins here alone
+			(deploy/static/prepare.mjs --analytics) and hashes the inline config.
+		-->
+		{
+			import.meta.env.PROD && (
+				<Fragment>
+					<script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-W949LN2MSJ" />
+					<script is:inline>
+						window.dataLayer = window.dataLayer || [];
+						function gtag() {
+							dataLayer.push(arguments);
+						}
+						gtag("js", new Date());
+						gtag("config", "G-W949LN2MSJ");
+					</script>
+				</Fragment>
+			)
+		}
 		<slot name="head" />
 		<title>{title}</title>
 		<meta name="description" content={description} />

@@ -1,6 +1,6 @@
 // Smoke test for the Privacy Policy and Terms pages (#123), on the built sites: run after
 // `pnpm build` (CI does). Checks the pages render their content, every footer links them, the
-// app's footer points at pages that exist, and the pages reference no third-party hosts.
+// app's footer points at pages that exist, and the pages reference no third-party hosts but GA4.
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { test } from "node:test";
@@ -38,7 +38,9 @@ for (const [path, doc] of [
 			const { hostname, pathname } = new URL(url);
 			const ok =
 				/(^|\.)zpredict\.site$/.test(hostname) ||
-				(hostname === "github.com" && pathname.startsWith("/zpredict/zpredict"));
+				(hostname === "github.com" && pathname.startsWith("/zpredict/zpredict")) ||
+				// The site-wide GA4 loader (#226), disclosed on this very page.
+				url === "https://www.googletagmanager.com/gtag/js?id=G-W949LN2MSJ";
 			assert.ok(ok, `third-party URL: ${url}`);
 		}
 	});
