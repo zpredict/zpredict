@@ -13,7 +13,7 @@ export default function StartButton() {
 	if (!tag) return <Cta onClick={start}>{label}</Cta>;
 	return (
 		<>
-			<Cta onClick={() => router.push("/wallet/")}>Deposit</Cta>
+			<Cta onClick={() => router.push("/deposit/")}>Deposit</Cta>
 			<AccountMenu />
 		</>
 	);

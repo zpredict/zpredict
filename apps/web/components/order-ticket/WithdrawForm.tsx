@@ -44,7 +44,7 @@ function addressCheck(address: string, problem: string | null) {
  * sees the amount and address, so the form offers the deposit sizes and warns on a reused
  * address (#91).
  */
-export default function WithdrawForm() {
+export default function WithdrawForm({ open = false }: { open?: boolean }) {
 	const { tag, balance, mock } = useAccount();
 	const [amount, setAmount] = useState(1);
 	const [address, setAddress] = useState("");
@@ -59,14 +59,12 @@ export default function WithdrawForm() {
 	const check = addressCheck(address, problem);
 
 	return (
-		<details className="deposit">
+		<details className="deposit" open={open}>
 			<summary>Withdraw</summary>
 			<p className="dim">
-				Paid from the escrow in one batched shielded transaction, to a fresh unified address with an
-				Ironwood (Orchard) receiver. The relayers see the amount, the address and the time, but not
-				which account it came from, except through request metadata and amount and timing (see the
-				threat model). Withdrawing in the deposit sizes keeps your amount common; the rest stays in
-				your balance. Balance: <Amount halfTicks={balance ?? 0n} />.
+				Paid by the 2-of-3 escrow to a fresh unified address (Ironwood receiver). The relayers see
+				the amount, address and time, not whose account it is; deposit sizes keep the amount common.
+				Balance: <Amount halfTicks={balance ?? 0n} />.
 			</p>
 			<WithdrawAmount max={max} onChange={setAmount} value={amount} />
 			<label className="field" htmlFor="withdraw-address">

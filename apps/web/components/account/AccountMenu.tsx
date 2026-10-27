@@ -10,8 +10,8 @@ import GeneratedAvatar from "./GeneratedAvatar";
 
 const LINKS = [
 	{ href: "/portfolio/", label: "Account & portfolio" },
-	{ href: "/wallet/", label: "Deposit" },
-	{ href: "/portfolio/#withdraw", label: "Withdraw" },
+	{ href: "/deposit/", label: "Deposit" },
+	{ href: "/withdraw/", label: "Withdraw" },
 	{ href: "/faucet/", label: "Get testnet ZEC" },
 	{ href: "/wallet/#backup", label: "Back up or restore account key" },
 	{ href: "/threat-model/", label: "Threat model" },

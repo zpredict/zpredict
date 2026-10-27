@@ -218,6 +218,8 @@
 }
 
 .pbtn {
+	display: inline-flex;
+	align-items: center;
 	height: var(--zp-control-h);
 	padding: 0 24px;
 	border: 1px solid var(--zp-lime);
