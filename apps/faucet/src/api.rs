@@ -235,6 +235,7 @@ async fn drip(State(f): State<Shared>, Json(d): Json<Drip>) -> Response {
         Err(e) => {
             // devtool's own error (funds, network); it never echoes the memo.
             eprintln!("drip: {e}");
+            f.limit.lock().expect("limit lock").refund(now());
             fail(
                 StatusCode::BAD_GATEWAY,
                 "the faucet could not send; try again later",

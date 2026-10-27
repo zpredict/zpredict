@@ -3,8 +3,10 @@
 //! blocks, so run them on a blocking thread, one at a time (one sqlite wallet).
 
 use std::collections::HashMap;
+use std::io::Read;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, Stdio};
+use std::time::{Duration, Instant};
 
 use serde::Deserialize;
 
@@ -15,6 +17,9 @@ pub struct Devtool {
     pub identity: PathBuf,
     /// lightwalletd as devtool's `-s` takes it, e.g. `zecrocks` or `127.0.0.1:9067`.
     pub server: String,
+    /// A call that runs longer is killed: a stalled lightwalletd must not hold the wallet
+    /// lock (and every later drop) forever.
+    pub timeout: Duration,
 }
 
 pub type Result<T> = std::result::Result<T, String>;
@@ -22,18 +27,51 @@ pub type Result<T> = std::result::Result<T, String>;
 impl Devtool {
     fn run(&self, args: &[&str]) -> Result<String> {
         let wallet = self.wallet.to_string_lossy();
-        let out = Command::new(&self.bin)
+        let mut child = Command::new(&self.bin)
             .args(["wallet", "-w", &wallet])
             .args(args)
             .env("RUST_LOG", "warn")
-            .output()
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
             .map_err(|e| format!("zcash-devtool: {e}"))?;
-        if !out.status.success() {
-            let err = String::from_utf8_lossy(&out.stderr);
+        // Drain both pipes on their own threads, so a chatty child never blocks on a full pipe.
+        let drain = |p: Option<Box<dyn Read + Send>>| {
+            std::thread::spawn(move || {
+                let mut b = Vec::new();
+                if let Some(mut p) = p {
+                    let _ = p.read_to_end(&mut b);
+                }
+                b
+            })
+        };
+        let out = drain(child.stdout.take().map(|p| Box::new(p) as _));
+        let err = drain(child.stderr.take().map(|p| Box::new(p) as _));
+        let deadline = Instant::now() + self.timeout;
+        let status = loop {
+            if let Some(s) = child
+                .try_wait()
+                .map_err(|e| format!("zcash-devtool: {e}"))?
+            {
+                break s;
+            }
+            if Instant::now() >= deadline {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(format!("zcash-devtool {}: timed out", args[0]));
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        };
+        let (out, err) = (
+            out.join().unwrap_or_default(),
+            err.join().unwrap_or_default(),
+        );
+        if !status.success() {
+            let err = String::from_utf8_lossy(&err);
             let last = err.lines().last().unwrap_or("no output");
             return Err(format!("zcash-devtool {}: {last}", args[0]));
         }
-        Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+        Ok(String::from_utf8_lossy(&out).into_owned())
     }
 
     pub fn sync(&self) -> Result<()> {

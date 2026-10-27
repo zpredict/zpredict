@@ -43,6 +43,13 @@ impl Limiter {
         self.cap - self.used.min(self.cap)
     }
 
+    /// Gives back a slot whose drop failed to send, the same UTC day only. The interval
+    /// still applies, so a failing node is not hammered.
+    pub fn refund(&mut self, now: u64) {
+        self.roll(now);
+        self.used = self.used.saturating_sub(1);
+    }
+
     /// Takes the slot, or says how long to wait.
     pub fn take(&mut self, now: u64) -> Result<(), u64> {
         match self.wait(now) {
@@ -75,5 +82,18 @@ mod tests {
         );
         assert_eq!(l.take(t + DAY), Ok(()), "a new day resets the count");
         assert_eq!(l.left_today(t + DAY), 1);
+    }
+
+    #[test]
+    fn a_failed_send_gives_its_slot_back_that_day_only() {
+        let t = 100 * DAY;
+        let mut l = Limiter::new(30, 1);
+        assert_eq!(l.take(t), Ok(()));
+        l.refund(t + 1);
+        assert_eq!(l.left_today(t + 1), 1, "refunded");
+        assert_eq!(l.take(t + 1), Err(29), "the interval still holds");
+        assert_eq!(l.take(t + 30), Ok(()));
+        l.refund(t + DAY);
+        assert_eq!(l.left_today(t + DAY), 1, "a new day is not over-credited");
     }
 }
