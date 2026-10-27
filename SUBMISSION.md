@@ -14,27 +14,30 @@ Text for the ZECATHON submission form. Every sentence must stay true of `main` a
 
 <!-- DESCRIPTION START -->
 WHAT IT DOES
-The first prediction market on Zcash where nobody can see that you bet. Polymarket traders get traced to real names; here no chain observer, single operator or counterparty learns who bet, which side or how much. Price public, participants private.
+The first prediction market on Zcash where nobody can see that you bet. Polymarket traders get traced to real names; here no chain observer, operator or counterparty learns who bet, which side or how much.
 
 HOW
 - Orders: XOR-shared in your browser, one share per relayer.
-- Matching: three relayers cross YES/NO at the midpoint inside 3-party MPC, checking balances in-circuit. Only fills and a public clearing price come out.
+- Matching: three relayers cross YES/NO at the midpoint inside 3-party MPC, checking balances in-circuit. Only fills and a public price come out.
 - Accounts: your account secret never leaves the browser whole; the circuit checks it, so no relayer can spend for you.
 - Escrow: FROST 2-of-3 Ironwood address from a DKG; batched payouts.
-- Resolution: 20 markets mirror Polymarket; hourly ones read Zcash blocks. Outcomes FROST-signed, checked in the browser.
+- Resolution: 20 markets mirror Polymarket; hourly ones read Zcash blocks. Outcomes FROST-signed, checked in-browser.
 
 WHY IT DOES NOT LEAK
 - Chain: shielded (Ironwood) only; no transparent address in any path.
-- One relayer sees uniformly random shares and digests. Reading orders needs all three; moving funds needs two.
+- One relayer sees only random shares and digests. Reading orders needs all three; moving funds needs two.
 - Deposits of any amount, split into fixed notes (0.01–25 ZEC); batched payouts to fresh addresses.
-- Static frontend, strict CSP; no third-party requests, analytics or IP logs. Audit + verify-it-yourself: PRIVACY.md.
+- Static frontend, strict CSP; no third-party requests, analytics or IP logs. Audit: PRIVACY.md.
 
 WHAT IS REAL / WHAT IS A MOCK
 Real: 3-party MPC matching, in-circuit balances and credentials, FROST DKG, chain-data resolution, live relayers, and a full testnet cycle on the live demo: deposit 8a4bc247… → fill → signed outcome → 2-of-3 Ironwood payout 67d93312…; again Oct 27: 3-note deposit 6978b674…, payout a61b3005… (docs: Evidence).
-No mock credit: every balance is a real testnet deposit (one-click faucet). Demo limits: each order is paired with its opposite from the same account (self-trade) so it fills; seeded trades set prices; the three relayers and the DKG share one VM (the model needs independent operators); relayers see deposit/withdrawal amounts and timing.
+No mock credit: every balance is a real testnet deposit (one-click faucet). Demo limits: each order is paired with its opposite from the same account (self-trade) so it fills; seeded trades set prices; the three relayers and the DKG share one VM (the model needs independent operators); relayers see deposit/withdrawal amounts and times.
+
+STACK
+Rust (polytune MPC, FROST RedPallas, librustzcash), Next.js. Testnet escrow, mainnet oracle.
 
 TRY IT
-app.zpredict.site → Get testnet ZEC → bet → withdraw. Relayer View: each relayer holds noise.
+app.zpredict.site → Get testnet ZEC (credited in ~7 min) → bet → withdraw.
 <!-- DESCRIPTION END -->
 
 ## Video script (1:26)
