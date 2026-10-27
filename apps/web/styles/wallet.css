@@ -618,3 +618,15 @@
 	stroke: var(--zp-muted);
 	stroke-dasharray: 3 3;
 }
+
+/* The wallet page's own step heading names the deposit, so the inner toggle is not repeated, and
+   the one-line payment request never widens the card. */
+.wguide .deposit > summary {
+	display: none;
+}
+
+.wguide__steps > li,
+.deposit,
+.deposit__steps > li {
+	min-width: 0;
+}

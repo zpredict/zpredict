@@ -15,10 +15,7 @@ export default function DepositQr({ uri }: { uri: string }) {
 				<rect fill="#fff" height={m.length} width={m.length} />
 				<path d={qrPath(m)} fill="#080a04" />
 			</svg>
-			<figcaption className="dim">
-				Scan with a testnet wallet on your phone. It holds the escrow address, the exact amount and
-				the memo.
-			</figcaption>
+			<figcaption className="dim">Scan with a testnet wallet.</figcaption>
 		</figure>
 	);
 }
