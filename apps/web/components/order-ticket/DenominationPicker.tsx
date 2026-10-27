@@ -9,7 +9,7 @@ interface Props {
 	legend?: string;
 }
 
-/** The three deposit sizes (0.01, 0.05, 0.25 ZEC) as a native radio group. */
+/** The deposit sizes (`DENOMINATIONS`, 0.01 to 25 ZEC) as a native radio group. */
 export default function DenominationPicker({
 	units,
 	onChange,

@@ -1,6 +1,6 @@
 [package]
 name = "zpredict-faucet"
-description = "zPredict testnet faucet: one 1-unit shielded deposit into a zPredict account per drip"
+description = "zPredict testnet faucet: one 0.05 TAZ (5-unit) shielded deposit into a zPredict account per drip"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

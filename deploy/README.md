@@ -62,7 +62,7 @@ Coolify UI → resource → **Deployments** → pick an earlier build → **Rede
 
 ### Testnet faucet (#133)
 
-`apps/faucet` sends one 1-unit (0.01 TAZ) shielded deposit to the escrow per drip, with a memo the browser built for its own account at `app.zpredict.site/faucet/` (the faucet never sees the tag). API at `https://faucet.zpredict.site`: `GET /status`, `POST /challenge`, `POST /drip`; a static page at `/`.
+`apps/faucet` sends one 5-unit (0.05 TAZ) shielded deposit to the escrow per drip, with a memo the browser built for its own account at `app.zpredict.site/faucet/` (the faucet never sees the tag). API at `https://faucet.zpredict.site`: `GET /status`, `POST /challenge`, `POST /drip`; a static page at `/`.
 
 - **Wallet:** the demo zcash-devtool wallet on the VPS, `~/.cache/zpredict-demo-wallet` (`wallet/`, and `age.txt`, the age identity its mnemonic is encrypted to), bind-mounted into the container as uid 1001. Testnet only; the identity sits on the VPS disk (mode 600) because devtool needs it to sign. Fund it by sending TAZ to its address (`zcash-devtool wallet -w wallet generate-address`).
 - **Anti-abuse:** Cloudflare Turnstile (secret `TURNSTILE_SECRET_KEY` in Coolify → `faucet` → Environment Variables; the public site key is the `NEXT_PUBLIC_TURNSTILE_SITE_KEY` build arg of the web image), a hashcash proof of work, one drop per 30 s globally and 100 a day (`FAUCET_*` in `apps/faucet/src/main.rs`). No per-IP state; logs carry no request data.

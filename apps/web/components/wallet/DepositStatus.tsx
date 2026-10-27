@@ -26,7 +26,7 @@ export default function DepositStatus() {
 			) : seat === "waiting" ? (
 				"Your deposit is credited but the relayers' table is full: orders fill once a row frees up."
 			) : (
-				"Waiting for your deposit. The relayers credit it after 10 confirmations (about 13 minutes on testnet); this updates by itself."
+				"Waiting for your deposit. The relayers credit it after 10 confirmations (about 5–7 minutes on testnet); this updates by itself."
 			)}
 		</p>
 	);
