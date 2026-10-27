@@ -13,7 +13,7 @@ import {
 } from "react";
 import { POLL_MS } from "@/lib/config";
 import { fetchFill, type OrderInput, placeWithCounterparty } from "@/lib/relayer";
-import { missed } from "@/lib/shares";
+import { keepOrders, mergeOrders, missed } from "@/lib/shares";
 import { KEYS, loadJson, save } from "@/lib/storage";
 import { useAccount } from "./useAccount";
 import { usePoll } from "./usePoll";
@@ -74,11 +74,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
 	const update = useCallback((fn: (all: MyOrder[]) => MyOrder[]) => {
 		setOrders((prev) => {
-			// Trim only finished history: a pending or filled order is a live position.
-			let extra = 0;
-			const next = fn(prev).filter(
-				(o) => o.status === "pending" || o.fill?.filled || extra++ < KEEP,
-			);
+			const base = mergeOrders(prev, loadJson<MyOrder[]>(KEYS.orders, []));
+			const next = keepOrders(fn(base), KEEP);
 			save(KEYS.orders, JSON.stringify(next));
 			return next;
 		});
