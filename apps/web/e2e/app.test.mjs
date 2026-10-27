@@ -158,6 +158,24 @@ test("a funded account to a fill, chart, withdraw and deposit", async () => {
 	await b.waitFor(`document.querySelector(".pchart__hover .pchart__time")?.textContent`);
 	assert.match(await text(".pchart__hover .pchart__pct"), /^\d+%$/);
 
+	// Account: header stats, the avatar menu, then the account page with the fill on it.
+	await b.waitFor(`document.querySelector(".hstats")?.textContent.includes("Portfolio")`);
+	await b.evaluate(`document.querySelector(".acct__avatar").click()`);
+	await b.waitFor(`document.querySelector(".acct__menu")`);
+	assert.match(await text(".acct__menu"), /Account & portfolio[\s\S]*Forget this account/);
+	assert.match(await text(".acct__id"), /^[0-9a-f]{6}…[0-9a-f]{4}/);
+	await b.goto(`${base}/portfolio/`);
+	await b.waitFor(`document.querySelectorAll(".ptable tbody tr").length > 0`, 20_000);
+	assert.equal(await b.evaluate(`document.querySelectorAll(".ptile").length`), 4);
+	assert.match(await text(".ptile"), /Portfolio\s*\d+(\.\d+)? ZEC/);
+	assert.match(await text(".ptable tbody"), /YES|NO/);
+	assert.ok(await b.evaluate(`!!document.querySelector(".pnl")`));
+	assert.match(await text(".pnl__v"), /^[+−]\d+(\.\d+)? ZEC$/);
+	await click(".ptabs__tab", "History");
+	await b.waitFor(`document.querySelectorAll(".ptable tbody tr").length >= 2`);
+	await b.goto(`${base}/trade/?m=1`);
+	await b.waitFor(`document.querySelector(".dtabs")`);
+
 	// Withdraw: a funded account gets the form.
 	await click(".dtabs__tab", "Your positions");
 	await click(".dtabs__pos summary", "Withdraw");

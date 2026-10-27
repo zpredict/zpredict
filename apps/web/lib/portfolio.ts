@@ -48,3 +48,55 @@ export function positions(orders: MyOrder[], markets: Market[]): Position[] {
 		value: worth(byId.get(p.market), p.side, p.shares),
 	}));
 }
+
+/** One step of the P&L curve: unix seconds and P&L in half-ticks. */
+export interface PnlPoint {
+	t: number;
+	v: number;
+}
+
+/** A market's YES price (cents) at `t`: its last public clearing price at or before then. */
+function priceAt(m: Market | undefined, t: number): number | null {
+	if (!m?.history || m.historyAt?.length !== m.history.length) return null;
+	let p: number | null = null;
+	for (let i = 0; i < m.history.length; i++) {
+		if (m.historyAt[i] > t) break;
+		if (m.historyAt[i] > 0) p = m.history[i];
+	}
+	return p;
+}
+
+/** YES cents at `t`: the payout once resolved (at `now`), else the public price then. */
+function yesAt(m: Market | undefined, t: number, now: number): number | null {
+	if (t === now && m?.status === "resolved" && m.outcome) return m.outcome === "yes" ? 100 : 0;
+	return priceAt(m, t);
+}
+
+/**
+ * P&L over time of the trader's own fills (not the self-trade legs, which net out), valued at
+ * the public prices of the moment, from the first fill to `now`. Computed in this browser only.
+ */
+export function pnlSeries(orders: MyOrder[], markets: Market[], now: number): PnlPoint[] {
+	const fills = orders
+		.filter((o) => o.fill?.filled && !o.counterOf)
+		.map((o) => ({ ...o, t: Math.floor(o.at / 1000) }))
+		.sort((a, b) => a.t - b.t);
+	if (fills.length === 0) return [];
+	const byId = new Map(markets.map((m) => [m.id, m]));
+	const held = new Set(fills.map((f) => f.market));
+	const times = new Set([...fills.map((f) => f.t), now]);
+	for (const id of held)
+		for (const t of byId.get(id)?.historyAt ?? []) if (t >= fills[0].t && t <= now) times.add(t);
+	return [...times]
+		.sort((a, b) => a - b)
+		.map((t) => {
+			let v = 0;
+			for (const f of fills) {
+				if (f.t > t || !f.fill) continue;
+				const yes = yesAt(byId.get(f.market), t, now) ?? f.fill.totalCost / f.fill.size / 2;
+				const cents = f.fill.side === 0 ? yes : 100 - yes;
+				v += Math.round((f.fill.size * cents * PAYOUT) / 100) - f.fill.totalCost;
+			}
+			return { t, v };
+		});
+}
