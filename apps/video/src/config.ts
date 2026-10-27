@@ -50,16 +50,16 @@ export type Shot = { vo?: string } & (
 
 /** Marks in trade.mp4 (public/footage/shots.json, "trade"), seconds into the clip; null `fill`
  *  when a take has no fill, and then the fill shot is left out rather than faked. This take is an
- *  account funded by a real testnet deposit; the order filled 9 s after "Split & send". The
+ *  account funded by a real testnet deposit; the order filled 11 s after "Split & send". The
  *  shots run back to back through the clip, so no footage repeats. */
 const TRADE: Record<"start" | "send" | "shares" | "view" | "close", number> & {
 	fill: number | null;
-} = { start: 1.5, send: 9.56, shares: 9.8, view: 15.4, fill: 22.4, close: 26.04 };
+} = { start: 1.5, send: 8.81, shares: 9.76, view: 14.27, fill: 20.6, close: 27.3 };
 
 /** Marks in deposit.mp4 and account.mp4 (shots.json): typing the amount, the split and QR; the
  *  account page, its P&L crosshair and the positions table. */
-const DEPOSIT = { type: 1.5, split: 4, qr: 8 };
-const ACCOUNT = { chart: 3.5, table: 8 };
+const DEPOSIT = { type: 1.5, split: 2.32, qr: 7.8 };
+const ACCOUNT = { chart: 3.51, table: 7.84 };
 
 /** The fill landing: each relayer's FILL row gets its share of the fill. */
 const fillShot = (fill: number): Shot => ({
@@ -70,7 +70,7 @@ const fillShot = (fill: number): Shot => ({
 	cam: { x: 500, y: 330, w: 980, at: 0 },
 	source: "relayer view · live",
 	caption: "Matched inside 3-party MPC. The fill comes back as three shares too.",
-	skipped: "Filled 9 s after send",
+	skipped: "Filled 11 s after send",
 	vo: "The fill comes back the same way, as three shares.",
 });
 
@@ -116,7 +116,7 @@ export const SHOTS: Shot[] = [
 		dur: 5,
 		clip: "deposit",
 		at: DEPOSIT.type - 0.5,
-		cam: { x: 960, y: 470, w: 1100, at: 0.3 },
+		cam: { x: 860, y: 330, w: 1100, at: 0.3 },
 		source: "app.zpredict.site/deposit · live",
 		caption: "Deposit any amount. It is split into standard notes.",
 		vo: "Deposit any amount from your own Zcash wallet. It is split into standard notes, so no amount stands out.",
@@ -126,7 +126,7 @@ export const SHOTS: Shot[] = [
 		dur: 5,
 		clip: "deposit",
 		at: DEPOSIT.qr,
-		cam: { x: 780, y: 540, w: 1100, at: 0.2 },
+		cam: { x: 780, y: 520, w: 1000, at: 0 },
 		source: "zip 321 payment request",
 		caption: "One request, one shielded transaction, from any testnet wallet.",
 		vo: "One request, one shielded transaction.",
@@ -177,6 +177,7 @@ export const SHOTS: Shot[] = [
 		dur: 6,
 		clip: "account",
 		at: ACCOUNT.chart - 1,
+		cam: { x: 960, y: 450, w: 1500, at: 0.4 },
 		source: "your account · computed in your browser",
 		caption: "Portfolio and P&L, computed only in your browser.",
 		vo: "Your portfolio and profit and loss are computed only in your browser. The relayers never see them.",
@@ -212,7 +213,7 @@ export const SHOTS: Shot[] = [
 		vo: "And it works end to end on Zcash testnet: deposit, fill, signed outcome, and payout.",
 	},
 	// E: resolution.
-	{ kind: "clip", dur: 3.5, clip: "home", at: 0.2 },
+	{ kind: "clip", dur: 2.5, clip: "home", at: 0.2 },
 	{ kind: "end", dur: 5, vo: "zPredict. Price public. Participants private." },
 ];
 
@@ -220,11 +221,13 @@ export const SHOTS: Shot[] = [
  *  clips trimmed of silence, about half a second between lines, so the read flows. */
 export const VO_LEAD = 0.15;
 const VO_TAIL = 0.4;
+/** Shortest a narrated shot can be, so a quick line still leaves the picture time to read. */
+const MIN_SHOT = 3.2;
 
 /** A narrated shot lasts as long as its line; a silent one keeps its own `dur`. */
 export const shotDur = (shot: Shot, i: number) => {
 	const line = (voice as Record<string, number>)[i];
-	return shot.vo && line ? VO_LEAD + line + VO_TAIL : shot.dur;
+	return shot.vo && line ? Math.max(MIN_SHOT, VO_LEAD + line + VO_TAIL) : shot.dur;
 };
 
 /** Frames a caption takes to fade in or out. */

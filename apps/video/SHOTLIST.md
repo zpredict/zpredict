@@ -1,4 +1,4 @@
-# zPredict demo: shot list (1:26)
+# zPredict demo: shot list (1:23)
 
 The pitch at https://zpredict.site/pitch/. Every frame of product is a real headless-Chrome recording
 of the live app, site and docs (`scripts/capture.mjs`); the only drawn frames are the opening line
@@ -9,7 +9,7 @@ per shot, eased in once (0.9 s) onto what the caption names and then held, never
 sit in a solid band under the footage, never on page text; a voiceover line per shot (ElevenLabs,
 `scripts/voice.mjs`), and a shot stretches when its line runs long; no music.
 
-Times below are from before the voiceover; the current lengths come from `shotDur` in `src/config.ts`.
+The shots and lines live in `src/config.ts`; the current timed table is in SUBMISSION.md "Video script". The table below is the earlier cut, kept for its camera notes.
 
 | Time | Act | Shot (source clip) | Camera | Caption |
 |---|---|---|---|---|

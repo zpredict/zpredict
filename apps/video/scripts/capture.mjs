@@ -66,32 +66,18 @@ const shots = {
 		return r.stop();
 	},
 	async trade(b) {
-		if (!process.env.TAG_FILE) throw new Error("trade needs TAG_FILE: a funded account's tag");
-		const tag = readFileSync(process.env.TAG_FILE, "utf8").trim();
-		await b.goto(APP);
-		await b.evaluate(`localStorage.setItem("zp.tag", ${JSON.stringify(tag)})`);
+		await signIn(b);
 		await b.goto(APP);
 		await b.waitFor(`document.querySelectorAll("#markets img").length > 4`);
-		// The header CTA reads "Trade now" once the account's balance has loaded.
-		await b.waitFor(
-			`[...document.querySelectorAll("button")].some((e) => e.textContent.includes("Trade now"))`,
-			30_000,
-		);
+		// Signed in: the header shows Portfolio, Cash and Deposit; open a market from the grid.
+		await b.waitFor(`document.querySelector(".hstats")`, 30_000);
 		await sleep(2000);
 		const r = await take(b, "trade.mp4");
 		await sleep(1500);
 		r.mark("start");
-		await b.click("button", "Trade now");
-		await b.waitFor(
-			`location.pathname.startsWith("/trade") && document.querySelector("#amount")`,
-			60_000,
-		);
+		await b.goto(`${APP}/trade/?m=${process.env.MARKET || 11}`);
+		await b.waitFor(`document.querySelector("#amount")`, 60_000);
 		r.mark("ticket");
-		if (process.env.MARKET) {
-			await b.goto(`${APP}/trade/?m=${process.env.MARKET}`);
-			await b.waitFor(`document.querySelector("#amount")`, 30_000);
-			r.mark("market");
-		}
 		await sleep(2500);
 		r.mark("yes");
 		await b.click("label.side--yes");
@@ -160,6 +146,15 @@ const shots = {
 	},
 	async account(b) {
 		await signIn(b);
+		// Holdings live only in the browser that traded, so trade once here first (not recorded).
+		await b.goto(`${APP}/trade/?m=${process.env.MARKET || 11}`);
+		await b.waitFor(`document.querySelector("#amount")`, 60_000);
+		await sleep(2000);
+		await b.click("label.side--yes");
+		await b.click("button", "Split & send");
+		await b
+			.waitFor(`document.querySelector(".xor__fill.is-filled")`, FILL_WAIT * 1000)
+			.catch(() => console.error(`account: no fill within ${FILL_WAIT} s`));
 		await b.goto(`${APP}/portfolio/`);
 		await b.waitFor(`document.querySelectorAll(".ptable tbody tr").length > 0`, 30_000);
 		await sleep(3000);
