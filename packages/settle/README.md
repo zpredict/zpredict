@@ -49,7 +49,7 @@ lightwalletd: blocks with Orchard or Ironwood actions are fetched as full transa
 blocks drop memos) and trial-decrypted with the escrow's **external** IVK, so escrow
 change is never mistaken for a deposit. Every received note comes out as either
 
-- `Deposit { note: (txid, action), height, units, account, key_share }`: amount exactly 1, 5 or 25
+- `Deposit { note: (txid, action), height, units, account, key_share }`: amount exactly one of `DENOMINATIONS` (1, 5, 25, 100, 500 or 2500)
   units (`UNIT_ZATS` = 1,000,000 zats = 0.01 ZEC, the one place the mapping lives), and
   the relayer's memo slot opens; `balance_share(i)` is the initial XOR share in
   half-ticks, `(A·200, 0, 0)` per the #9 decision; or

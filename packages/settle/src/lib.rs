@@ -53,7 +53,8 @@ pub const THRESHOLD: u16 = 2;
 /// Zatoshis in one unit of collateral (0.01 ZEC): the only place the mapping lives.
 /// Small enough that testnet coins cover a demo, and 100x the minimum ZIP 317 fee.
 pub const UNIT_ZATS: u64 = 1_000_000;
-/// The only deposit sizes credited, in units; any other amount is flagged, not credited.
-pub const DENOMINATIONS: [u64; 3] = [1, 5, 25];
+/// The only deposit sizes credited, in units (0.01, 0.05, 0.25, 1, 5 and 25 ZEC); any other
+/// amount is flagged, not credited. A larger deposit is several of these in one transaction.
+pub const DENOMINATIONS: [u64; 6] = [1, 5, 25, 100, 500, 2500];
 /// Balances are in half-ticks: one unit of collateral is 200 (DESIGN.md, Relayer API).
 pub const HALF_TICKS_PER_UNIT: u64 = 200;
