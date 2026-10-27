@@ -55,8 +55,8 @@ still means "one party can see everything" (see Accepted limitations).
 | | Item | Evidence |
 |---|---|---|
 | ✅ | No transparent address in any product path | Payouts are re-encoded Orchard/Ironwood-only (`packages/settle/src/payout.rs` `Payout::parse`); `verify.rs` refuses any transparent, Sapling or Orchard part; the e2e scripts assert `transparent in+out 0` |
-| ✅ | Fixed deposit denominations; order size never on chain | `DENOMINATIONS` in `packages/sdk/src/memo.ts`; orders exist only as XOR shares |
-| ⚠️ | Withdrawals don't link to deposits | Shielded on chain. Relayers see amount, address and time. The app withdraws in the deposit sizes (1/5/25 units, `DENOMINATIONS`) unless you tick "I understand this amount is distinctive", and warns when you reuse a payout address (`apps/web/components/order-ticket/WithdrawForm.tsx`, #91). Timing is not hidden |
+| ✅ | Fixed deposit denominations; order size never on chain | `DENOMINATIONS` (0.01, 0.05, 0.25, 1, 5, 25 ZEC) in `packages/sdk/src/memo.ts`; any other amount is split into these. A multi-note deposit arrives in one transaction, so the relayers (never the chain) can add up its total; the app says so. Orders exist only as XOR shares |
+| ⚠️ | Withdrawals don't link to deposits | Shielded on chain. Relayers see amount, address and time. The app withdraws in the deposit sizes (`DENOMINATIONS`) unless you tick "I understand this amount is distinctive", and warns when you reuse a payout address (`apps/web/components/order-ticket/WithdrawForm.tsx`, #91). Timing is not hidden |
 | ✅ | Wallet-default fee and padding | ZIP 317 fee, wallet-default padding (DESIGN.md §5) |
 | ✅ | Memos carry no order data and never the tag | Each slot holds `id ‖ sᵢ`, sealed to relayer *i* (`packages/settle/testdata/memo-vectors.json`) |
 | ✅ | Each order share goes only to its own relayer | `submitOrder` + `distinct()` in `packages/sdk` |

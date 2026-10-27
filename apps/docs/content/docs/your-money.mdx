@@ -28,7 +28,7 @@ Its group key `a0cff44d86411e03d1ae3a76982d38bf0aac73db9568a2496324167486dbc534`
 
 ## Deposits
 
-- **Fixed denominations only: 0.01, 0.05 or 0.25 ZEC** (1, 5 or 25 units) ([`DENOMINATIONS`](https://github.com/zpredict/zpredict/blob/main/packages/sdk/src/memo.ts)). Any other amount, or a note without a readable memo slot, is flagged and never credited.
+- **Credited sizes: 0.01, 0.05, 0.25, 1, 5 or 25 ZEC** (1, 5, 25, 100, 500 or 2500 units). Any amount you type is split into these and paid in one ZIP 321 multi-payment request (up to 12 notes; one QR code up to 4, else one per note) ([`DENOMINATIONS`](https://github.com/zpredict/zpredict/blob/main/packages/sdk/src/memo.ts)). Any other amount, or a note without a readable memo slot, is flagged and never credited.
 - **The memo** (ZIP 302 `0xFF`, 512 bytes): `0xFF | 0x02 | epk | slot₀ | slot₁ | slot₂`. Slot `i` is ChaCha20-Poly1305 of `id ‖ sᵢ` under a key from X25519 with relayer `i`'s memo key and a fresh ephemeral key. Each relayer can open only its own slot, so none ever reads your tag, and no order data or amount is in the memo. The app hands your wallet a ZIP 321 payment request ([`depositUri`](/docs/sdk#deposits)).
 - **Crediting:** after 10 confirmations, and only when all three relayers' own escrow scans found the deposit. The credit enters the circuit as a public per-row input. No single relayer can credit money the chain does not show.
 
