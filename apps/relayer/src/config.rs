@@ -245,7 +245,9 @@ pub(crate) mod tests {
             (3600, 3600, 3_543_405)
         );
         // The configured markets plus one rolling market fit one MPC run.
-        assert!(c.markets.len() < zpredict_circuit::DEFAULT_MARKETS);
+        // Markets that close before the deploy free their slot; at most DEFAULT_MARKETS are
+        // configured, so the open ones plus the rolling market fit one MPC run once one closes.
+        assert!(c.markets.len() <= zpredict_circuit::DEFAULT_MARKETS);
         assert_eq!(c.frost_share_file, None, "until the key ceremony (#78)");
     }
 

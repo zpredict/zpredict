@@ -50,8 +50,8 @@ sample_blocks = 24
 keep_resolved = 24
 fast_from = 3543405
 
-# Up to 24 markets per MPC run (DEFAULT_MARKETS = 24, DESIGN.md "Market capacity"): the 21
-# mirrored Polymarket markets below and the hourly rolling market (#164).
+# Up to 24 open markets per MPC run (DEFAULT_MARKETS = 24, DESIGN.md "Market capacity"): the
+# mirrored Polymarket markets below that are still open, and the hourly rolling market (#164).
 # Mirrored Polymarket markets (packages/plugins/polymarket, #114, #148): same question, our
 # own private book. The oracle is Polymarket (UMA): YES iff Polymarket settles "Yes" to 1.
 # Each relayer reads gamma-api.polymarket.com itself; the outcome is signed only if all
@@ -304,6 +304,40 @@ resolveHeight = 3540137
 status = "open"
 category = "Politics"
 rules = "This market will resolve according to the party that wins control of the United States Senate in the 2026 United States midterm election. Mirrored from Polymarket: YES if Polymarket settles it Yes (UMA optimistic oracle); No, or a 50-50 settlement, resolves NO. Trading here closes at block 3,540,137 (about Nov 3, 2026); the outcome follows whenever Polymarket settles."
+# Added by hand on 2026-10-27 (#212): markets that stay open through judging (Oct 29 - Nov 22).
+[[markets]]
+id = 843947
+question = "Will JD Vance win the 2028 US Presidential Election?"
+plugin = "polymarket"
+params = { conditionId = "0x7ad403c3508f8e3912940fd1a913f227591145ca0614074208e0b962d5fcc422", slug = "will-jd-vance-win-the-2028-us-presidential-election" }
+closeHeight = 6073759
+resolveHeight = 6073759
+status = "open"
+category = "Politics"
+rules = "The 2028 US Presidential Election is scheduled to take place on November 7, 2028. This market will resolve to the person who wins the 2028 US Presidential Election. The resolution source for this market is the Associated Press, Fox News, and NBC. This market will resolve once all three sources call the race for the same candidate. If all three sources haven’t called the race for the same candidate by the inauguration date (January 20, 2029) this market will resolve based on who is inaugurated. Mirrored from Polymarket: YES if Polymarket settles it Yes (UMA optimistic oracle); No, or a 50-50 settlement, resolves NO. Trading here closes at block 6,073,759 (about Nov 7, 2028); the outcome follows whenever Polymarket settles."
+
+[[markets]]
+id = 664970
+question = "Will Arsenal win the 2026-27 English Premier League (EPL) Championship?"
+plugin = "polymarket"
+params = { conditionId = "0xf02d8d72bb96d84090d4f7d63e7837afb94f8d061e7a2cca8cf21732150e8815", slug = "will-arsenal-win-the-2026-27-english-premier-league-epl-championship-20260701200428750" }
+closeHeight = 4251727
+resolveHeight = 4251727
+status = "open"
+category = "Sports"
+rules = "This market will resolve according to the team that wins the 2026-27 English Premier League (EPL) Championship. If at any point it becomes impossible for a listed team to win the 2026-27 English Premier League (EPL) Championship per the rules of English Premier League (EPL) (e.g., they are eliminated in the playoffs), the corresponding market will resolve to \"No\". Mirrored from Polymarket: YES if Polymarket settles it Yes (UMA optimistic oracle); No, or a 50-50 settlement, resolves NO. Trading here closes at block 4,251,727 (about May 29, 2027); the outcome follows whenever Polymarket settles."
+
+[[markets]]
+id = 560182
+question = "Will NVIDIA be the largest company in the world by market cap on December 31?"
+plugin = "polymarket"
+params = { conditionId = "0x684e5b72d4e407695397a79ed75ef37273c2655ca2548791a4153233d3744696", slug = "will-nvidia-be-the-largest-company-in-the-world-by-market-cap-on-december-31-244" }
+closeHeight = 3734047
+resolveHeight = 3734047
+status = "open"
+category = "Tech"
+rules = "This market will resolve to the largest company in the world by market cap on December 31, 2026, as of market close. The resolution source for this market will be a consensus of credible reporting. Mirrored from Polymarket: YES if Polymarket settles it Yes (UMA optimistic oracle); No, or a 50-50 settlement, resolves NO. Trading here closes at block 3,734,047 (about Dec 31, 2026); the outcome follows whenever Polymarket settles."
+
 # END polymarket-catalog
 
 # Real testnet deposits and payouts. The FROST key share also signs outcomes, so
