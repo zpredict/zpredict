@@ -80,6 +80,21 @@ async fn three_relayers_clear_expire_and_restart() {
     }
 }
 
+/// A market one relayer does not list as open never trades: its node could not resolve
+/// it with the others, so a fill there would never be paid.
+#[tokio::test(flavor = "multi_thread")]
+async fn markets_trade_only_when_open_at_all_three() {
+    let r = relayers("markets", 4, || InsecureLocalMatcher, false);
+    let (a, b) = (funded(&r).await, funded(&r).await);
+    (r[1].batcher.state.lock().unwrap().markets).retain(|m| m.id != 1);
+    let (yes, no) = (order(1, Side::Yes, 60, 3, a), order(1, Side::No, 45, 3, b));
+    submit(&r, &id(1), yes, &[0, 1, 2]).await;
+    submit(&r, &id(2), no, &[0, 1, 2]).await;
+    batch_all(&r).await;
+    assert_eq!(fill(&r, &id(1)).await, Some([0; FILL_LEN]), "no fill");
+    assert_eq!((balance(&r, &a).await, balance(&r, &b).await), (5000, 5000));
+}
+
 /// Regression #188: a relayer that missed a commit stops the batch at all three.
 #[tokio::test(flavor = "multi_thread")]
 async fn diverged_relayers_refuse_to_clear() {

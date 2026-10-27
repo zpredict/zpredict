@@ -74,6 +74,7 @@ pub async fn exchange(links: &Links, mine: Hello) -> Result<Agreed> {
         lead: Hello::default(),
     };
     let mut lead = None;
+    let mut markets = mine.markets.clone();
     for p in others() {
         let h: Hello = serde_json::from_slice(&links.recv(p).await?)?;
         // A relayer that missed a commit holds shares from another run: clearing or paying
@@ -92,11 +93,16 @@ pub async fn exchange(links: &Links, mine: Hello) -> Result<Agreed> {
             .retain(|x| h.withdrawals.binary_search(x).is_ok());
         a.resolved.retain(|x| h.resolved.contains(x));
         a.pre = a.pre.filter(|&id| h.pre == Some(id));
+        markets.retain(|m| h.markets.contains(m));
         if p == 0 {
             lead = Some(h);
         }
     }
     a.lead = lead.unwrap_or(mine);
+    // Trade only markets open at all three: one whose node missed a market (a rolling
+    // window, a lagging oracle) could never resolve it with the others, so fills there
+    // would never be paid. Relayer 0's order is kept, so all three use the same slots.
+    a.lead.markets.retain(|m| markets.contains(m));
     Ok(a)
 }
 
