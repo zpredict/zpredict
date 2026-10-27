@@ -24,6 +24,9 @@ services:
       FAUCET_SERVER: zecrocks
       FAUCET_ORIGINS: https://app.zpredict.site
       FAUCET_APP_URL: https://app.zpredict.site/faucet/
+      # Judging runs four weeks on a small balance (0.05 TAZ a drop): a slow, low cap.
+      FAUCET_INTERVAL_SECS: "120"
+      FAUCET_DAILY_CAP: "10"
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY:?set in Coolify}
     volumes:
       - /home/cuyvps/.cache/zpredict-demo-wallet:/wallet
