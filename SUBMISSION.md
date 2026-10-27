@@ -46,10 +46,10 @@ A pitch cut from real footage: the app is the hero, one idea per shot, captions 
 | 0:00–0:05 | Black, typed: the problem | "Every bet on Polymarket is public." / "Wallets get traced to real people." |
 | 0:05–0:10 | zpredict.site hero: the ASCII Z, lime strips | "zPredict: a prediction market on Zcash that hides who bet." |
 | 0:10–0:23 | app.zpredict.site home, then the market list: Polymarket mirrors with images | "No relayer, chain observer or counterparty learns who bet." / "Live markets mirrored from Polymarket. Prices public, bettors hidden." |
-| 0:23–0:32 | Judge mode (the header CTA) → trade page; YES, type 0.1 ZEC, Split & send | "Judge mode: a demo account with mock collateral. No wallet." / "Pick a side, type an amount in ZEC, split & send." |
+| 0:23–0:32 | An account funded by a real testnet deposit → Trade now; YES, type 0.01 ZEC, Split & send | "A real testnet deposit funds the account. No mock balances." / "Pick a side, type an amount in ZEC, split & send." |
 | 0:32–0:45 | **Relayer View**: three panels, your share lit lime in each, key bytes masked | "Your browser splits the order into three random shares." / "Relayers match orders in 3-party MPC. One share alone decodes nothing." |
 | 0:45–0:51 | The batch clears: each relayer's FILL row gets its fill share ("Batch cleared") | "Matched inside 3-party MPC. The fill comes back as three shares too." |
-| 0:51–0:57 | Close-up: R0, R1, R2, the ⊕ row decoded, "Filled 10 shares for 0.092 ZEC … only you can open this" | "Only your browser XORs the shares back: filled 10 YES at 92¢." |
+| 0:51–0:57 | Close-up: R0, R1, R2, the ⊕ row decoded, "Filled 1 shares for 0.0092 ZEC … only you can open this", 9 s after send | "Only your browser XORs the shares back: filled 1 YES share at 92¢." |
 | 0:57–1:03 | Resolved hourly market: outcome, block hash, "Signed by 2-of-3 relayers ✓" | "Outcomes from Zcash blocks, signed 2-of-3, checked in your browser." |
 | 1:03–1:10 | app.zpredict.site/threat-model: who learns what | "Who learns what, including the demo's limit: one VM, three relayers." |
 | 1:10–1:17 | docs, Evidence: the testnet cycle, deposit `8a4bc247…b62de82d` → fill → FROST-signed outcome → 2-of-3 payout `67d93312…10620a16` | "On Zcash testnet: deposit, fill, signed outcome, 2-of-3 payout." |
