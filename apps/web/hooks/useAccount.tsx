@@ -114,6 +114,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
 		save(KEYS.tag, null);
 		save(KEYS.orders, null);
 		save(KEYS.backup, null);
+		save(KEYS.notes, null);
 		setTag(null);
 		setBalance(null);
 		setSeat(null);
