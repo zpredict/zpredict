@@ -44,7 +44,7 @@ impl Payout {
     /// A payout to the Orchard receiver of unified address `ua`. Anything that is not a
     /// unified address with an Orchard receiver is refused; other receivers are dropped.
     pub fn parse<P: Parameters>(params: &P, ua: &str, zats: u64) -> Result<Self> {
-        let refuse = |why: &str| Error::Payout(format!("{ua}: {why}"));
+        let refuse = |why: &str| Error::Payout(why.to_string());
         let Some(Address::Unified(ua)) = Address::decode(params, ua) else {
             return Err(refuse("not a unified address for this network"));
         };
