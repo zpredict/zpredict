@@ -15,6 +15,11 @@ Shielded prediction market on Zcash. Price public, participants private: nobody 
 
 Reading orders needs all three relayers; moving funds needs two. Demo limits (one VM, self-trade counterparty) are in [PRIVACY.md](PRIVACY.md).
 
+## Real vs demo limits
+
+- **Real:** 3-party MPC matching, in-circuit balances and account credentials, the FROST 2-of-3 escrow from a DKG, real testnet deposits and withdrawals (txids in [docs: Evidence](https://docs.zpredict.site/docs/evidence)), signed outcomes.
+- **Demo limits:** every order is paired with its opposite from the same account (a labelled self-trade) so it fills without other traders; the operator seeded small trades for prices; all three relayers run on one VM, so production needs three independent operators. Full list: [PRIVACY.md](PRIVACY.md).
+
 ## Repository
 
 | Path | What |
