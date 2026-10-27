@@ -129,7 +129,7 @@ Each directory is created when its work starts. Cargo members are listed explici
 zpredict/
 ├── apps/
 │   ├── landing/               # Astro public site, MotionSites template                     (Oct 26)
-│   ├── web/                   # Next.js app: trade page, Relayer View, judge mode          (Oct 24)
+│   ├── web/                   # Next.js app: markets, trade, Relayer View, account         (Oct 24)
 │   └── relayer/               # Rust binary: share intake, scanner, MPC party, FROST signer (Oct 24)
 ├── packages/
 │   ├── core/                  # zpredict-core: order encoding, XOR shares, clearing rule   ← exists

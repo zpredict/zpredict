@@ -6,7 +6,7 @@ export interface Faq {
 export const faq: Faq[] = [
 	{
 		q: "Do I need an account?",
-		a: "No. You deposit fixed-size notes from any Zcash wallet and your browser keeps a random account tag. No email, no KYC.",
+		a: "No. You deposit any amount from any Zcash wallet (or our testnet faucet), and your browser keeps a random account key. No email, no KYC.",
 	},
 	{
 		q: "What does a relayer see?",
