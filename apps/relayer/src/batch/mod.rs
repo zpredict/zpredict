@@ -115,6 +115,7 @@ impl<M: Matcher> Batcher<M> {
             let open = s.markets.iter().filter(|m| m.status == Status::Open);
             Hello {
                 batch: s.batch,
+                commits: s.commits,
                 pending: s.pending(),
                 rows: s.table.ids(),
                 markets: open.map(|m| m.id).collect(),

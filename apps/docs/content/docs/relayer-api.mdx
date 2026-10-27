@@ -16,7 +16,7 @@ Each relayer is its own origin: `https://r0.zpredict.site`, `https://r1.zpredict
 
 | Call | Reply |
 |---|---|
-| `GET /health` | `{relayer: 0\|1\|2, height, batch, peers: boolean[]}` |
+| `GET /health` | `{relayer: 0\|1\|2, height, batch, commits, peers: boolean[]}`. `commits` counts recorded balance-changing runs; the three must match (a mismatch stops clearing, #188) |
 | `GET /markets` | `Market[]` (below) |
 | `GET /price` | `{zecUsd, source, at}`: ZEC/USD spot for display only, fetched by the relayer every 5 min; `503` before the first fetch |
 | `POST /orders` `{orderId: hex32, share: hex52, token: hex32}` | `202 {batch}`: the batch the share joins. `token` is fresh and random per order and relayer. A second share for the same orderId is `409` |

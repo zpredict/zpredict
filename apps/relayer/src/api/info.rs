@@ -16,7 +16,7 @@ const VIEW_PAGE: usize = 200;
 
 pub async fn health(State(api): State<Api>) -> Response {
     let s = api.state.lock().expect("state lock");
-    Json(json!({ "relayer": s.index, "height": s.height, "batch": s.batch, "peers": s.peers }))
+    Json(json!({ "relayer": s.index, "height": s.height, "batch": s.batch, "commits": s.commits, "peers": s.peers }))
         .into_response()
 }
 

@@ -5,12 +5,15 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::peers::Links;
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct Hello {
     pub batch: u64,
+    /// `State::commits`: the three must match, or the balance shares have diverged (#188).
+    #[serde(default)]
+    pub commits: u64,
     /// Pending orderIds, sorted.
     pub pending: Vec<String>,
     /// Relayer 0 only: table row ids in order, open market ids, and judge-mode credits
@@ -71,8 +74,17 @@ pub async fn exchange(links: &Links, mine: Hello) -> Result<Agreed> {
         lead: Hello::default(),
     };
     let mut lead = None;
+    let mut markets = mine.markets.clone();
     for p in others() {
         let h: Hello = serde_json::from_slice(&links.recv(p).await?)?;
+        // A relayer that missed a commit holds shares from another run: clearing or paying
+        // on them would combine to garbage balances, so stop until an operator restores.
+        if h.commits != mine.commits {
+            return Err(Error::Peer(format!(
+                "diverged: relayer {p} recorded {} runs, this one {}",
+                h.commits, mine.commits
+            )));
+        }
         a.batch = a.batch.max(h.batch);
         // All three lists are sorted (BTreeMap order or sorted ids).
         a.pending.retain(|x| h.pending.binary_search(x).is_ok());
@@ -81,11 +93,16 @@ pub async fn exchange(links: &Links, mine: Hello) -> Result<Agreed> {
             .retain(|x| h.withdrawals.binary_search(x).is_ok());
         a.resolved.retain(|x| h.resolved.contains(x));
         a.pre = a.pre.filter(|&id| h.pre == Some(id));
+        markets.retain(|m| h.markets.contains(m));
         if p == 0 {
             lead = Some(h);
         }
     }
     a.lead = lead.unwrap_or(mine);
+    // Trade only markets open at all three: one whose node missed a market (a rolling
+    // window, a lagging oracle) could never resolve it with the others, so fills there
+    // would never be paid. Relayer 0's order is kept, so all three use the same slots.
+    a.lead.markets.retain(|m| markets.contains(m));
     Ok(a)
 }
 

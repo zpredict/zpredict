@@ -191,7 +191,7 @@ async fn health_and_cors() {
     let (_, h) = call(&app, "GET", "/health", None).await;
     assert_eq!(
         h,
-        json!({"relayer": 0, "height": 0, "batch": 1, "peers": [true, false, false]})
+        json!({"relayer": 0, "height": 0, "batch": 1, "commits": 0, "peers": [true, false, false]})
     );
 
     let pre = Request::builder()
