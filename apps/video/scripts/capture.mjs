@@ -3,7 +3,7 @@
 // testnet deposit (TAG_FILE: a file holding its tag, read here and never printed) and the order
 // goes through the live relayers.
 //   node scripts/capture.mjs <out dir> [shot ...]
-// Shots: home trade resolved threat evidence landing (default: all). Writes <shot>.mp4 and merges
+// Shots: home trade deposit account resolved threat evidence landing (default: all). Writes <shot>.mp4 and merges
 // the marks (seconds into each clip) into <out dir>/shots.json; copy the ones you use into
 // src/config.ts. APP / DOCS / LANDING override the hosts; MARKET picks the traded market id.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -40,6 +40,14 @@ const scrollTo = (b, selector, offset, ms) =>
 		.evaluate(`document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect().top`)
 		.then((top) => b.scroll(Math.round(top - offset), ms));
 
+/** Signs this browser into the funded account (TAG_FILE; read here, never printed). */
+async function signIn(b) {
+	if (!process.env.TAG_FILE) throw new Error("this take needs TAG_FILE: a funded account's tag");
+	const tag = readFileSync(process.env.TAG_FILE, "utf8").trim();
+	await b.goto(APP);
+	await b.evaluate(`localStorage.setItem("zp.tag", ${JSON.stringify(tag)})`);
+}
+
 const shots = {
 	async home(b) {
 		await b.goto(APP);
@@ -58,32 +66,18 @@ const shots = {
 		return r.stop();
 	},
 	async trade(b) {
-		if (!process.env.TAG_FILE) throw new Error("trade needs TAG_FILE: a funded account's tag");
-		const tag = readFileSync(process.env.TAG_FILE, "utf8").trim();
-		await b.goto(APP);
-		await b.evaluate(`localStorage.setItem("zp.tag", ${JSON.stringify(tag)})`);
+		await signIn(b);
 		await b.goto(APP);
 		await b.waitFor(`document.querySelectorAll("#markets img").length > 4`);
-		// The header CTA reads "Trade now" once the account's balance has loaded.
-		await b.waitFor(
-			`[...document.querySelectorAll("button")].some((e) => e.textContent.includes("Trade now"))`,
-			30_000,
-		);
+		// Signed in: the header shows Portfolio, Cash and Deposit; open a market from the grid.
+		await b.waitFor(`document.querySelector(".hstats")`, 30_000);
 		await sleep(2000);
 		const r = await take(b, "trade.mp4");
 		await sleep(1500);
 		r.mark("start");
-		await b.click("button", "Trade now");
-		await b.waitFor(
-			`location.pathname.startsWith("/trade") && document.querySelector("#amount")`,
-			60_000,
-		);
+		await b.goto(`${APP}/trade/?m=${process.env.MARKET || 11}`);
+		await b.waitFor(`document.querySelector("#amount")`, 60_000);
 		r.mark("ticket");
-		if (process.env.MARKET) {
-			await b.goto(`${APP}/trade/?m=${process.env.MARKET}`);
-			await b.waitFor(`document.querySelector("#amount")`, 30_000);
-			r.mark("market");
-		}
 		await sleep(2500);
 		r.mark("yes");
 		await b.click("label.side--yes");
@@ -124,6 +118,69 @@ const shots = {
 		await sleep(7000);
 		const fillText = await b.evaluate(`document.querySelector(".xor__fill")?.textContent`);
 		return { ...(await r.stop()), fillText, url: await b.evaluate("location.href") };
+	},
+	async deposit(b) {
+		await signIn(b);
+		await b.goto(`${APP}/deposit/`);
+		await b.waitFor(`document.querySelector(".deposit__input")`, 30_000);
+		await sleep(2500);
+		const r = await take(b, "deposit.mp4");
+		await sleep(1500);
+		r.mark("type");
+		await b.evaluate(
+			`(() => { const i = document.querySelector(".deposit__input"); i.focus(); i.select(); })()`,
+		);
+		for (const ch of process.env.DEPOSIT || "1.3") {
+			await b.send("Input.insertText", { text: ch });
+			await sleep(260);
+		}
+		await b.waitFor(`document.querySelector(".qr__svg")`, 30_000);
+		r.mark("split");
+		await sleep(4000);
+		await b.evaluate(
+			`document.querySelector(".qr").scrollIntoView({ behavior: "smooth", block: "center" })`,
+		);
+		r.mark("qr");
+		await sleep(6000);
+		return r.stop();
+	},
+	async account(b) {
+		await signIn(b);
+		// Holdings live only in the browser that traded, so trade once here first (not recorded).
+		await b.goto(`${APP}/trade/?m=${process.env.MARKET || 11}`);
+		await b.waitFor(`document.querySelector("#amount")`, 60_000);
+		await sleep(2000);
+		await b.click("label.side--yes");
+		await b.click("button", "Split & send");
+		await b
+			.waitFor(`document.querySelector(".xor__fill.is-filled")`, FILL_WAIT * 1000)
+			.catch(() => console.error(`account: no fill within ${FILL_WAIT} s`));
+		await b.goto(`${APP}/portfolio/`);
+		await b.waitFor(`document.querySelectorAll(".ptable tbody tr").length > 0`, 30_000);
+		await sleep(3000);
+		const r = await take(b, "account.mp4");
+		await sleep(3500);
+		// The crosshair across the P&L curve: real pointer events, left to right.
+		const box = JSON.parse(
+			await b.evaluate(
+				`JSON.stringify(document.querySelector(".pnl__plot").getBoundingClientRect())`,
+			),
+		);
+		r.mark("chart");
+		for (let k = 0; k <= 30; k++) {
+			const x = box.x + 20 + ((box.width - 40) * k) / 30;
+			await b.send("Input.dispatchMouseEvent", {
+				type: "mouseMoved",
+				x,
+				y: box.y + box.height / 2,
+			});
+			await sleep(90);
+		}
+		await sleep(1500);
+		r.mark("table");
+		await scrollTo(b, ".ptabs", 120, 1800);
+		await sleep(5000);
+		return r.stop();
 	},
 	async resolved(b) {
 		const markets = await (await fetch(`${RELAYER}/markets`)).json();
