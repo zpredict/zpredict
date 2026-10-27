@@ -171,7 +171,25 @@ test("a funded account to a fill, chart, withdraw and deposit", async () => {
 	);
 	await click(".dtabs__pos button", "Create account tag");
 	await b.waitFor(`document.querySelector(".deposit__ua")`);
-	assert.match(await text(".deposit__ua"), new RegExp(`^zcash:${ESCROW_UA}\\?amount=0\\.05&memo=`));
+	assert.match(await text(".deposit__ua"), new RegExp(`^zcash:${ESCROW_UA}\\?amount=0\\.25&memo=`));
+
+	// Any amount: 1.31 ZEC splits into 1 + 0.25 + 0.05 + 0.01, one multi-payment request.
+	await b.evaluate(`(() => {
+		const i = document.querySelector(".deposit__input");
+		Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(i, "1.31");
+		i.dispatchEvent(new Event("input", { bubbles: true }));
+	})()`);
+	await b.waitFor(`document.querySelector(".deposit__ua")?.textContent.startsWith("zcash:?")`);
+	assert.match(
+		await text(".deposit__ua"),
+		new RegExp(
+			`^zcash:\\?address=${ESCROW_UA}&amount=1&memo=[\\w-]+&address\\.1=${ESCROW_UA}&amount\\.1=0\\.25&memo\\.1=[\\w-]+&address\\.2=${ESCROW_UA}&amount\\.2=0\\.05&memo\\.2=[\\w-]+&address\\.3=${ESCROW_UA}&amount\\.3=0\\.01&memo\\.3=[\\w-]+$`,
+		),
+	);
+	assert.match(
+		await text(".deposit__split"),
+		/1 × 1 ZEC · 1 × 0\.25 ZEC · 1 × 0\.05 ZEC · 1 × 0\.01 ZEC/,
+	);
 
 	assert.ok(requests.some((u) => u.startsWith(`http://localhost:${MOCK_PORTS[2]}/orders`)));
 	const foreign = requests.filter((u) => !/^(https?:\/\/localhost[:/]|data:|blob:)/.test(u));
