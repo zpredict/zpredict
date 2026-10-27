@@ -34,6 +34,14 @@ jobs:
             done
             [ -n "$ok" ] || down="$down r$i"
           done
+          # Diverged balance shares (#188): the three must have recorded the same runs. A
+          # run can land between two reads, so only a difference seen twice counts.
+          for try in 1 2; do
+            c=$(for i in 0 1 2; do curl -sf -m 15 "https://r$i.zpredict.site/health" | jq -r '.commits // "?"'; done | sort -u | wc -l)
+            [ "$c" = 1 ] && break
+            [ "$try" = 2 ] && down="$down diverged"
+            sleep 60
+          done
           echo "down=${down# }" >>"$GITHUB_OUTPUT"
       - name: Open or update the incident issue
         if: steps.ping.outputs.down != ''
@@ -43,7 +51,7 @@ jobs:
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           gh label create incident --color B60205 --description "Hosted demo down" -R "$GITHUB_REPOSITORY" 2>/dev/null || true
-          msg="Relayer health check failed at $(date -u +%FT%TZ): $DOWN (no 200 with all peers up, twice). Run: $RUN"
+          msg="Relayer health check failed at $(date -u +%FT%TZ): $DOWN (no 200 with all peers up, or relayers with different commit counts, twice). Run: $RUN"
           open=$(gh issue list -R "$GITHUB_REPOSITORY" -l incident -s open --json number -q '.[0].number')
           if [ -z "$open" ]; then
             gh issue create -R "$GITHUB_REPOSITORY" -l incident -t "Hosted relayers down: $DOWN" -b "$msg"
