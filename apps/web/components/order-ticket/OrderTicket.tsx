@@ -84,6 +84,10 @@ export default function OrderTicket({ market, initialSide }: Props) {
 				<dd className="num">≤ {t.price}¢</dd>
 				<dt>Cost</dt>
 				<dd>
+					<Amount halfTicks={t.cost} />
+				</dd>
+				<dt>Held with the self-trade</dt>
+				<dd>
 					<Amount halfTicks={t.worst} />
 				</dd>
 				<dt className="ticket__win">To win</dt>
@@ -96,7 +100,7 @@ export default function OrderTicket({ market, initialSide }: Props) {
 					{t.busy ? "Sending shares…" : "Split & send"}
 				</Cta>
 			) : (
-				<div className="ticket__judge">
+				<div className="ticket__start">
 					<StartButton />
 					<span className="dim">first: a real testnet deposit from the faucet</span>
 				</div>

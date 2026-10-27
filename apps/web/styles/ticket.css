@@ -142,7 +142,7 @@
 	text-align: right;
 }
 
-.ticket__judge {
+.ticket__start {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
