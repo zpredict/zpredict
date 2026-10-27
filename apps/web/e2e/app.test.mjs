@@ -173,6 +173,15 @@ test("a funded account to a fill, chart, withdraw and deposit", async () => {
 	assert.match(await text(".pnl__v"), /^[+−]\d+(\.\d+)? ZEC$/);
 	await click(".ptabs__tab", "History");
 	await b.waitFor(`document.querySelectorAll(".ptable tbody tr").length >= 2`);
+	// Withdraw and deposit have their own pages, linked from the account page.
+	assert.equal(
+		await b.evaluate(`document.querySelector(".phead__actions a.pbtn")?.getAttribute("href")`),
+		"/withdraw/",
+	);
+	await b.goto(`${base}/withdraw/`);
+	await b.waitFor(`document.querySelector("#withdraw-address")`);
+	await b.goto(`${base}/deposit/`);
+	await b.waitFor(`document.querySelector(".deposit__input")`);
 	await b.goto(`${base}/trade/?m=1`);
 	await b.waitFor(`document.querySelector(".dtabs")`);
 

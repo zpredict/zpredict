@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import GeneratedAvatar from "@/components/account/GeneratedAvatar";
 import Glyph from "@/components/markets/Glyph";
-import WithdrawForm from "@/components/order-ticket/WithdrawForm";
 import CopyButton from "@/components/ui/CopyButton";
 import Cta from "@/components/ui/Cta";
 import { useAccount } from "@/hooks/useAccount";
@@ -191,7 +190,6 @@ export default function PortfolioScreen() {
 	const { cash, held, invested, total, markets } = usePortfolio();
 	const price = usePrice();
 	const router = useRouter();
-	const [withdraw, setWithdraw] = useState(false);
 	const byId = (id: number) => markets.find((m) => m.id === id);
 	const dollars = (v: bigint | number | null) =>
 		v === null || !price ? undefined : usd(v, price.zecUsd);
@@ -229,15 +227,10 @@ export default function PortfolioScreen() {
 					</p>
 				</div>
 				<div className="phead__actions">
-					<Cta onClick={() => router.push("/wallet/")}>Deposit</Cta>
-					<button
-						aria-expanded={withdraw}
-						className="pbtn"
-						onClick={() => setWithdraw((w) => !w)}
-						type="button"
-					>
+					<Cta onClick={() => router.push("/deposit/")}>Deposit</Cta>
+					<Link className="pbtn" href="/withdraw/">
 						Withdraw
-					</button>
+					</Link>
 				</div>
 			</header>
 
@@ -268,12 +261,6 @@ export default function PortfolioScreen() {
 			</div>
 
 			<PnlChart points={pnlSeries(orders, markets, Math.floor(Date.now() / 1000))} />
-
-			{withdraw && (
-				<div className="pwithdraw" id="withdraw">
-					<WithdrawForm />
-				</div>
-			)}
 
 			<Activity byId={byId} held={held} history={history} open={open} />
 
