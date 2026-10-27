@@ -2,14 +2,18 @@
 // 1. Writes csp.caddy (imported at site level in the Caddyfile): a self-only CSP that allows the build's inline scripts
 //    and styles by sha256 hash (Next and Astro both inline a few), never 'unsafe-inline'. With faucet origins, /faucet/
 //    alone gets a second CSP that also allows them for script-src, frame-src and connect-src (Turnstile, #133).
+//    --analytics (the landing image only, #226) adds Google Analytics 4's origins; the app never passes it.
 // 2. Precompresses text assets to .br and .gz so Caddy serves them without CPU per request.
-// Usage: node prepare.mjs <site dir> <csp.caddy out> [connect-src origins] [/faucet/-only origins], comma separated
+// Usage: node prepare.mjs [--analytics] <site dir> <csp.caddy out> [connect-src origins] [/faucet/-only origins],
+//        origins comma separated
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { brotliCompressSync, constants, gzipSync } from "node:zlib";
 
-const [dir, out, connect = "", faucetOnly = ""] = process.argv.slice(2);
+const argv = process.argv.slice(2);
+const analytics = argv.includes("--analytics");
+const [dir, out, connect = "", faucetOnly = ""] = argv.filter((a) => a !== "--analytics");
 if (!dir || !out) throw new Error("usage: prepare.mjs <site dir> <csp.caddy out> [origins]");
 
 const files = [];
@@ -49,17 +53,30 @@ const list = (s) => {
 };
 const origins = list(connect);
 const extra = list(faucetOnly);
+// What gtag.js needs (Google's GA4 CSP guide): the loader, and the beacons it sends.
+const GA = analytics
+	? {
+			script: ["https://www.googletagmanager.com"],
+			img: ["https://www.google-analytics.com", "https://www.googletagmanager.com"],
+			connect: [
+				"https://www.google-analytics.com",
+				"https://*.google-analytics.com",
+				"https://*.analytics.google.com",
+				"https://www.googletagmanager.com",
+			],
+		}
+	: { script: [], img: [], connect: [] };
 
 const policy = (more) =>
 	[
 		"default-src 'none'",
-		`script-src 'self' ${[...scripts, ...more].join(" ")}`,
+		`script-src 'self' ${[...scripts, ...GA.script, ...more].join(" ")}`,
 		`style-src 'self' ${[...styles, ...attrs].join(" ")}${attrs.size ? " 'unsafe-hashes'" : ""}`,
-		"img-src 'self'",
+		`img-src 'self' ${GA.img.join(" ")}`,
 		"font-src 'self'",
 		"media-src 'self'",
 		"manifest-src 'self'",
-		`connect-src 'self' ${[...origins, ...more].join(" ")}`,
+		`connect-src 'self' ${[...origins, ...GA.connect, ...more].join(" ")}`,
 		more.length ? `frame-src ${more.join(" ")}` : "",
 		"base-uri 'none'",
 		"form-action 'none'",

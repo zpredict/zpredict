@@ -95,3 +95,43 @@ test("only the onion relayers this build was given pass the gate (#90)", () => {
 	const { NEXT_PUBLIC_RELAYERS_ONION: _, ...bare } = process.env;
 	assert.equal(spawnSync("node", [join(here, "privacy.mjs"), d], { env: bare }).status, 1);
 });
+
+// Google Analytics on the landing site only (#226): the app gate and CSP stay third-party-free.
+const GTAG = "https://www.googletagmanager.com/gtag/js?id=G-W949LN2MSJ";
+
+test("the app gate rejects Google Analytics; only --analytics (landing) allows it", () => {
+	const d = site({
+		"index.html": `<script async src="${GTAG}"></script>`,
+		"_next/static/chunks/a.js": "fetch('https://region1.google-analytics.com/g/collect')",
+	});
+	const app = gate(d);
+	assert.equal(app.status, 1);
+	assert.match(app.stderr, /googletagmanager/);
+	assert.match(app.stderr, /google-analytics/);
+	const landing = (dir) =>
+		spawnSync("node", [join(here, "privacy.mjs"), "--analytics", dir], { encoding: "utf8" });
+	const ok = landing(d);
+	assert.equal(ok.status, 0, ok.stderr);
+	// The allowlist is GA's hosts only, not "anything from Google".
+	const other = site({ "index.html": `<script src="https://www.google.com/x.js"></script>` });
+	assert.equal(landing(other).status, 1);
+});
+
+test("the CSP names Google Analytics only with --analytics", () => {
+	const d = site({ "index.html": "<p>hi</p>" });
+	const out = join(d, "csp.caddy");
+	const prepare = join(here, "../../../deploy/static/prepare.mjs");
+	assert.equal(spawnSync("node", [prepare, d, out, "https://r0.zpredict.site"]).status, 0);
+	const app = readFileSync(out, "utf8");
+	assert.doesNotMatch(app, /google/);
+	assert.match(app, /img-src 'self';/);
+	assert.equal(spawnSync("node", [prepare, "--analytics", d, out]).status, 0);
+	const landing = readFileSync(out, "utf8");
+	assert.match(landing, /script-src 'self' https:\/\/www\.googletagmanager\.com;/);
+	assert.match(
+		landing,
+		/img-src 'self' https:\/\/www\.google-analytics\.com https:\/\/www\.googletagmanager\.com;/,
+	);
+	assert.match(landing, /connect-src 'self' [^;]*https:\/\/\*\.analytics\.google\.com/);
+	assert.doesNotMatch(landing, /frame-src|unsafe-inline|unsafe-eval/);
+});

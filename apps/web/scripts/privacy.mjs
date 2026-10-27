@@ -5,14 +5,20 @@
 // One exception, route-scoped: Cloudflare Turnstile on /faucet (#133). Its origin may
 // appear only in files that belong to the faucet route alone: out/faucet/* and the build
 // assets out/faucet/index.{html,txt} reference and no other page does.
-// Usage: node privacy.mjs [out dir]
+// --analytics (the landing build only, #226) also allows Google Analytics 4's hosts. The app
+// build never passes it: app.zpredict.site contacts no third party.
+// Usage: node privacy.mjs [--analytics] [out dir]
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-const OUT = process.argv[2]
-	? `${resolve(process.argv[2])}/`
-	: new URL("../out/", import.meta.url).pathname;
+const argv = process.argv.slice(2);
+const ANALYTICS = argv.includes("--analytics");
+const dirArg = argv.find((a) => a !== "--analytics");
+const OUT = dirArg ? `${resolve(dirArg)}/` : new URL("../out/", import.meta.url).pathname;
 const FAUCET_ONLY = "challenges.cloudflare.com";
+// GA4's loader and beacon hosts, allowed only with --analytics.
+const GA =
+	/^(www\.googletagmanager\.com|([a-z0-9-]+\.)*google-analytics\.com|([a-z0-9-]+\.)*analytics\.google\.com)$/;
 
 // Hosts the app may reference: our relayers and dev mocks, plus the relayers' onion
 // services this build was given (NEXT_PUBLIC_RELAYERS_ONION, #90). No other .onion host.
@@ -78,6 +84,7 @@ for (const file of files) {
 		// polyfills, not resolvable third-party hosts.
 		if (!host.includes(".") && host !== "localhost") continue;
 		if (OURS.test(host) || ONIONS.has(host) || INERT.some((r) => r.test(url))) continue;
+		if (ANALYTICS && GA.test(host)) continue;
 		if (host === FAUCET_ONLY && (isFaucet(file) || faucetOnly.has(file))) continue;
 		bad.push(`${file.slice(OUT.length)}: ${url}`);
 	}
