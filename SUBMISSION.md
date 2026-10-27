@@ -21,16 +21,16 @@ HOW
 - Matching: three relayers cross YES/NO at the midpoint inside 3-party MPC, checking balances in-circuit. Only fills and a public price come out.
 - Accounts: your account secret never leaves the browser whole; the circuit checks it, so no relayer can spend for you.
 - Escrow: FROST 2-of-3 Ironwood address from a DKG; batched payouts.
-- Resolution: 20 markets mirror Polymarket; hourly ones read Zcash blocks. Outcomes FROST-signed, checked in-browser.
+- Resolution: 24 markets mirror Polymarket; hourly ones read Zcash blocks. Outcomes FROST-signed, checked in-browser.
 
 WHY IT DOES NOT LEAK
 - Chain: shielded (Ironwood) only; no transparent address in any path.
 - One relayer sees only random shares and digests. Reading orders needs all three; moving funds needs two.
 - Deposits of any amount, split into fixed notes (0.01–25 ZEC); batched payouts to fresh addresses.
-- Static app, strict CSP; no third-party requests, analytics or IP logs (GA4 only on the landing and docs sites). Audit: PRIVACY.md.
+- Static app, strict CSP; no third-party requests, analytics or IP logs (GA4: landing/docs only). Audit: PRIVACY.md.
 
 WHAT IS REAL / WHAT IS A MOCK
-Real: 3-party MPC matching, in-circuit balances and credentials, FROST DKG, chain-data resolution, live relayers, and a full testnet cycle on the live demo: deposit 8a4bc247… → fill → signed outcome → 2-of-3 Ironwood payout 67d93312…; again Oct 27: 3-note deposit 6978b674…, payout a61b3005… (docs: Evidence).
+Real: 3-party MPC matching, in-circuit balances and credentials, FROST DKG, chain-data resolution, live relayers, and full testnet cycles: deposit 8a4bc247… → fill → signed outcome → 2-of-3 Ironwood payout 67d93312…; again Oct 27: 3-note deposit 6978b674…, payout a61b3005… (see Evidence).
 No mock credit: every balance is a real testnet deposit (one-click faucet). Demo limits: each order is paired with its opposite from the same account (self-trade) so it fills; seeded trades set prices; the three relayers and the DKG share one VM (the model needs independent operators); relayers see deposit/withdrawal amounts and times.
 
 STACK
