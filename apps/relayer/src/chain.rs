@@ -96,7 +96,10 @@ pub fn advance(mut m: Market, tip: u32, chain: &dyn Chain, reg: &Registry) -> Ma
     if m.status == Status::Open && tip >= m.close_height {
         m.status = Status::Closed;
     }
-    if m.status == Status::Closed && tip >= m.resolve_height {
+    // A mirrored market can settle on Polymarket before our close height ("by date X"
+    // questions often do). Asked while open too, so nobody trades against a known result.
+    let early = m.status == Status::Open && m.plugin == POLYMARKET;
+    if early || (m.status == Status::Closed && tip >= m.resolve_height) {
         match reg.resolve(&m, chain) {
             Ok(Some(r)) => m.set_resolution(&r),
             Ok(None) => {}
@@ -110,6 +113,52 @@ pub fn advance(mut m: Market, tip: u32, chain: &dyn Chain, reg: &Registry) -> Ma
 mod tests {
     use super::*;
     use zpredict_oracle::{Block, FixtureChain, Outcome};
+
+    /// Resolves as soon as asked, like a settled Polymarket record.
+    struct Settled;
+
+    impl zpredict_oracle::Resolver for Settled {
+        fn resolve(
+            &self,
+            m: &Market,
+            chain: &dyn Chain,
+        ) -> zpredict_oracle::Result<Option<zpredict_oracle::Resolution>> {
+            let b = chain.block(100)?.expect("fixture block");
+            Ok(Some(zpredict_oracle::Resolution::new(m, b, true)))
+        }
+    }
+
+    /// Regression: a mirrored market settled upstream stops trading before its close
+    /// height; a chain-based market still waits for its own heights.
+    #[test]
+    fn a_settled_mirror_resolves_while_open() {
+        let market = |plugin: &str| -> Market {
+            serde_json::from_value(serde_json::json!({
+                "id": 2, "question": "q?", "plugin": plugin, "params": {"minActions": 1},
+                "closeHeight": 500, "resolveHeight": 500, "status": "open"
+            }))
+            .unwrap()
+        };
+        let chain = FixtureChain {
+            tip: 120,
+            blocks: vec![Block {
+                height: 100,
+                hash: "ab".into(),
+                shielded_actions: 3,
+                ..Block::default()
+            }],
+        };
+        let mut reg = Registry::default();
+        reg.register(POLYMARKET, Settled)
+            .register("shielded-actions", Settled);
+        let m = advance(market(POLYMARKET), 120, &chain, &reg);
+        assert_eq!(
+            (m.status, m.outcome),
+            (Status::Resolved, Some(Outcome::Yes))
+        );
+        let m = advance(market("shielded-actions"), 120, &chain, &reg);
+        assert_eq!((m.status, m.outcome), (Status::Open, None));
+    }
 
     #[test]
     fn closes_then_resolves() {
