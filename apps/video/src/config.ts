@@ -48,25 +48,24 @@ export type Shot = { vo?: string } & (
 	| { kind: "end"; dur: number }
 );
 
-/** Marks in trade.mp4 (public/footage/shots.json, "trade"), seconds into the clip. `fill` is just
- *  before the fill shares land in the Relayer View (found by eye); null when a take has no fill,
- *  and then the fill shot is left out rather than faked. This take was recorded on a loaded
- *  machine, so the clip's clock is not the relayers' clock: the cut says "batch cleared" instead
- *  of a number of seconds. */
-const TRADE: Record<"judge" | "send" | "shares" | "view" | "close", number> & {
+/** Marks in trade.mp4 (public/footage/shots.json, "trade"), seconds into the clip; null `fill`
+ *  when a take has no fill, and then the fill shot is left out rather than faked. This take is an
+ *  account funded by a real testnet deposit; the order filled 9 s after "Split & send". The
+ *  shots run back to back through the clip, so no footage repeats. */
+const TRADE: Record<"start" | "send" | "shares" | "view" | "close", number> & {
 	fill: number | null;
-} = { judge: 1.51, send: 104.25, shares: 105.2, view: 109.72, fill: 437.6, close: 445.8 };
+} = { start: 1.5, send: 9.56, shares: 9.8, view: 15.4, fill: 22.4, close: 26.04 };
 
 /** The fill landing: each relayer's FILL row gets its share of the fill. */
 const fillShot = (fill: number): Shot => ({
 	kind: "clip",
-	dur: 6,
+	dur: 3.6,
 	clip: "trade",
 	at: fill,
 	cam: { x: 500, y: 330, w: 980, at: 0 },
 	source: "relayer view · live",
 	caption: "Matched inside 3-party MPC. The fill comes back as three shares too.",
-	skipped: "Batch cleared",
+	skipped: "Filled 9 s after send",
 	vo: "The fill comes back the same way, as three shares.",
 });
 
@@ -111,10 +110,10 @@ export const SHOTS: Shot[] = [
 		kind: "clip",
 		dur: 4.2,
 		clip: "trade",
-		at: TRADE.judge - 0.7,
-		source: "judge mode · mock collateral",
-		caption: "Judge mode: a demo account with mock collateral. No wallet.",
-		vo: "Judges get a demo account in one click. No wallet needed.",
+		at: TRADE.start - 0.7,
+		source: "account funded by a real testnet deposit",
+		caption: "A real testnet deposit funds the account. No mock balances.",
+		vo: "Your account is funded by a real testnet deposit from our faucet. No mock balances.",
 	},
 	{
 		kind: "clip",
@@ -130,7 +129,7 @@ export const SHOTS: Shot[] = [
 		kind: "clip",
 		dur: 6,
 		clip: "trade",
-		at: TRADE.shares - 0.2,
+		at: TRADE.shares,
 		source: "relayer view · live",
 		caption: "Your browser splits the order into three random shares.",
 		vo: "Your browser splits the order into three random shares, one for each relayer.",
@@ -139,7 +138,7 @@ export const SHOTS: Shot[] = [
 		kind: "clip",
 		dur: 6,
 		clip: "trade",
-		at: TRADE.view + 0.5,
+		at: TRADE.view,
 		cam: { x: 750, y: 440, w: 1450, at: 0.3 },
 		source: "relayer view · live",
 		caption: "Relayers match orders in 3-party MPC. One share alone decodes nothing.",
@@ -154,8 +153,8 @@ export const SHOTS: Shot[] = [
 		at: TRADE.close,
 		cam: { x: 1680, y: 560, w: 780, at: 0.3 },
 		source: "your browser",
-		caption: "Only your browser XORs the shares back: filled 10 YES at 92¢.",
-		vo: "Only your browser can put them back together: ten YES shares, at ninety-two cents.",
+		caption: "Only your browser XORs the shares back: filled 1 YES share at 92¢.",
+		vo: "Only your browser can put them back together: one YES share, at ninety-two cents.",
 	},
 	{
 		kind: "clip",

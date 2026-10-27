@@ -1,6 +1,7 @@
 // Records the real footage the Remotion demo cuts from: headless Chrome on the live app, 1920x1080,
-// 30 fps (scripts/video/cdp.mjs). Nothing is staged: judge mode claims a real demo account and the
-// order goes through the live relayers.
+// 30 fps (scripts/video/cdp.mjs). Nothing is staged: the trade take uses an account funded by a real
+// testnet deposit (TAG_FILE: a file holding its tag, read here and never printed) and the order
+// goes through the live relayers.
 //   node scripts/capture.mjs <out dir> [shot ...]
 // Shots: home trade resolved threat evidence landing (default: all). Writes <shot>.mp4 and merges
 // the marks (seconds into each clip) into <out dir>/shots.json; copy the ones you use into
@@ -57,20 +58,22 @@ const shots = {
 		return r.stop();
 	},
 	async trade(b) {
+		if (!process.env.TAG_FILE) throw new Error("trade needs TAG_FILE: a funded account's tag");
+		const tag = readFileSync(process.env.TAG_FILE, "utf8").trim();
+		await b.goto(APP);
+		await b.evaluate(`localStorage.setItem("zp.tag", ${JSON.stringify(tag)})`);
 		await b.goto(APP);
 		await b.waitFor(`document.querySelectorAll("#markets img").length > 4`);
+		// The header CTA reads "Trade now" once the account's balance has loaded.
+		await b.waitFor(
+			`[...document.querySelectorAll("button")].some((e) => e.textContent.includes("Trade now"))`,
+			30_000,
+		);
 		await sleep(2000);
 		const r = await take(b, "trade.mp4");
 		await sleep(1500);
-		r.mark("judge");
-		// The header CTA: "Judge mode" claims a demo account; with PROFILE reusing one it reads
-		// "Trade now" (the relayers' balance table never frees rows, so reuse when you can).
-		await b.click(
-			"button",
-			await b.evaluate(
-				`[...document.querySelectorAll("button")].some((e) => e.textContent.includes("Judge mode")) ? "Judge mode" : "Trade now"`,
-			),
-		);
+		r.mark("start");
+		await b.click("button", "Trade now");
 		await b.waitFor(
 			`location.pathname.startsWith("/trade") && document.querySelector("#amount")`,
 			60_000,
@@ -90,7 +93,7 @@ const shots = {
 			`(() => { const a = document.querySelector("#amount"); a.focus(); a.select(); })()`,
 		);
 		r.mark("amount");
-		for (const ch of process.env.AMOUNT || "0.1") {
+		for (const ch of process.env.AMOUNT || "0.01") {
 			await b.send("Input.insertText", { text: ch });
 			await sleep(220);
 		}
