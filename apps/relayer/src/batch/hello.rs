@@ -5,12 +5,15 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::peers::Links;
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct Hello {
     pub batch: u64,
+    /// `State::commits`: the three must match, or the balance shares have diverged (#188).
+    #[serde(default)]
+    pub commits: u64,
     /// Pending orderIds, sorted.
     pub pending: Vec<String>,
     /// Relayer 0 only: table row ids in order, open market ids, and judge-mode credits
@@ -73,6 +76,14 @@ pub async fn exchange(links: &Links, mine: Hello) -> Result<Agreed> {
     let mut lead = None;
     for p in others() {
         let h: Hello = serde_json::from_slice(&links.recv(p).await?)?;
+        // A relayer that missed a commit holds shares from another run: clearing or paying
+        // on them would combine to garbage balances, so stop until an operator restores.
+        if h.commits != mine.commits {
+            return Err(Error::Peer(format!(
+                "diverged: relayer {p} recorded {} runs, this one {}",
+                h.commits, mine.commits
+            )));
+        }
         a.batch = a.batch.max(h.batch);
         // All three lists are sorted (BTreeMap order or sorted ids).
         a.pending.retain(|x| h.pending.binary_search(x).is_ok());

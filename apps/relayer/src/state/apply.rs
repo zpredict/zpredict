@@ -73,6 +73,11 @@ impl State {
                     }
                 }
                 self.batch = self.batch.max(batch + 1);
+                // An MPC run rewrote the balances at all three; an expiry-only batch (no
+                // balances) is local and may differ, e.g. for a share one relayer never got.
+                if !balances.is_empty() {
+                    self.commits += 1;
+                }
             }
             // Only judge claims record credits (deposits go through the circuit), so a
             // credited id is a judge account, also in logs from before `Mock` existed.
@@ -110,6 +115,7 @@ impl State {
                     (balances.iter()).map(|b| hex_array(b)).collect();
                 self.table.set_balances(&balances);
                 self.ledger.resolved.insert(market);
+                self.commits += 1;
             }
             Event::Payout { ids, status, txid } => {
                 for id in ids {

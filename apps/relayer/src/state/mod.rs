@@ -86,6 +86,10 @@ pub struct State {
     pub index: usize,
     /// The next batch number; synced to the max across peers each batch.
     pub batch: u64,
+    /// Balance-changing runs this relayer recorded (`Batch` events with balances, and
+    /// `Resolved`). Equal at all three unless one missed a commit, after which its shares no
+    /// longer combine (#188).
+    pub commits: u64,
     pub height: u32,
     /// Whether the last batch attempt reached each party (own slot always true).
     pub peers: [bool; 3],
@@ -119,6 +123,7 @@ impl State {
             orders: HashMap::new(),
             table: Table::default(),
             payout_retrying: false,
+            commits: 0,
             ledger: Ledger::default(),
             history: HashMap::new(),
             view: VecDeque::new(),

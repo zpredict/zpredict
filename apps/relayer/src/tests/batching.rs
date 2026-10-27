@@ -62,6 +62,14 @@ async fn three_relayers_clear_expire_and_restart() {
         assert_eq!(s, json!({"status": "unfilled"}));
     }
 
+    let commits: Vec<u64> = (r.iter())
+        .map(|x| x.batcher.state.lock().unwrap().commits)
+        .collect();
+    assert!(
+        commits[0] > 0 && commits.iter().all(|&c| c == commits[0]),
+        "{commits:?}"
+    );
+
     // Restart relayers 0 and 1 from their event logs: same shares, statuses, table, view.
     for i in [0, 1] {
         let before = snapshot(&r[i].batcher.state, account_id(&a));
@@ -69,6 +77,22 @@ async fn three_relayers_clear_expire_and_restart() {
         let markets = r[i].batcher.state.lock().unwrap().markets.clone();
         let reopened = State::open(i, markets, &dir).unwrap().shared();
         assert_eq!(snapshot(&reopened, account_id(&a)), before);
+    }
+}
+
+/// Regression #188: a relayer that missed a commit stops the batch at all three.
+#[tokio::test(flavor = "multi_thread")]
+async fn diverged_relayers_refuse_to_clear() {
+    let r = relayers("diverged", 4, || InsecureLocalMatcher, false);
+    r[2].batcher.state.lock().unwrap().commits += 1;
+    let (a, b, c) = tokio::join!(
+        r[0].batcher.once(),
+        r[1].batcher.once(),
+        r[2].batcher.once()
+    );
+    for run in [a, b, c] {
+        let e = run.expect_err("diverged shares must not clear");
+        assert!(e.to_string().contains("diverged"), "{e}");
     }
 }
 
@@ -83,7 +107,7 @@ fn snapshot(s: &Shared, account: u64) -> Value {
     json!({"orders":[status(1), status(2), status(3), status(4)],
         "balance": s.table.balance_share(account), "rows": s.table.ids(), "view": view,
         "keys": s.table.key_shares(2, 2),
-        "positions": s.positions().len()})
+        "positions": s.positions().len(), "commits": s.commits})
 }
 
 fn held<M: Matcher>(r: &[Relayer<M>]) -> Vec<Option<u64>> {
