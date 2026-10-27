@@ -34,7 +34,8 @@ pub struct Flagged {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Flag {
-    /// Not 1, 5 or 25 units: crediting it would reveal a bet size.
+    /// Not a denomination (0.01, 0.05, 0.25, 1, 5 or 25 ZEC): an odd amount would single the
+    /// deposit out to the relayers.
     Denomination,
     /// No deposit memo, or this relayer's slot does not open.
     NoTag,
@@ -72,12 +73,16 @@ mod tests {
         assert_eq!(units(UNIT_ZATS), Some(1));
         assert_eq!(units(5 * UNIT_ZATS), Some(5));
         assert_eq!(units(25 * UNIT_ZATS), Some(25));
+        assert_eq!(units(100 * UNIT_ZATS), Some(100)); // 1 ZEC
+        assert_eq!(units(2500 * UNIT_ZATS), Some(2500)); // 25 ZEC
         for zats in [
             0,
             1,
             UNIT_ZATS - 1,
             2 * UNIT_ZATS,
             5 * UNIT_ZATS + 1,
+            10 * UNIT_ZATS,
+            5000 * UNIT_ZATS,
             u64::MAX,
         ] {
             assert_eq!(units(zats), None, "{zats}");

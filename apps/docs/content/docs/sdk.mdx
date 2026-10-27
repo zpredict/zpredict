@@ -66,7 +66,7 @@ const memo = await encodeMemo(tag, keys);       // 512 bytes; fresh ephemeral ke
 const uri = depositUri(escrowUa, 5, memo);      // ZIP 321: zcash:<ua>?amount=0.05&memo=…
 ```
 
-`DENOMINATIONS` is `[1, 5, 25]` units; `depositUri` refuses any other amount. `unitsToZec(5)` is `"0.05"`.
+`DENOMINATIONS` is `[1, 5, 25, 100, 500, 2500]` units; `depositUri` refuses any other amount. `splitDeposit(37)` is `[25, 5, 5, 1, 1]`, and `depositRequest(escrow, parts)` pays them all in one ZIP 321 request (`address.i` / `amount.i` / `memo.i`). `unitsToZec(5)` is `"0.05"`.
 
 ## Withdrawals
 

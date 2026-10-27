@@ -23,9 +23,9 @@ A market needs a price. Each crossing batch reveals one clearing price per marke
 
 Orders only cross within the batch they land in and don't rest between batches. On the demo, a judge account adds that counter-order from itself automatically, a labelled self-trade.
 
-## Why fixed deposit sizes?
+## Can I deposit any amount?
 
-0.01, 0.05 and 0.25 ZEC. An odd amount would be a fingerprint on chain; other amounts are never credited.
+Yes, from 0.01 ZEC in steps of 0.01. The app splits it into the sizes the relayers credit (0.01, 0.05, 0.25, 1, 5 and 25 ZEC) and pays them in one transaction, so no single note is a one-off amount. The chain sees nothing either way (shielded). The relayers see the notes arrive together, so they can add up the total.
 
 ## Can a relayer steal from me or trade as me?
 

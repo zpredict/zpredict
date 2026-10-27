@@ -1,6 +1,6 @@
 {
   "unitZats": 1000000,
-  "denominations": [1, 5, 25],
+  "denominations": [1, 5, 25, 100, 500, 2500],
   "relayers": [
     {"secret": "10171e050c333a21282f565d444b727960676e959c838ab1b8bfa6add4dbc2c9", "public": "b7c7f5cb814bfc9ca9093b603b5791125c88b3185a83f37782804e07bb871914"},
     {"secret": "20272e353c030a11181f666d747b424950575ea5acb3ba81888f969de4ebf2f9", "public": "e81b2473c1399663601f1fb867ebee40412abf371469a30243ab3dc470773b4b"},

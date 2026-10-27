@@ -530,3 +530,51 @@
 		overflow-x: auto;
 	}
 }
+
+/* Deposit: any amount, split into credited notes. */
+.deposit__amount {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 10px 0 8px;
+}
+
+.deposit__input {
+	width: 180px;
+	height: 48px;
+	padding: 0 14px;
+	border: 1px solid var(--line);
+	background: transparent;
+	color: var(--zp-text);
+	font: inherit;
+	font-size: 20px;
+}
+
+.deposit__input:focus {
+	border-color: var(--zp-lime);
+	outline: none;
+}
+
+.deposit__quick {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 8px;
+}
+
+.deposit__split {
+	display: block;
+	font-size: 12px;
+	line-height: 1.6;
+}
+
+.deposit__parts {
+	margin-top: 12px;
+	font-size: 12px;
+}
+
+.deposit__parts ol {
+	display: grid;
+	gap: 6px;
+	margin: 8px 0 0;
+}

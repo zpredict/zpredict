@@ -27,7 +27,7 @@ Relayer URLs are baked in at build time from `NEXT_PUBLIC_RELAYERS="url0,url1,ur
 The balance is read on load, on window focus, on Refresh (wallet page) and once 10-30 s after a batch this browser had an order or withdrawal in; it is polled (jittered) only while a deposit or faucet drop is awaited, so balance reads, which carry the account id, aren't a constant stream (#90).
 
 **Deposits** (trade page, "Deposit") work like this:
-1. Pick 0.01, 0.05 or 0.25 ZEC.
+1. Type any amount from 0.01 ZEC; the app splits it into credited sizes (0.01, 0.05, 0.25, 1, 5, 25 ZEC) paid in one multi-payment request.
 2. Create an account tag in the browser.
 3. Copy or open the ZIP 321 payment request: the escrow UA, the exact amount, and a memo giving each relayer (encrypted to its `GET /memo-key`) the account id and its own share of the tag, never the tag. Every view builds a fresh memo.
 
