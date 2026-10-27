@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import PortfolioScreen from "@/components/portfolio/PortfolioScreen";
 
-export const metadata: Metadata = { title: "Portfolio" };
+export const metadata: Metadata = { title: "Account" };
 
 export default function PortfolioPage() {
 	return (

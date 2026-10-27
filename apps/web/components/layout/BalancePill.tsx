@@ -1,31 +1,32 @@
 "use client";
 import Link from "next/link";
-import Amount, { USD_NOTE } from "@/components/ui/Amount";
+import { USD_NOTE } from "@/components/ui/Amount";
 import { useAccount } from "@/hooks/useAccount";
 import { usePortfolio } from "@/hooks/usePortfolio";
 import { usePrice } from "@/hooks/usePrice";
 import { usd, zec } from "@/lib/format";
 
-/** The header's portfolio total (cash + holdings, all from this browser), linking to /portfolio. */
+/** Header stats, as on Polymarket: portfolio total and cash, both computed in this browser. */
 export default function BalancePill() {
 	const { tag } = useAccount();
 	const { total, cash } = usePortfolio();
 	const price = usePrice();
 	if (!tag) return null;
+	const stat = (label: string, v: bigint | number | null) => (
+		<span className="hstat">
+			<span className="hstat__k">{label}</span>
+			<span
+				className="hstat__v num"
+				title={v !== null && price ? `${usd(v, price.zecUsd)}. ${USD_NOTE}` : undefined}
+			>
+				{v === null ? "…" : `${zec(v)} ZEC`}
+			</span>
+		</span>
+	);
 	return (
-		<Link
-			className="balance"
-			href="/portfolio/"
-			title={[
-				cash === null ? "" : `Cash ${zec(cash)} ZEC.`,
-				"Combined in your browser from three XOR shares.",
-				total !== null && price ? `${usd(total, price.zecUsd)}. ${USD_NOTE}` : "",
-			]
-				.filter(Boolean)
-				.join(" ")}
-		>
-			<span className="balance__k">Portfolio</span>
-			{total === null ? "…" : <Amount halfTicks={total} usd={false} />}
+		<Link aria-label="Account and portfolio" className="hstats" href="/portfolio/">
+			{stat("Portfolio", total)}
+			{stat("Cash", cash)}
 		</Link>
 	);
 }
