@@ -52,7 +52,7 @@ export default function WithdrawAmount({ value, max, onChange }: Props) {
 					onChange={(e) => toggle(e.target.checked)}
 					type="checkbox"
 				/>
-				<span>I understand this amount is distinctive</span>
+				<span>Other amount (I understand it is distinctive)</span>
 			</label>
 		</>
 	);

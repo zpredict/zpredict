@@ -1,6 +1,6 @@
 "use client";
 import type { FaucetStatus } from "@zpredict/sdk";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Pane from "@/components/ui/Pane";
@@ -29,7 +29,7 @@ function Progress({ phase }: { phase: Phase }) {
 			</p>
 			{phase.k !== "credited" && (
 				<p className="dim">
-					Each relayer credits it after 10 confirmations (about 13 minutes on testnet). This page
+					Each relayer credits it after 10 confirmations (about 5–7 minutes on testnet). This page
 					can stay open; your balance updates on its own.
 				</p>
 			)}
@@ -66,7 +66,21 @@ function StatusList({ status, down }: { status: FaucetStatus | null; down: boole
 }
 
 /** /faucet: 0.05 testnet ZEC into this browser's own account, credited like any deposit. */
+/**
+ * The CSP that lets Turnstile load is a header on /faucet/ only, and a client-side navigation
+ * keeps the first page's CSP. So a visit that started on another route reloads once.
+ */
+function useFaucetDocument() {
+	useEffect(() => {
+		const first = performance.getEntriesByType("navigation")[0] as
+			| PerformanceNavigationTiming
+			| undefined;
+		if (first && !new URL(first.name).pathname.startsWith("/faucet")) location.reload();
+	}, []);
+}
+
 export default function FaucetScreen() {
+	useFaucetDocument();
 	const { status, down, phase, request, tag } = useFaucet();
 	const { create } = useAccount();
 	const widget = useRef<HTMLDivElement>(null);

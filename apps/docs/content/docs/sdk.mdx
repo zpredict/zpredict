@@ -53,7 +53,7 @@ if (res.status === "filled" && res.fill?.filled) {
 
 - `side`: `0` = YES, `1` = NO. `price`: 1..=99. `size` ≤ `MAX_SIZE` (1,000,000).
 - `getFill` returns `pending`, `unfilled` (expired before batching) or `filled` with the decoded record; it throws if the relayers disagree.
-- `submitWithCounterparty(relayers, order)` is the **demo** counterparty: it also sends `counterOrder(order)` (the other side at `100 − price`, same account), so a lone judge sees a self-trade fill that nets out at resolution.
+- `submitWithCounterparty(relayers, order)` is the **demo** counterparty: it also sends `counterOrder(order)` (the other side at `100 − price`, same account), so a lone trader sees a self-trade fill that nets out at resolution.
 
 ## Deposits
 

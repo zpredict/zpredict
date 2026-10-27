@@ -12,8 +12,8 @@ import {
 	useState,
 } from "react";
 import { POLL_MS } from "@/lib/config";
-import { fetchFill, type OrderInput, placeOrder, placeWithCounterparty } from "@/lib/relayer";
-import { missed } from "@/lib/shares";
+import { fetchFill, type OrderInput, placeWithCounterparty } from "@/lib/relayer";
+import { keepOrders, mergeOrders, missed } from "@/lib/shares";
 import { KEYS, loadJson, save } from "@/lib/storage";
 import { useAccount } from "./useAccount";
 import { usePoll } from "./usePoll";
@@ -39,10 +39,12 @@ export interface MyOrder extends OrderInput {
 
 interface Orders {
 	orders: MyOrder[];
-	place: (o: OrderInput, counterparty?: boolean) => Promise<void>;
+	/** Sends `o` with its demo counterparty (a self-trade from the same account, #103). */
+	place: (o: OrderInput) => Promise<void>;
 }
 
 const Ctx = createContext<Orders | null>(null);
+/** Unfilled orders kept as history. */
 const KEEP = 50;
 
 export function useOrders(): Orders {
@@ -72,7 +74,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
 	const update = useCallback((fn: (all: MyOrder[]) => MyOrder[]) => {
 		setOrders((prev) => {
-			const next = fn(prev).slice(0, KEEP);
+			const base = mergeOrders(prev, loadJson<MyOrder[]>(KEYS.orders, []));
+			const next = keepOrders(fn(base), KEEP);
 			save(KEYS.orders, JSON.stringify(next));
 			return next;
 		});
@@ -86,8 +89,9 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 	usePoll(
 		async () => {
 			for (const { orderId, tokens = [] } of pending) {
-				const r = await fetchFill(orderId, tokens);
-				if (r.status === "pending") continue;
+				// One order the relayers disagree on must not stall the older ones behind it.
+				const r = await fetchFill(orderId, tokens).catch(() => null);
+				if (!r || r.status === "pending") continue;
 				const done = { status: r.status, fill: r.fill, fillShares: r.fillShares };
 				update((all) => all.map((o) => (o.orderId === orderId ? { ...o, ...done } : o)));
 				refreshSoon();
@@ -98,13 +102,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 	);
 
 	const place = useCallback(
-		async (o: OrderInput, counterparty = false, retry = false) => {
+		async (o: OrderInput, retry = false) => {
 			if (!tag) throw new Error("no account");
-			if (!counterparty) {
-				const p = await placeOrder(o, tag);
-				update((all) => [mine(o, p), ...all]);
-				return;
-			}
 			const { order, counter } = await placeWithCounterparty(o, tag);
 			const c: OrderInput = { ...o, side: o.side === 0 ? 1 : 0, price: 100 - o.price };
 			update((all) => [
@@ -127,7 +126,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 			const ids = [o.orderId, c.orderId];
 			update((all) => all.map((x) => (ids.includes(x.orderId) ? { ...x, retry: true } : x)));
 			const { market, side, price, size } = o;
-			place({ market, side, price, size }, true, true).catch(() => {
+			place({ market, side, price, size }, true).catch(() => {
 				// unreachable relayers: the pair is already marked retried, so it says "Try again"
 			});
 		}

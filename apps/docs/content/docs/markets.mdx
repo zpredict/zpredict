@@ -44,4 +44,4 @@ The two forms have disjoint keys, so one can never verify as the other. [`verify
 
 ## Capacity
 
-One clearing run has `DEFAULT_MARKETS = 24` market slots. The demo uses all of them: NU7 activation, Ironwood ≥ 900,000 notes, 21 mirrored Polymarket markets, and the hourly rolling market. The rolling generator never opens a market past the cap; a 25th open market would need a second MPC run per window. The live list is in [`deploy/production/relayer.toml`](https://github.com/zpredict/zpredict/blob/main/deploy/production/relayer.toml) and at `GET /markets`.
+One clearing run has `DEFAULT_MARKETS = 24` market slots. The demo mirrors 24 Polymarket markets plus the rolling block market; the rolling generator opens a window only while fewer than 24 markets are open (some mirrored ones close first), so the cap is never exceeded. A 25th open market would need a second MPC run per window. The live list is in [`deploy/production/relayer.toml`](https://github.com/zpredict/zpredict/blob/main/deploy/production/relayer.toml) and at `GET /markets`.

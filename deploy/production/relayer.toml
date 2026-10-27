@@ -39,8 +39,8 @@ memo_key_file = "/data/escrow/memo.pub"
 # new "Will mainnet block H contain ≥ N shielded actions?" with H one hour ahead (48 blocks
 # at 75 s; 144 at 25 s from NU7) and N the median of the 24 blocks before, so YES/NO are
 # about even. Ids are 1,000,000 + window number, the same on all three relayers.
-# Cap: one MPC run clears 24 markets (DEFAULT_MARKETS) = the 21 markets below + 1 rolling
-# market, which interval = horizon guarantees. Resolved ones stay 24 h as history.
+# Cap: one MPC run clears 24 markets (DEFAULT_MARKETS) ; the rolling generator opens a window
+# only while fewer than 24 markets are open. Resolved ones stay 24 h as history.
 [rolling]
 plugin = "shielded-actions"
 interval_secs = 3600

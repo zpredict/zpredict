@@ -31,8 +31,6 @@ export const avgCents = (f: Fill) => (f.size ? f.totalCost / f.size / 2 : 0);
 
 export const sideName = (s: Side) => (s === 0 ? "YES" : "NO");
 
-export const shortHex = (h: string, n = 8) => h.slice(0, n);
-
 /** Split hex into 2-char bytes for display. */
 export const bytes = (h: string) => h.match(/../g) ?? [];
 
