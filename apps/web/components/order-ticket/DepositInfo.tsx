@@ -47,7 +47,7 @@ export default function DepositInfo({ open = false }: { open?: boolean }) {
 			<summary>Deposit</summary>
 			<ol className="deposit__steps">
 				<li>
-					How much? Any amount from 0.01 ZEC, in steps of 0.01.
+					Amount, from 0.01 ZEC:
 					<span className="deposit__amount">
 						<input
 							aria-label="Deposit amount in ZEC"
@@ -66,26 +66,26 @@ export default function DepositInfo({ open = false }: { open?: boolean }) {
 						))}
 					</span>
 					{units === null ? (
-						<span className="ticket__err">Enter a positive amount in steps of 0.01 ZEC.</span>
+						<span className="ticket__err">Use steps of 0.01 ZEC.</span>
 					) : parts === null ? (
 						<span className="ticket__err">
-							That splits into more than {MAX_DEPOSIT_NOTES} notes: deposit it in more than one go.
+							Over {MAX_DEPOSIT_NOTES} notes: split it into two deposits.
 						</span>
 					) : (
 						<span className="deposit__split dim">
-							Sent as {breakdown(parts)}. The relayers only credit these sizes, so no deposit is a
-							one-off amount.
+							Sent as {breakdown(parts)}
 							{parts.length > 1 &&
-								" They see the notes arrive in one transaction, so they can add up the total; the chain sees nothing."}
+								", in one transaction (the relayers can see the total; the chain can't)"}
+							.
 						</span>
 					)}
 				</li>
 				<li>
 					{tag ? (
-						"Your account tag stays in this browser. It is the only key to your balance: back it up (Account key)."
+						"Your account key stays in this browser. Back it up below."
 					) : (
 						<>
-							Create an account tag. It is made in this browser and never leaves it in clear.{" "}
+							Create your account (a key kept in this browser).{" "}
 							<Button onClick={create} variant="ghost">
 								Create account tag
 							</Button>
@@ -93,21 +93,19 @@ export default function DepositInfo({ open = false }: { open?: boolean }) {
 					)}
 				</li>
 				<li>
-					From a shielded testnet wallet, pay{" "}
+					Pay{" "}
 					<strong>
 						<ZecIcon /> {zec} testnet ZEC
 					</strong>{" "}
-					with this payment request. It pays the escrow&apos;s unified address (Ironwood receiver
-					only, FROST 2-of-3), and each note carries a memo giving each relayer only its own share
-					of your tag. Don&apos;t edit the amounts or the memos.
+					with this request. Don&apos;t edit the amounts or memos.
 					{request && (
 						<>
 							{request.parts.length <= QR_NOTES ? (
 								<DepositQr uri={request.uri} />
 							) : (
 								<p className="dim">
-									{request.parts.length} notes are too many for one QR code. Open the request in a
-									wallet on this device, or scan the notes one by one below.
+									Too many notes for one QR code: open it in a wallet here, or scan them one by one
+									below.
 								</p>
 							)}
 							<code className="deposit__ua">{request.uri}</code>
@@ -120,9 +118,7 @@ export default function DepositInfo({ open = false }: { open?: boolean }) {
 							</span>
 							{request.parts.length > 1 && (
 								<details className="deposit__parts" open={request.parts.length > QR_NOTES}>
-									<summary>
-										Wallet can&apos;t open a multi-payment request? Pay the notes one by one
-									</summary>
+									<summary>Pay the notes one by one</summary>
 									<ol>
 										{request.parts.map((p, i) => (
 											// biome-ignore lint/suspicious/noArrayIndexKey: parts of one request, never reordered
@@ -142,12 +138,11 @@ export default function DepositInfo({ open = false }: { open?: boolean }) {
 					)}
 				</li>
 				<li>
-					After 10 confirmations each relayer credits your balance.
+					Credited after 10 confirmations (about 12 min).
 					{request && <DepositStatus />}
 				</li>
 				<li>
-					No testnet wallet? The <Link href="/faucet/">faucet</Link> sends 0.05 ZEC straight into
-					this account.
+					No testnet ZEC? Use the <Link href="/faucet/">faucet</Link>.
 				</li>
 			</ol>
 			{!escrowReady && (

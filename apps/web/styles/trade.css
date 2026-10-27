@@ -77,11 +77,13 @@
 
 .deposit__ua {
 	display: block;
+	overflow: hidden;
 	margin: 8px 0;
 	padding: 10px;
 	border: 1px solid var(--line);
 	color: var(--zp-glyph);
-	word-break: break-all;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .deposit__actions {
