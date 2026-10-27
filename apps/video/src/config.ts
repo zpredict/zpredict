@@ -56,6 +56,11 @@ const TRADE: Record<"start" | "send" | "shares" | "view" | "close", number> & {
 	fill: number | null;
 } = { start: 1.5, send: 9.56, shares: 9.8, view: 15.4, fill: 22.4, close: 26.04 };
 
+/** Marks in deposit.mp4 and account.mp4 (shots.json): typing the amount, the split and QR; the
+ *  account page, its P&L crosshair and the positions table. */
+const DEPOSIT = { type: 1.5, split: 4, qr: 8 };
+const ACCOUNT = { chart: 3.5, table: 8 };
+
 /** The fill landing: each relayer's FILL row gets its share of the fill. */
 const fillShot = (fill: number): Shot => ({
 	kind: "clip",
@@ -108,12 +113,23 @@ export const SHOTS: Shot[] = [
 	// C: the core workflow, one real order through the live relayers.
 	{
 		kind: "clip",
-		dur: 4.2,
-		clip: "trade",
-		at: TRADE.start - 0.7,
-		source: "account funded by a real testnet deposit",
-		caption: "A real testnet deposit funds the account. No mock balances.",
-		vo: "Your account is funded by a real testnet deposit from our faucet. No mock balances.",
+		dur: 5,
+		clip: "deposit",
+		at: DEPOSIT.type - 0.5,
+		cam: { x: 960, y: 470, w: 1100, at: 0.3 },
+		source: "app.zpredict.site/deposit · live",
+		caption: "Deposit any amount. It is split into standard notes.",
+		vo: "Deposit any amount from your own Zcash wallet. It is split into standard notes, so no amount stands out.",
+	},
+	{
+		kind: "clip",
+		dur: 5,
+		clip: "deposit",
+		at: DEPOSIT.qr,
+		cam: { x: 780, y: 540, w: 1100, at: 0.2 },
+		source: "zip 321 payment request",
+		caption: "One request, one shielded transaction, from any testnet wallet.",
+		vo: "One request, one shielded transaction.",
 	},
 	{
 		kind: "clip",
@@ -153,8 +169,17 @@ export const SHOTS: Shot[] = [
 		at: TRADE.close,
 		cam: { x: 1680, y: 560, w: 780, at: 0.3 },
 		source: "your browser",
-		caption: "Only your browser XORs the shares back: filled 1 YES share at 92¢.",
-		vo: "Only your browser can put them back together: one YES share, at ninety-two cents.",
+		caption: "Only your browser XORs the shares back into the fill.",
+		vo: "Only your browser can put them back together.",
+	},
+	{
+		kind: "clip",
+		dur: 6,
+		clip: "account",
+		at: ACCOUNT.chart - 1,
+		source: "your account · computed in your browser",
+		caption: "Portfolio and P&L, computed only in your browser.",
+		vo: "Your portfolio and profit and loss are computed only in your browser. The relayers never see them.",
 	},
 	{
 		kind: "clip",
