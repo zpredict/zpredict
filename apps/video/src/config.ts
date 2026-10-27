@@ -191,13 +191,16 @@ export const SHOTS: Shot[] = [
 	{ kind: "end", dur: 5, vo: "zPredict. Price public. Participants private." },
 ];
 
-/** Narration starts this long into a shot and the shot runs at least this long after it. */
-export const VO_LEAD = 0.25;
-const VO_TAIL = 0.6;
+/** Narration starts this long into a shot, and the shot cuts this long after it ends: with the
+ *  clips trimmed of silence, about half a second between lines, so the read flows. */
+export const VO_LEAD = 0.15;
+const VO_TAIL = 0.4;
 
-/** A shot's length: its own `dur`, stretched when its narration needs longer. */
-export const shotDur = (shot: Shot, i: number) =>
-	Math.max(shot.dur, VO_LEAD + ((voice as Record<string, number>)[i] ?? 0) + VO_TAIL);
+/** A narrated shot lasts as long as its line; a silent one keeps its own `dur`. */
+export const shotDur = (shot: Shot, i: number) => {
+	const line = (voice as Record<string, number>)[i];
+	return shot.vo && line ? VO_LEAD + line + VO_TAIL : shot.dur;
+};
 
 /** Frames a caption takes to fade in or out. */
 export const FADE = 8;
