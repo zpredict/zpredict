@@ -6,9 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import CopyButton from "@/components/ui/CopyButton";
 import { useAccount } from "@/hooks/useAccount";
 import { DOCS_URL } from "@/lib/config";
-
-/** A colour from the public account id, so the avatar is recognisable but carries no secret. */
-export const hue = (id: string) => Number.parseInt(id.slice(0, 4), 16) % 360;
+import GeneratedAvatar from "./GeneratedAvatar";
 
 const LINKS = [
 	{ href: "/portfolio/", label: "Account & portfolio" },
@@ -46,7 +44,6 @@ export default function AccountMenu() {
 	}, [open]);
 	if (!tag) return null;
 	const id = accountHex(tag);
-	const avatar = { background: `hsl(${hue(id)} 70% 55%)` };
 	const leave = () => {
 		if (
 			!window.confirm(
@@ -66,13 +63,14 @@ export default function AccountMenu() {
 				aria-label="Account menu"
 				className="acct__avatar"
 				onClick={() => setOpen((o) => !o)}
-				style={avatar}
 				type="button"
-			/>
+			>
+				<GeneratedAvatar name={id} />
+			</button>
 			{open && (
 				<div className="acct__menu" role="menu">
 					<div className="acct__head">
-						<span aria-hidden="true" className="acct__avatar acct__avatar--big" style={avatar} />
+						<GeneratedAvatar name={id} size={48} />
 						<div>
 							<p className="acct__name">Your account</p>
 							<p className="acct__id">
