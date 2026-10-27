@@ -289,12 +289,6 @@
 	color: #ff6b6b;
 }
 
-.pwithdraw {
-	padding: 20px 22px;
-	border: 1px solid var(--line);
-	background: #0b0b0b;
-}
-
 .ptabs {
 	display: flex;
 	gap: 6px;

@@ -21,7 +21,7 @@ interface Account {
 	balance: bigint | null;
 	/** `waiting`: the relayers' table is full, so this account's orders can't fill yet. */
 	seat: Seat | null;
-	/** Judge-mode account (the relayers' `mock` flag): never withdrawable (#104). Null until read. */
+	/** Mock-credit account (a judge claim, local/regtest only; the relayers' `mock` flag): never withdrawable (#104). Null until read. */
 	mock: boolean | null;
 	/** A fresh tag made in this browser, for a real deposit; never sent anywhere in clear. */
 	create: () => string;

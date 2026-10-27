@@ -52,32 +52,6 @@ body:not(:has(.tm)) .topbar::before {
 	gap: 6px;
 }
 
-.balance {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	height: var(--zp-control-h);
-	padding: 0 16px;
-	border: 1px solid var(--zp-lime);
-	background: #050505b3;
-	-webkit-backdrop-filter: blur(40px);
-	backdrop-filter: blur(40px);
-	color: var(--zp-lime);
-	font-size: 14px;
-	white-space: nowrap;
-	transition:
-		color 250ms ease,
-		border-color 250ms ease,
-		background-color 250ms ease;
-}
-
-.balance__k {
-	color: var(--zp-muted);
-	font-size: 11px;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
-}
-
 .topbar.is-on-light .brand {
 	color: var(--zp-ink);
 }
@@ -95,16 +69,6 @@ body:not(:has(.tm)) .topbar::before {
 	background: var(--zp-bg);
 }
 
-.topbar.is-on-light .balance {
-	border-color: var(--zp-ink);
-	background: transparent;
-	color: var(--zp-ink);
-}
-
-.topbar.is-on-light .balance__k {
-	color: var(--zp-ink-2);
-}
-
 @media (max-width: 900px) {
 	.topbar {
 		display: flex;
@@ -120,16 +84,6 @@ body:not(:has(.tm)) .topbar::before {
 		height: 28px;
 	}
 	.topbar__right .cta {
-		display: none;
-	}
-	.balance {
-		padding: 0 10px;
-		font-size: 13px;
-	}
-}
-
-@media (max-width: 480px) {
-	.balance__k {
 		display: none;
 	}
 }

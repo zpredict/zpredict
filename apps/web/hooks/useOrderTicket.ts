@@ -13,7 +13,7 @@ interface Check {
 	amount: number;
 	shares: number;
 	each: number;
-	/** Worst case, half-ticks: the pair's when the counterparty is on. */
+	/** Worst case, half-ticks: the self-trade pair's. */
 	worst: number;
 	balance: bigint | null;
 }
@@ -42,33 +42,32 @@ export function useOrderTicket(market: Market, initialSide: Side = 0) {
 	const { tag, balance, seat } = useAccount();
 	const { place } = useOrders();
 	const [side, setSideState] = useState<Side>(initialSide);
-	const [price, setPrice] = useState(() => defaultPrice(market, initialSide, 0));
+	const [price, setPrice] = useState(() => defaultPrice(market, initialSide));
 	const [amount, setAmount] = useState(0.01);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState("");
 	// Demo counterparty (#103), for every account: each order goes out with its exact
 	// opposite from the same account, so it fills in the next batch even with nobody else
 	// trading (a self-trade with real testnet funds that nets out; the fill is labelled).
-	// Edge 0: a self-trade fills at its own limit, which becomes the public price.
-	const counterparty = true;
+	// A self-trade fills at its own limit, which becomes the public price.
 	const setSide = (s: Side) => {
 		setSideState(s);
-		setPrice(defaultPrice(market, s, 0));
+		setPrice(defaultPrice(market, s));
 	};
 
 	const priced = Number.isInteger(price) && price >= 1 && price <= 99;
 	const { each, shares, cost, payout } = priced
 		? quote(amount, price)
 		: { each: 0, shares: 0, cost: 0, payout: 0 };
-	// With the counterparty the pair costs 0.01 ZEC per share whatever the price.
-	const worst = counterparty ? shares * PAYOUT : cost;
+	// The pair costs 0.01 ZEC per share whatever the price.
+	const worst = shares * PAYOUT;
 	const problem = ticketProblem({ seat, price, amount, shares, each, worst, balance });
 
 	/** The most this balance can stake: all of it, or what keeps the pair's cost covered. */
 	const max =
 		balance === null
 			? 0
-			: counterparty && priced
+			: priced
 				? Number(zec((balance / BigInt(PAYOUT)) * BigInt(each)))
 				: Number(zec(balance));
 
@@ -77,7 +76,7 @@ export function useOrderTicket(market: Market, initialSide: Side = 0) {
 		setBusy(true);
 		setError("");
 		try {
-			await place({ market: market.id, side, price, size: shares }, counterparty);
+			await place({ market: market.id, side, price, size: shares });
 		} catch {
 			setError("Could not reach all three relayers. A partial order never opens and is dropped.");
 		} finally {
@@ -104,7 +103,6 @@ export function useOrderTicket(market: Market, initialSide: Side = 0) {
 		error: error || problem,
 		canSubmit: Boolean(tag) && !problem && !busy,
 		hasAccount: Boolean(tag),
-		counterparty,
 		submit,
 	};
 }
