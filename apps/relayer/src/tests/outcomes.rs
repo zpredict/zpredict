@@ -177,6 +177,7 @@ async fn a_polymarket_resolution_is_signed_over_its_source() {
         price: 92.5,
         url: "https://polymarket.com/market/house".into(),
         updated_at: None,
+        volume: Some(1234.5),
         history: vec![Point { t: 1, price: 90.0 }],
     };
     let http = crate::api::router(crate::api::Api {
@@ -216,7 +217,7 @@ async fn a_polymarket_resolution_is_signed_over_its_source() {
     assert_eq!(
         m["reference"],
         json!({"source": "polymarket", "price": 92.5, "url": "https://polymarket.com/market/house",
-               "history": [{"t": 1, "price": 90.0}]})
+               "volume": 1234.5, "history": [{"t": 1, "price": 90.0}]})
     );
     let m: Market = serde_json::from_value(m.clone()).unwrap();
     assert_eq!(m.resolution(), Some(resolution.clone()));

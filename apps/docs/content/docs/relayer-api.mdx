@@ -44,13 +44,13 @@ After a batch, **every** batched order is `filled` with a `fillShare`, because a
   rolling?: true,
   category?, event?: {id, title, outcome?}, opensAt?, rules?,  // display only, never signed
   lastPrice?: number, history?: number[], historyAt?: number[],
-  reference?: {source: "polymarket", price, url, updatedAt?, history: [{t, price}]},
+  reference?: {source: "polymarket", price, url, updatedAt?, volume?, history: [{t, price}]},
 }
 ```
 
 - `lastPrice` is cents per YES contract at the latest cross (the midpoint, so it can end in .5); `history` the last clearing prices, oldest first. Both are absent until the first fill. They are public by design: the batch reveals that a cross happened and at what price, never who, which orders, how many or what size.
 - `historyAt` is optional: the app falls back to one point per cross when a relayer doesn't serve it ([#121](https://github.com/zpredict/zpredict/issues/121)).
-- `reference` is mirrored markets only, fetched by the relayers, never by the browser.
+- `reference` is mirrored markets only, fetched by the relayers, never by the browser. `volume` is Polymarket's lifetime volume in USD (public data about Polymarket's book); zPredict never publishes its own sizes or counts.
 
 ## Encodings
 

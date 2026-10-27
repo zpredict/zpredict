@@ -51,6 +51,9 @@ pub struct GammaMarket {
     /// When Polymarket last updated the record (RFC 3339).
     #[serde(default)]
     pub updated_at: Option<String>,
+    /// Lifetime traded volume on Polymarket, USD.
+    #[serde(default)]
+    pub volume_num: Option<f64>,
 }
 
 fn json_string<'de, D: Deserializer<'de>, T: DeserializeOwned>(
@@ -126,6 +129,7 @@ mod tests {
         assert_eq!(g.resolved_yes(), None);
         assert_eq!(g.yes_cents(), Some(66.5));
         assert!(g.yes_token().is_some());
+        assert_eq!(g.volume_num.map(f64::round), Some(2_325_413.0));
         // A proposed (not yet final) UMA answer is not an outcome either.
         assert_eq!(fixture("proposed").resolved_yes(), None);
     }
