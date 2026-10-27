@@ -51,6 +51,15 @@ One full cycle on the live demo (2026-10-24 UTC), with a fresh, non-judge accoun
 
 The run found three bugs on the way to the payout, all fixed: the escrow wallet was never synced (#151, #152), the payout's temporary files went to an unwritable directory (#155), and a failure before broadcast left the withdrawal stuck at `paying` (#156). The stuck withdrawal was reset by the operator after checking that the escrow had sent nothing.
 
+A second run on 2026-10-27 UTC, after judge mode was switched off (every balance a real deposit) and deposits of any amount were added:
+
+| Step | Evidence |
+|---|---|
+| Deposit 0.31 TAZ as three notes (0.25 + 0.05 + 0.01) in one transaction, from one ZIP 321 multi-payment request paid with `zcash-devtool` | txid `6978b674498f618b6750e45eaa796e09af47a44e6397f62eb4232e510d703cca` |
+| Credited by all three relayers | 5 minutes after sending |
+| Order filled inside MPC | YES on market 11 with its self-trade counter-order; filled 42 s after sending |
+| Withdrawal paid, 2-of-3 | txid `a61b300557ec71f98daa7642b70a1a73a37bab9c537ddf423798889b73be0d8c`, 3 minutes after the request |
+
 Check a txid against your own node: `zcash-cli getrawtransaction <txid> 1` should show version 6, Ironwood actions, and no transparent inputs or outputs.
 
 ## Check the live claims

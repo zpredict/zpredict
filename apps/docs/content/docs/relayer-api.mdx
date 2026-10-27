@@ -25,7 +25,7 @@ Each relayer is its own origin: `https://r0.zpredict.site`, `https://r1.zpredict
 | `GET /memo-key` | `{relayer, memoKey: hex64}`: this relayer's X25519 public key for its deposit-memo slot; `404` without one |
 | `GET /group-key` | `{relayer, groupKey: hex64, threshold: 2}`: the escrow's FROST group key, which outcome signatures verify against; `404` while signing is off |
 | `GET /view?after=<seq>` | `{items: [{seq, kind: "order"\|"fill", digest: hex32}]}`: one item per share received, as `BLAKE2b-128(personal "zPredictViewItem", share)`; never the share or orderId. Powers the Relayer View |
-| `POST /judge/claim` `{account: hex16, keyShare: hex32}` | `200 {}`. **Mock, testnet only.** A repeat for the same id and share is `200` with no second credit; a different share for a known id is `409`; a full table is `503` |
+| `POST /judge/claim` `{account: hex16, keyShare: hex32}` | `200 {}`. **Mock, testnet only; off on the hosted relayers** (`judge = false`). A repeat for the same id and share is `200` with no second credit; a different share for a known id is `409`; a full table is `503` |
 | `POST /withdrawals` `{withdrawalId: hex32, share: hex32, amount: half-ticks, address}` | `202 {}`; only with `[settlement]` on |
 | `GET /withdrawals/:withdrawalId` | `{status: "pending"\|"refused"\|"debited"\|"paying"\|"paid", txid?, payout?: "retrying"}` |
 

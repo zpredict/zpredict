@@ -26,16 +26,15 @@ const tag = newTag();               // 16 random bytes, hex: the account's crede
 ## Accounts
 
 ```ts
-import { accountHex, claimJudge, getAccount, keyShares, TableFullError } from "@zpredict/sdk";
+import { accountHex, getAccount, keyShares } from "@zpredict/sdk";
 
 accountHex(tag);   // public id, hex16
 keyShares(tag);    // [s0, s1, s2]: relayer i's share of the tag, deterministic
 
-await claimJudge(relayers, tag);   // Judge mode (testnet): mock credit; safe to retry
-const { balance, seat, mock } = await getAccount(relayers, tag); // balance in half-ticks
+const { balance, seat } = await getAccount(relayers, tag); // balance in half-ticks
 ```
 
-`claimJudge` throws `TableFullError` when the balance table has no free row. `getBalance(relayers, tag)` returns only the balance.
+An account is funded by a deposit (below). `getAccount` throws if the three balance shares combine to more than all ZEC, which means they come from different batches. `claimJudge` (mock credit) works only against relayers with `judge = true`, for local and regtest runs.
 
 ## submitOrder
 
