@@ -16,7 +16,7 @@
 //! one MPC run clears) close after its start height. With the 23 configured markets and
 //! `horizon_secs = interval_secs`, that is one rolling market open at a time: 23 + 1 = 24.
 
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 
 use serde::Deserialize;
 use serde_json::json;
@@ -135,10 +135,11 @@ impl Rolling {
         Ok(counts.get(counts.len() / 2).copied().unwrap_or(0))
     }
 
-    /// Drops the oldest resolved rolling markets past `keep_resolved`.
-    pub fn prune(&self, markets: &mut Vec<Market>) {
+    /// Drops the oldest resolved rolling markets past `keep_resolved`, but only ones whose
+    /// winners are paid (in `paid`): an unpaid market dropped from the list is never paid.
+    pub fn prune(&self, markets: &mut Vec<Market>, paid: &BTreeSet<u32>) {
         let mut done: Vec<u32> = (markets.iter())
-            .filter(|m| m.rolling && m.status == Status::Resolved)
+            .filter(|m| m.rolling && m.status == Status::Resolved && paid.contains(&m.id))
             .map(|m| m.id)
             .collect();
         done.sort_unstable();
@@ -283,10 +284,17 @@ mod tests {
             m.status = Status::Resolved;
             list.push(m);
         }
-        list[3].status = Status::Open;
-        r.prune(&mut list);
-        let ids: Vec<u32> = list.iter().map(|m| m.id - list[0].id).collect();
-        assert_eq!(ids, [0, 1, 2], "newest two resolved plus the open one");
+        let first = list[0].id;
+        // Regression: market 0 resolved but its winners are not paid yet, so it stays; the
+        // oldest paid one past the two kept goes.
+        let paid: BTreeSet<u32> = [first + 1, first + 2, first + 3].into();
+        r.prune(&mut list, &paid);
+        let ids: Vec<u32> = list.iter().map(|m| m.id - first).collect();
+        assert_eq!(ids, [0, 2, 3], "unpaid kept, newest two paid kept");
+        let all: BTreeSet<u32> = list.iter().map(|m| m.id).collect();
+        r.prune(&mut list, &all);
+        let ids: Vec<u32> = list.iter().map(|m| m.id - first).collect();
+        assert_eq!(ids, [2, 3], "once paid, it goes too");
         assert_eq!(thousands(3_543_405), "3,543,405");
         assert_eq!(thousands(999), "999");
     }

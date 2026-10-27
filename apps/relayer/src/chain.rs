@@ -85,7 +85,8 @@ pub fn tick(
         }
     }
     if let Some(r) = rolling {
-        r.prune(&mut s.markets);
+        let paid = s.ledger.resolved.clone();
+        r.prune(&mut s.markets, &paid);
     }
     Ok(())
 }
