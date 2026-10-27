@@ -164,119 +164,253 @@
 	}
 }
 
-/* /portfolio: the account page, laid out like Polymarket's (two cards, then tabs). */
+/* /portfolio: the account page. Square corners, mono, lime accents (brand tokens). */
 .portfolio {
 	display: grid;
-	gap: 24px;
+	gap: 28px;
 	max-width: 1180px;
 	margin: 0 auto;
 }
 
-.portfolio__cards {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-	gap: 16px;
-}
-
-.pcard {
-	display: grid;
-	align-content: start;
-	gap: 18px;
-	padding: 22px;
-	border: 1px solid var(--line);
-	background: #0b0b0b;
-}
-
-.pcard__who {
-	display: flex;
-	align-items: center;
-	gap: 14px;
+.portfolio--empty {
+	justify-items: start;
+	max-width: 640px;
 }
 
 .portfolio__title {
-	font-size: 22px;
-	letter-spacing: -0.02em;
+	font-size: clamp(24px, 2.4vw, 32px);
+	letter-spacing: -0.03em;
 }
 
-.pcard__nums {
+.gavatar {
+	display: block;
+	flex: none;
+	border-radius: 50%;
+}
+
+.phead {
 	display: flex;
 	flex-wrap: wrap;
-	justify-content: space-between;
-	gap: 16px;
+	align-items: center;
+	gap: 20px;
+	padding-bottom: 24px;
+	border-bottom: 1px solid var(--line);
 }
 
-.pcard__right {
-	text-align: right;
+.phead__who {
+	display: grid;
+	flex: 1;
+	gap: 6px;
+	min-width: 0;
 }
 
-.pcard__k {
-	color: var(--zp-muted);
-	font-size: 11px;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
+.phead__id {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+	font-size: 13px;
 }
 
-.pcard__big {
-	margin-top: 6px;
-	font-size: clamp(22px, 2.4vw, 32px);
-}
-
-.pcard__mid {
-	margin-top: 6px;
-	font-size: 18px;
-}
-
-.pcard__actions {
+.phead__actions {
 	display: flex;
 	gap: 10px;
 }
 
-.pcard__ghost {
-	flex: 1;
+.pbtn {
 	height: var(--zp-control-h);
-	border: 1px solid var(--line);
+	padding: 0 24px;
+	border: 1px solid var(--zp-lime);
 	background: transparent;
-	color: var(--zp-text);
+	color: var(--zp-lime);
 	font: inherit;
+	font-size: 14px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
 	cursor: pointer;
+	transition:
+		background 200ms var(--zp-ease),
+		color 200ms var(--zp-ease);
 }
 
-.pcard__ghost:hover {
-	border-color: var(--zp-lime);
+.pbtn:hover,
+.pbtn[aria-expanded="true"] {
+	background: var(--zp-lime);
+	color: var(--zp-ink);
+}
+
+.ptiles {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	border: 1px solid var(--line);
+}
+
+.ptile {
+	display: grid;
+	align-content: start;
+	gap: 8px;
+	padding: 20px 22px;
+	border-left: 1px solid var(--line);
+}
+
+.ptile:first-child {
+	border-left: 0;
+	background: #0d0e0a;
+}
+
+.ptile__k {
+	color: var(--zp-muted);
+	font-size: 11px;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.ptile__v {
+	font-size: clamp(20px, 1.9vw, 28px);
+	letter-spacing: -0.02em;
+}
+
+.ptile:first-child .ptile__v {
 	color: var(--zp-lime);
 }
 
-.portfolio__table {
+.ptile__sub {
+	color: var(--zp-muted);
+	font-size: 12px;
+}
+
+.is-up {
+	color: var(--zp-lime);
+}
+
+.is-down {
+	color: #ff6b6b;
+}
+
+.pwithdraw {
+	padding: 20px 22px;
+	border: 1px solid var(--line);
+	background: #0b0b0b;
+}
+
+.ptabs {
+	display: flex;
+	gap: 6px;
+	border-bottom: 1px solid var(--line);
+}
+
+.ptabs__tab {
+	padding: 12px 16px;
+	border: 0;
+	border-bottom: 2px solid transparent;
+	background: transparent;
+	color: var(--zp-muted);
+	font: inherit;
+	font-size: 14px;
+	cursor: pointer;
+}
+
+.ptabs__tab[aria-selected="true"] {
+	border-bottom-color: var(--zp-lime);
+	color: var(--zp-text);
+}
+
+.ptabs__n {
+	margin-left: 6px;
+	padding: 1px 6px;
+	background: #ffffff14;
+	font-size: 11px;
+}
+
+.ptable {
 	width: 100%;
 	border-collapse: collapse;
 	font-size: 13px;
 }
 
-.portfolio__table th {
+.ptable th {
+	padding: 10px 10px;
 	color: var(--zp-muted);
 	font-size: 11px;
 	font-weight: inherit;
-	letter-spacing: 0.04em;
+	letter-spacing: 0.06em;
 	text-align: left;
 	text-transform: uppercase;
 }
 
-.portfolio__table th,
-.portfolio__table td {
-	padding: 12px 8px;
-	border-bottom: 1px solid var(--line);
+.ptable td {
+	padding: 14px 10px;
+	border-top: 1px solid var(--line);
+	vertical-align: middle;
 }
 
-.portfolio__table .num {
+.ptable .num {
 	text-align: right;
+	white-space: nowrap;
 }
 
-.portfolio__table a:hover {
+.ptable tbody tr:hover {
+	background: #ffffff08;
+}
+
+.ptable .is-hedge {
+	opacity: 0.55;
+}
+
+.pmarket {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-width: 280px;
+}
+
+.pmarket a:hover {
 	color: var(--zp-lime);
 }
 
-.portfolio__table .is-hedge {
+.ptag {
+	margin-left: 8px;
+	padding: 1px 6px;
+	border: 1px solid var(--line);
 	color: var(--zp-muted);
+	font-size: 10px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.opill {
+	display: inline-block;
+	min-width: 44px;
+	padding: 3px 8px;
+	font-size: 11px;
+	text-align: center;
+}
+
+.opill--yes {
+	background: #d2fc521f;
+	color: var(--zp-lime);
+}
+
+.opill--no {
+	background: #ff6b6b1f;
+	color: #ff8a8a;
+}
+
+.pempty {
+	padding: 40px 0;
+	color: var(--zp-muted);
+	text-align: center;
+}
+
+.pempty a,
+.pnote a {
+	color: var(--zp-lime);
+}
+
+.pnote {
+	max-width: 80ch;
+	font-size: 12px;
+	line-height: 1.6;
 }
 
 /* Header: portfolio and cash, then Deposit and the account avatar. */
@@ -308,18 +442,16 @@
 
 .acct__avatar {
 	display: block;
-	width: 40px;
-	height: 40px;
+	padding: 0;
 	border: 1px solid var(--line);
 	border-radius: 50%;
+	background: none;
 	cursor: pointer;
 }
 
-.acct__avatar--big {
-	width: 52px;
-	height: 52px;
-	flex: none;
-	cursor: default;
+.acct__avatar:hover,
+.acct__avatar[aria-expanded="true"] {
+	border-color: var(--zp-lime);
 }
 
 .acct__menu {
@@ -381,13 +513,19 @@
 }
 
 @media (max-width: 899.98px) {
-	.portfolio__cards {
-		grid-template-columns: minmax(0, 1fr);
+	.ptiles {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+	.ptile:nth-child(3) {
+		border-left: 0;
+	}
+	.ptile:nth-child(n + 3) {
+		border-top: 1px solid var(--line);
 	}
 	.hstats {
 		display: none;
 	}
-	.portfolio__table {
+	.ptable {
 		display: block;
 		overflow-x: auto;
 	}
