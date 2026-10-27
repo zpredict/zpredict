@@ -2,9 +2,10 @@
 import { accountHex } from "@zpredict/sdk";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import CopyButton from "@/components/ui/CopyButton";
 import { useAccount } from "@/hooks/useAccount";
+import { useDismiss } from "@/hooks/useDismiss";
 import { DOCS_URL } from "@/lib/config";
 import GeneratedAvatar from "./GeneratedAvatar";
 
@@ -27,21 +28,11 @@ export default function AccountMenu() {
 	const router = useRouter();
 	const [open, setOpen] = useState(false);
 	const ref = useRef<HTMLDivElement>(null);
-	useEffect(() => {
-		if (!open) return;
-		const close = (e: MouseEvent | KeyboardEvent) => {
-			if (
-				e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node)
-			)
-				setOpen(false);
-		};
-		document.addEventListener("mousedown", close);
-		document.addEventListener("keydown", close);
-		return () => {
-			document.removeEventListener("mousedown", close);
-			document.removeEventListener("keydown", close);
-		};
-	}, [open]);
+	useDismiss(
+		ref,
+		open,
+		useCallback(() => setOpen(false), []),
+	);
 	if (!tag) return null;
 	const id = accountHex(tag);
 	const leave = () => {
