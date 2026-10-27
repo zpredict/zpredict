@@ -52,8 +52,9 @@ Rolling markets follow the relayers' scheme (a window every 48 mock blocks, one 
 ```
 app/          routes only (compose components)
 components/   ui/ primitives, then one folder per feature
-hooks/        data hooks (account, orders, markets, relayer view, health, start)
-lib/          config, relayer client over @zpredict/sdk, formatting, share XOR, storage
+hooks/        data hooks and providers (account, orders, markets, notifications, relayer view, start)
+lib/          config, relayer client over @zpredict/sdk, formatting, share XOR, storage,
+              portfolio and notification logic (pure, tested), the announcement
 content/      static copy (threat model)
 styles/       tokens + one stylesheet per area
 mock-relayer/ local relayers for dev and demo
