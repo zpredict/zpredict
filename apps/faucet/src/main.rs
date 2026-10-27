@@ -71,6 +71,8 @@ async fn main() -> ExitCode {
             wallet: env("FAUCET_WALLET", "/wallet/wallet").into(),
             identity: env("FAUCET_IDENTITY", "/wallet/age.txt").into(),
             server: env("FAUCET_SERVER", "zecrocks"),
+            // A first sync after downtime can take minutes; a stall past this is killed.
+            timeout: std::time::Duration::from_secs(600),
         },
         escrow,
         origins: env("FAUCET_ORIGINS", "https://app.zpredict.site")

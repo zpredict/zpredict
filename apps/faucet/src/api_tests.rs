@@ -22,7 +22,9 @@ dir=$3
 case $4 in
   balance) echo '{"total":500000000,"sapling_spendable":0,"orchard_spendable":0,"ironwood_spendable":500000000,"transparent_spendable":0,"chain_tip_height":7}' ;;
   list-tx) echo '[]' ;;
-  pay) echo "$@" >>"$dir/pay.log"; echo "Creating transaction..."; echo TXID ;;
+  pay) [ -e "$dir/hang" ] && exec sleep 30
+       [ -e "$dir/fail" ] && { echo "insufficient funds" >&2; exit 1; }
+       echo "$@" >>"$dir/pay.log"; echo "Creating transaction..."; echo TXID ;;
 esac
 "#;
 
@@ -70,6 +72,7 @@ async fn faucet() -> (Shared, PathBuf) {
             wallet: d.clone(),
             identity: d.join("age.txt"),
             server: "lwd".into(),
+            timeout: std::time::Duration::from_secs(1),
         },
         escrow: ESCROW.into(),
         origins: vec![APP.into()],
@@ -224,4 +227,28 @@ async fn landing_is_static_and_self_only() {
         String::from_utf8(to_bytes(res.into_body(), 1 << 16).await.unwrap().to_vec()).unwrap();
     assert!(html.contains("5.00000000 TAZ") && html.contains("https://app.zpredict.site/faucet/"));
     assert!(!html.contains("<script"), "no scripts on the landing");
+}
+
+/// Regression: a devtool that hangs (a silent lightwalletd) is killed at the timeout, and a
+/// failed send gives its daily slot back, so neither locks the faucet up.
+#[tokio::test]
+async fn a_hung_or_failed_send_neither_blocks_nor_burns_a_slot() {
+    let (f, d) = faucet().await;
+    let left = |f: &Shared| f.limit.lock().unwrap().left_today(now());
+    let before = left(&f);
+    for (mode, case) in [("hang", "hung"), ("fail", "failed")] {
+        std::fs::write(d.join(mode), "").unwrap();
+        *f.limit.lock().unwrap() = Limiter::new(0, 100);
+        let started = std::time::Instant::now();
+        let body = solved(&f, &a_memo(), "ok:{c}").await;
+        let (code, _, _) = call(&f, "POST", "/drip", body).await;
+        assert_eq!(code, StatusCode::BAD_GATEWAY, "{case}");
+        assert!(
+            started.elapsed().as_secs() < 10,
+            "{case}: answered after the timeout"
+        );
+        assert_eq!(left(&f), before, "{case}: slot refunded");
+        std::fs::remove_file(d.join(mode)).unwrap();
+    }
+    refresh(&f).await.unwrap();
 }
