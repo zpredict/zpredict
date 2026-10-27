@@ -10,13 +10,18 @@
 	--ink-line: #080a0426;
 
 	--header-top: 24px;
+	/* One height for everything in the header: logo, Menu, the CTAs, the avatar. */
+	--nav-h: 48px;
+	/* The announcement bar above it; 0 when there is none or it was dismissed. */
+	--announce-h: 0px;
 	/* Room the fixed header takes at the top of every page. */
-	--header-space: calc(var(--header-top) + var(--zp-control-h) + 32px);
+	--header-space: calc(var(--announce-h) + var(--header-top) + var(--nav-h) + 32px);
 }
 
 @media (max-width: 900px) {
 	:root {
 		--header-top: max(16px, env(safe-area-inset-top));
-		--header-space: calc(var(--header-top) + var(--zp-control-h) + 24px);
+		--nav-h: 44px;
+		--header-space: calc(var(--announce-h) + var(--header-top) + var(--nav-h) + 24px);
 	}
 }
