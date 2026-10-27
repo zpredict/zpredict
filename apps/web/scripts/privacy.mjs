@@ -94,4 +94,4 @@ if (bad.length) {
 	console.error(`privacy: ${bad.length} third-party URL(s) in ${OUT}\n${bad.join("\n")}`);
 	process.exit(1);
 }
-console.log(`privacy: no third-party URLs in ${OUT}`);
+console.log(`privacy: no third-party URLs in ${OUT}${ANALYTICS ? " (GA4 allowed)" : ""}`);
