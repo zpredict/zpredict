@@ -4,10 +4,12 @@ import "./global.css";
 import { RootProvider } from "fumadocs-ui/provider/next";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { headers } from "next/headers";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
 
 import { SiteHeader } from "@/components/site-header";
+import { GA_ID } from "@/lib/csp";
 import { SITE_DESCRIPTION, SITE_NAME, siteUrl } from "@/lib/site";
 
 /** JetBrains Mono 500, latin subset: the only face. Self-hosted and preloaded by next/font. */
@@ -51,6 +53,7 @@ export const viewport: Viewport = { themeColor: "#050505", colorScheme: "dark" }
 const RootLayout = async ({ children }: { children: ReactNode }) => {
 	// Render per request, so Next can put this request's CSP nonce on its scripts (src/proxy.ts).
 	await connection();
+	const nonce = (await headers()).get("content-security-policy")?.match(/'nonce-([^']+)'/)?.[1];
 	return (
 		<html className={`dark ${mono.variable}`} lang="en" suppressHydrationWarning>
 			<body className="flex min-h-screen flex-col">
@@ -58,6 +61,23 @@ const RootLayout = async ({ children }: { children: ReactNode }) => {
 					<SiteHeader />
 					{children}
 				</RootProvider>
+				{/* Google Analytics 4 (#226), production only, under this request's nonce (src/lib/csp.ts). */}
+				{process.env.NODE_ENV === "production" && nonce && (
+					<>
+						<script
+							async
+							nonce={nonce}
+							src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+						/>
+						<script
+							// biome-ignore lint/security/noDangerouslySetInnerHtml: the standard gtag.js config, a constant
+							dangerouslySetInnerHTML={{
+								__html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag("js",new Date());gtag("config","${GA_ID}");`,
+							}}
+							nonce={nonce}
+						/>
+					</>
+				)}
 			</body>
 		</html>
 	);

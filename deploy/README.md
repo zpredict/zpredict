@@ -23,7 +23,7 @@
 
 Request path: browser → host nginx on the VPS (TLS, `production/nginx.conf`) → container on `127.0.0.1:<port>`. Coolify builds the images on the VPS from this repo; nothing is pushed to a registry.
 
-**Privacy:** the static sites are Caddy with no `log` directive, and the docs server logs no requests; host nginx has `access_log off`, `error_log /dev/null` and forwards no client IP. Each image's CSP is self-only: inline scripts and styles are allowed by sha256 hash computed at build (`static/prepare.mjs`), and the web app's `connect-src` adds exactly the three relayer origins from `NEXT_PUBLIC_RELAYERS`. The docs server sets its CSP per request with a script nonce (`apps/docs/src/proxy.ts`).
+**Privacy:** the static sites are Caddy with no `log` directive, and the docs server logs no requests; host nginx has `access_log off`, `error_log /dev/null` and forwards no client IP. Each image's CSP is self-only: inline scripts and styles are allowed by sha256 hash computed at build (`static/prepare.mjs`), and the web app's `connect-src` adds exactly the three relayer origins from `NEXT_PUBLIC_RELAYERS`. The landing image alone passes `--analytics`, which adds Google Analytics 4's origins (#226). The docs server sets its CSP per request with a script nonce and GA4's origins (`apps/docs/src/proxy.ts`, `src/lib/csp.ts`). The app never allows analytics.
 
 ### DNS (Cloudflare, DNS only, all A → VPS)
 

@@ -1,5 +1,5 @@
 // Privacy gate: what the browser downloads (.next/static: JS, CSS, fonts' CSS) must not
-// reference any third-party host. Pages render per request (CSP nonce), so their HTML is
+// reference any third-party host but Google Analytics 4's (third-party.mjs, #226). Pages render per request (CSP nonce), so their HTML is
 // checked by the smoke test (test/smoke.test.mjs). Run after `next build` (the `build`
 // script does).
 import { readdirSync, readFileSync } from "node:fs";
@@ -37,4 +37,4 @@ if (bad.length) {
 	console.error(`privacy: ${bad.length} third-party URL(s) in .next/static\n${bad.join("\n")}`);
 	process.exit(1);
 }
-console.log("privacy: no third-party URLs in .next/static");
+console.log("privacy: no third-party URLs in .next/static (GA4 allowed)");

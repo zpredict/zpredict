@@ -1,6 +1,6 @@
 // Smoke test of the built site (run by `build`): the key routes exist with a title, and every
 // local href/src/poster resolves to a built file or, for "#id", to an element on that page.
-// Third-party URLs are checked next by apps/web/scripts/privacy.mjs.
+// Third-party URLs are checked next by apps/web/scripts/privacy.mjs (--analytics: GA4 only).
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
