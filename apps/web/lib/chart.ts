@@ -73,6 +73,15 @@ export function valueAt(points: Point[], t: number): number | null {
 	return v;
 }
 
+/**
+ * The time under the pointer, `frac` of the way across [t0, t1], clamped to it. Free on a time
+ * axis; on a cross-index axis it rounds to the nearest cross.
+ */
+export function timeAt(frac: number, t0: number, t1: number, useTime: boolean): number {
+	const t = t0 + Math.min(1, Math.max(0, frac)) * (t1 - t0);
+	return useTime ? t : Math.round(t);
+}
+
 /** Y range and dotted-grid ticks in percent: padded, rounded to 10, at least 20 wide. */
 export function yTicks(values: number[]): { lo: number; hi: number; ticks: number[] } {
 	if (values.length === 0) return { lo: 0, hi: 100, ticks: [0, 25, 50, 75, 100] };

@@ -6,6 +6,7 @@ import {
 	RANGES,
 	type Range,
 	type Series,
+	timeAt,
 	valueAt,
 	xTicks,
 	yTicks,
@@ -71,20 +72,22 @@ export default function PriceChart({ series, useTime }: Props) {
 	const y = (p: number) => PAD.top + ((hi - p) / (hi - lo || 1)) * ih;
 	const cx = at === null ? null : x(at);
 
+	// The crosshair follows the pointer anywhere on the plot, not only to the next price change.
 	const snap = (clientX: number) => {
 		const r = box.current?.getBoundingClientRect();
 		if (!r || times.length === 0) return;
-		const t = t0 + ((clientX - r.left - PAD.left) / iw) * (t1 - t0);
-		setAt(times.reduce((a, b) => (Math.abs(b - t) < Math.abs(a - t) ? b : a)));
+		setAt(timeAt((clientX - r.left - PAD.left) / iw, t0, t1, useTime));
 	};
 	const onPointer = (e: PointerEvent) => snap(e.clientX);
+	/** Arrow keys step 1% of the span (one cross without timestamps); Home/End jump to the ends. */
 	const onKey = (e: KeyboardEvent) => {
-		const i = at === null ? times.length - 1 : times.indexOf(at);
-		const next = { ArrowLeft: i - 1, ArrowRight: i + 1, Home: 0, End: times.length - 1 }[e.key];
 		if (e.key === "Escape") setAt(null);
-		if (next === undefined) return;
+		const step = useTime ? (t1 - t0) / 100 : 1;
+		const cur = at ?? t1;
+		const next = { ArrowLeft: cur - step, ArrowRight: cur + step, Home: t0, End: t1 }[e.key];
+		if (next === undefined || times.length === 0) return;
 		e.preventDefault();
-		setAt(times[Math.max(0, Math.min(times.length - 1, next))] ?? null);
+		setAt(timeAt((next - t0) / (t1 - t0), t0, t1, useTime));
 	};
 
 	const hoverText =
@@ -107,9 +110,9 @@ export default function PriceChart({ series, useTime }: Props) {
 			)}
 			<div
 				aria-label="Price chart. Arrow keys move the crosshair, Escape clears it."
-				aria-valuemax={times.length}
-				aria-valuemin={1}
-				aria-valuenow={at === null ? times.length : times.indexOf(at) + 1}
+				aria-valuemax={t1}
+				aria-valuemin={t0}
+				aria-valuenow={at ?? t1}
 				aria-valuetext={hoverText}
 				className="pchart__plot"
 				onBlur={() => setAt(null)}
