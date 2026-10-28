@@ -25,7 +25,8 @@ jobs:
     env:
       COOLIFY_URL: ${{ vars.COOLIFY_URL }}
       COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
-      # Space-separated Coolify resource uuids, e.g. "landing-uuid web-uuid".
+      # Space-separated name=uuid pairs, e.g. "landing=uuid1 web=uuid2". The name is the one
+      # scripts/deploy-targets.mjs prints; no API lookup, so a token that can only deploy works.
       COOLIFY_RESOURCES: ${{ vars.COOLIFY_RESOURCES }}
     steps:
       - uses: actions/checkout@v4
@@ -52,9 +53,14 @@ jobs:
             echo "::warning::COOLIFY_URL, COOLIFY_TOKEN or COOLIFY_RESOURCES is not set; skipping deploy."
             exit 0
           fi
-          for uuid in $COOLIFY_RESOURCES; do
-            name=$(curl -sf -H "Authorization: Bearer $COOLIFY_TOKEN" "$COOLIFY_URL/api/v1/applications/$uuid" | jq -r .name)
-            case " $NAMES " in *" $name "*) ;; *) echo "skip $name (unchanged)"; continue ;; esac
+          for pair in $COOLIFY_RESOURCES; do
+            name=${pair%%=*} uuid=${pair#*=}
+            if [ -z "$name" ] || [ -z "$uuid" ] || [ "$name" = "$pair" ]; then
+              echo "::error::COOLIFY_RESOURCES entry '$pair' is not name=uuid"
+              exit 1
+            fi
+            # Exact word match: an empty or unknown name never matches.
+            if ! printf '%s\n' $NAMES | grep -qxF "$name"; then echo "skip $name (unchanged)"; continue; fi
             code=$(curl -s -o /tmp/deploy.json -w '%{http_code}' -X POST \
               -H "Authorization: Bearer $COOLIFY_TOKEN" \
               "$COOLIFY_URL/api/v1/deploy?uuid=$uuid")
