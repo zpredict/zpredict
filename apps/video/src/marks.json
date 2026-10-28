@@ -1,0 +1,47 @@
+{
+	"home": {
+		"scroll": 4,
+		"grid": 6.61,
+		"scroll2": 11.11,
+		"grid2": 13.72,
+		"length": 17.7
+	},
+	"trade": {
+		"start": 1.5,
+		"ticket": 1.87,
+		"yes": 4.37,
+		"amount": 6.28,
+		"send": 8.66,
+		"shares": 9.62,
+		"view": 14.12,
+		"fill": 18.4,
+		"close": 25.9,
+		"length": 32.9,
+		"fillText": "Filled 1 shares for 0.0093 ZEC (93.0¢ average) — only you can open this.",
+		"url": "https://app.zpredict.site/trade/?m=11"
+	},
+	"deposit": {
+		"type": 1.5,
+		"split": 2.31,
+		"qr": 7.81,
+		"length": 13.8
+	},
+	"account": {
+		"chart": 3.5,
+		"table": 7.84,
+		"length": 14.633333333333333
+	},
+	"resolved": {
+		"length": 8.966666666666667,
+		"id": 1073609
+	},
+	"threat": {
+		"length": 8.966666666666667
+	},
+	"evidence": {
+		"length": 8.966666666666667
+	},
+	"landing": {
+		"length": 8.966666666666667
+	}
+}
