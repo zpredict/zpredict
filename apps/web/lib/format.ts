@@ -42,3 +42,13 @@ export const ORDER_FIELDS = [
 	{ name: "size", from: 6, to: 10 },
 	{ name: "key", from: 10, to: 26 },
 ] as const;
+
+const usdCompactFormat = new Intl.NumberFormat("en-US", {
+	style: "currency",
+	currency: "USD",
+	notation: "compact",
+	maximumFractionDigits: 1,
+});
+
+/** A dollar amount in a few characters: 2,325,412 → "$2.3M". */
+export const usdCompact = (dollars: number) => usdCompactFormat.format(dollars);

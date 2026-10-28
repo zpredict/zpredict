@@ -40,6 +40,8 @@ export const KEYS = {
 	notes: "zp.notes",
 	/** Id of the announcement this browser dismissed. */
 	announce: "zp.announce",
+	/** Market and event keys this browser saved (`m<id>`, `e<eventId>`). */
+	saved: "zp.saved",
 } as const;
 
 // Payout addresses are kept only as digests, so this browser's storage doesn't list them.

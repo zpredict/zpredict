@@ -7,7 +7,15 @@ import Glyph from "./Glyph";
 import PriceButtons from "./PriceButtons";
 
 /** A single YES/NO market: glyph, question, chance ring, Buy Yes / Buy No. */
-export default function BinaryCard({ market: m, tip }: { market: Market; tip: number | null }) {
+export default function BinaryCard({
+	market: m,
+	itemKey,
+	tip,
+}: {
+	market: Market;
+	itemKey: string;
+	tip: number | null;
+}) {
 	return (
 		<article className="mcard">
 			<header className="mcard__head">
@@ -18,7 +26,7 @@ export default function BinaryCard({ market: m, tip }: { market: Market; tip: nu
 				<ChanceRing pct={chance(m)} />
 			</header>
 			<PriceButtons market={m} />
-			<CardFoot market={m} tip={tip} />
+			<CardFoot itemKey={itemKey} markets={[m]} tip={tip} title={m.question} />
 		</article>
 	);
 }

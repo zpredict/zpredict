@@ -197,6 +197,8 @@ export interface Reference {
 	url: string;
 	/** When the source last updated its market record (RFC 3339). */
 	updatedAt?: string;
+	/** Polymarket's lifetime volume, USD (zPredict never publishes its own sizes). */
+	volume?: number;
 	/** Hourly prices over the last week, oldest first. */
 	history: { t: number; price: number }[];
 }

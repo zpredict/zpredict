@@ -46,6 +46,8 @@ const mirror = (c) => {
 			source: "polymarket",
 			price: c.price,
 			url: `https://polymarket.com/market/${c.slug}`,
+			// Stable per market, so cards look like the live ones.
+			volume: (c.id % 97) * 51_311 + 120_000,
 			history,
 		},
 	};
