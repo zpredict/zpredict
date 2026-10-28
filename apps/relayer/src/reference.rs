@@ -30,6 +30,10 @@ pub struct Reference {
     /// When Polymarket last updated its record (RFC 3339).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<String>,
+    /// Polymarket's lifetime volume, USD: public data about Polymarket's book. zPredict's own
+    /// sizes and counts are never published.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub volume: Option<f64>,
     /// Hourly Yes prices in cents over the last week, oldest first (`t` = unix seconds).
     pub history: Vec<Point>,
 }
@@ -94,6 +98,7 @@ fn fetch(pm: &Polymarket, p: &Params, last: Option<&Reference>) -> Result<Refere
         price,
         url: format!("{SITE}{}", p.slug),
         updated_at: g.updated_at,
+        volume: g.volume_num.filter(|v| v.is_finite() && *v >= 0.0),
         history,
     })
 }
