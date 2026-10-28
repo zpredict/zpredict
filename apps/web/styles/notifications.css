@@ -1,0 +1,117 @@
+/* Notifications: the bell beside the avatar and its panel (components/notifications). */
+.notes {
+	position: relative;
+}
+
+.notes__bell {
+	position: relative;
+	display: grid;
+	place-items: center;
+	width: var(--nav-h);
+	height: var(--nav-h);
+	padding: 0;
+	border: 1px solid var(--line);
+	background: #ffffff14;
+	color: var(--zp-text);
+	cursor: pointer;
+}
+
+.notes__bell:hover,
+.notes__bell[aria-expanded="true"] {
+	border-color: var(--zp-lime);
+}
+
+.notes__badge {
+	position: absolute;
+	top: -6px;
+	right: -6px;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 4px;
+	background: var(--zp-lime);
+	color: var(--zp-ink);
+	font-size: 10px;
+	line-height: 18px;
+	text-align: center;
+}
+
+.notes__panel {
+	position: absolute;
+	top: calc(100% + 10px);
+	right: 0;
+	z-index: 50;
+	display: grid;
+	width: min(360px, calc(100vw - 2 * var(--zp-gutter)));
+	border: 1px solid var(--line);
+	background: #0b0b0b;
+}
+
+.notes__title {
+	margin: 0;
+	padding: 14px 16px;
+	border-bottom: 1px solid var(--line);
+	font-size: 13px;
+}
+
+.notes__empty {
+	margin: 0;
+	padding: 16px;
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+.notes__list {
+	overflow-y: auto;
+	max-height: min(420px, 60vh);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.notes__list a {
+	display: grid;
+	gap: 4px;
+	padding: 12px 16px;
+	border-bottom: 1px solid var(--line);
+	color: inherit;
+	font-size: 12px;
+}
+
+.notes__list a:hover,
+.notes__list a:focus-visible {
+	background: var(--fill);
+}
+
+.notes__head {
+	display: flex;
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.notes__head b {
+	color: var(--zp-lime);
+	font-weight: 500;
+}
+
+.notes__body {
+	color: var(--zp-muted);
+	line-height: 1.45;
+}
+
+.notes__foot {
+	padding: 12px 16px;
+	font-size: 12px;
+}
+
+.notes__foot p {
+	margin: 0;
+}
+
+.notes__enable {
+	padding: 8px 12px;
+	border: 1px solid var(--zp-lime);
+	background: none;
+	color: var(--zp-lime);
+	font: inherit;
+	cursor: pointer;
+}

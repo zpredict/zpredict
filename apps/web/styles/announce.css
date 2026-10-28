@@ -1,0 +1,73 @@
+/* Announcement bar: fixed above the header; the page and the header move down by its height. */
+:root:has(.announce) {
+	--announce-h: 36px;
+}
+
+.announce {
+	position: fixed;
+	z-index: 9;
+	top: 0;
+	left: 0;
+	right: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	height: var(--announce-h);
+	padding: 0 calc(var(--zp-gutter) + 36px) 0 var(--zp-gutter);
+	background: var(--zp-lime);
+	color: var(--zp-ink);
+	font-size: 12px;
+}
+
+.announce__text {
+	overflow: hidden;
+	margin: 0;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.announce__link {
+	color: inherit;
+	font-weight: 600;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+
+.announce__close {
+	position: absolute;
+	right: var(--zp-gutter);
+	width: 28px;
+	height: 28px;
+	border: 0;
+	background: none;
+	color: inherit;
+	font-size: 18px;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.announce__close:focus-visible,
+.announce__link:focus-visible {
+	outline: 2px solid var(--zp-ink);
+	outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+	:root:has(.announce) {
+		--announce-h: 44px;
+	}
+	.announce {
+		justify-content: flex-start;
+		padding-right: 48px;
+		font-size: 11px;
+		line-height: 1.35;
+	}
+	/* Two lines, so the link stays visible on a phone. */
+	.announce__text {
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		white-space: normal;
+	}
+}

@@ -445,6 +445,12 @@
 	cursor: pointer;
 }
 
+.acct__avatar > svg {
+	display: block;
+	width: calc(var(--nav-h) - 2px);
+	height: calc(var(--nav-h) - 2px);
+}
+
 .acct__avatar:hover,
 .acct__avatar[aria-expanded="true"] {
 	border-color: var(--zp-lime);

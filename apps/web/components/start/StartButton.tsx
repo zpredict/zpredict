@@ -1,11 +1,12 @@
 "use client";
 import { useRouter } from "next/navigation";
 import AccountMenu from "@/components/account/AccountMenu";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import Cta from "@/components/ui/Cta";
 import { useAccount } from "@/hooks/useAccount";
 import { useStart } from "@/hooks/useStart";
 
-/** No account yet: "Get testnet ZEC". With one: Deposit and the account menu, as on Polymarket. */
+/** No account yet: "Get testnet ZEC". With one: Deposit, notifications and the account menu. */
 export default function StartButton() {
 	const { tag } = useAccount();
 	const { start, label } = useStart();
@@ -14,6 +15,7 @@ export default function StartButton() {
 	return (
 		<>
 			<Cta onClick={() => router.push("/deposit/")}>Deposit</Cta>
+			<NotificationBell />
 			<AccountMenu />
 		</>
 	);

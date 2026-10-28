@@ -3,6 +3,8 @@ import "@/styles/tokens.css";
 import "@/styles/base.css";
 import "@/styles/ui.css";
 import "@/styles/layout.css";
+import "@/styles/announce.css";
+import "@/styles/notifications.css";
 import "@/styles/menu.css";
 import "@/styles/home.css";
 import "@/styles/markets.css";
@@ -19,6 +21,7 @@ import "@/styles/chart.css";
 import "@/styles/wallet.css";
 import "@/styles/faucet.css";
 import type { Metadata, Viewport } from "next";
+import AnnouncementBar from "@/components/layout/AnnouncementBar";
 import Footer from "@/components/layout/Footer";
 import Providers from "@/components/layout/Providers";
 import Topbar from "@/components/layout/Topbar";
@@ -50,6 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 		<html className={mono.variable} lang="en">
 			<body>
 				<Providers>
+					<AnnouncementBar />
 					<Topbar />
 					{children}
 					<Footer />
