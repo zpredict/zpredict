@@ -28,19 +28,39 @@ jobs:
       # Space-separated Coolify resource uuids, e.g. "landing-uuid web-uuid".
       COOLIFY_RESOURCES: ${{ vars.COOLIFY_RESOURCES }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Pick the images this push changed
+        id: pick
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # A manual run, a new branch or a force-push past history rebuilds everything.
+          if [ "${{ github.event_name }}" != push ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            names="landing web docs faucet"
+          else
+            names=$(git diff --name-only "$BEFORE" "$GITHUB_SHA" | node scripts/deploy-targets.mjs | tr '\n' ' ')
+          fi
+          echo "names=$names" >>"$GITHUB_OUTPUT"
+          echo "rebuild: ${names:-nothing}"
       - name: Trigger deploys
+        env:
+          NAMES: ${{ steps.pick.outputs.names }}
         run: |
           if [ -z "$COOLIFY_TOKEN" ] || [ -z "$COOLIFY_URL" ] || [ -z "$COOLIFY_RESOURCES" ]; then
             echo "::warning::COOLIFY_URL, COOLIFY_TOKEN or COOLIFY_RESOURCES is not set; skipping deploy."
             exit 0
           fi
           for uuid in $COOLIFY_RESOURCES; do
+            name=$(curl -sf -H "Authorization: Bearer $COOLIFY_TOKEN" "$COOLIFY_URL/api/v1/applications/$uuid" | jq -r .name)
+            case " $NAMES " in *" $name "*) ;; *) echo "skip $name (unchanged)"; continue ;; esac
             code=$(curl -s -o /tmp/deploy.json -w '%{http_code}' -X POST \
               -H "Authorization: Bearer $COOLIFY_TOKEN" \
               "$COOLIFY_URL/api/v1/deploy?uuid=$uuid")
             if [ "$code" != "200" ]; then
-              echo "::error::deploy $uuid failed with HTTP $code"
+              echo "::error::deploy $name failed with HTTP $code"
               exit 1
             fi
-            echo "queued $uuid"
+            echo "queued $name"
           done
