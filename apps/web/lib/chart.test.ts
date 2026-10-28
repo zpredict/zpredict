@@ -1,7 +1,7 @@
 // Chart math (node --test; Node strips the types).
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { inRange, seriesOf, valueAt, xTicks, yTicks } from "./chart.ts";
+import { inRange, seriesOf, timeAt, valueAt, xTicks, yTicks } from "./chart.ts";
 
 const pts = [
 	{ t: 100, p: 40 },
@@ -47,4 +47,11 @@ test("prices recorded before relayers kept the time (historyAt 0) stay off the t
 	const [own] = seriesOf([m as never], () => "", true);
 	assert.deepEqual(own.points, [{ t: 1_700_000_000, p: 60 }]);
 	assert.equal(seriesOf([m as never], () => "", false)[0].points.length, 3);
+});
+
+test("timeAt follows the pointer freely on a time axis, clamped, and rounds cross indices", () => {
+	assert.equal(timeAt(0.25, 100, 300, true), 150);
+	assert.equal(timeAt(-1, 100, 300, true), 100);
+	assert.equal(timeAt(2, 100, 300, true), 300);
+	assert.equal(timeAt(0.26, 0, 10, false), 3);
 });

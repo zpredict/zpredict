@@ -1,13 +1,10 @@
 /* Menu button and the top-sheet dialog (template section 16). */
 
 .menu-btn {
-	position: absolute;
-	left: 50%;
-	top: 0;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	width: 320px;
+	width: clamp(160px, 22vw, 320px);
 	height: var(--zp-control-h);
 	padding: 0 16px;
 	border: 0;
@@ -16,7 +13,6 @@
 	backdrop-filter: blur(40px);
 	color: #fff;
 	font-size: 14px;
-	transform: translateX(-50%);
 	transition:
 		background-color 250ms ease,
 		color 250ms ease;
@@ -196,18 +192,10 @@
 	text-transform: uppercase;
 }
 
-@media (max-width: 1000px) {
-	.menu-btn {
-		width: 220px;
-	}
-}
-
 @media (max-width: 900px) {
 	.menu-btn {
-		position: static;
 		width: 116px;
 		font-size: 13px;
-		transform: none;
 	}
 	.menu-btn__icon {
 		width: 24px;

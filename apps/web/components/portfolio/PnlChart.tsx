@@ -93,7 +93,9 @@ export default function PnlChart({ points }: { points: PnlPoint[] }) {
 		const r = e.currentTarget.getBoundingClientRect();
 		const [t0, t1] = [pts[0].t, pts[pts.length - 1].t];
 		const t = t0 + ((e.clientX - r.left - PAD) / Math.max(1, r.width - 2 * PAD)) * (t1 - t0);
-		setHover(pts.filter((p) => p.t <= t).at(-1) ?? pts[0]);
+		// Free crosshair: the time under the pointer, with the step value in force then.
+		const at = Math.min(t1, Math.max(t0, t));
+		setHover({ t: at, v: (pts.filter((p) => p.t <= at).at(-1) ?? pts[0]).v });
 	};
 
 	return (
