@@ -142,7 +142,7 @@
 
 .mcard__foot {
 	display: flex;
-	flex-wrap: wrap;
+	align-items: center;
 	justify-content: space-between;
 	gap: 4px 12px;
 	margin-top: auto;
@@ -232,5 +232,25 @@
 }
 
 .soon__row:hover .soon__q {
+	color: var(--zp-lime);
+}
+
+/* Save toggle, bottom right of a card. */
+.save {
+	display: grid;
+	place-items: center;
+	width: 28px;
+	height: 28px;
+	margin: -6px -6px -6px 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var(--zp-muted);
+	cursor: pointer;
+}
+
+.save:hover,
+.save:focus-visible,
+.save[aria-pressed="true"] {
 	color: var(--zp-lime);
 }

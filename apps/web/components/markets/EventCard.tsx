@@ -10,9 +10,11 @@ const ROWS = 3;
 export default function EventCard({
 	title,
 	markets,
+	itemKey,
 	tip,
 }: {
 	title: string;
+	itemKey: string;
 	markets: Market[];
 	tip: number | null;
 }) {
@@ -52,7 +54,7 @@ export default function EventCard({
 					);
 				})}
 			</ul>
-			<CardFoot market={first} tip={tip} />
+			<CardFoot itemKey={itemKey} markets={markets} tip={tip} title={title} />
 		</article>
 	);
 }
