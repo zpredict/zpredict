@@ -33,6 +33,8 @@ jobs:
         run: pnpm test
       - name: Regression index (REGRESSION.md)
         run: node scripts/regressions.mjs
+      - name: Repo scripts
+        run: node --test scripts/*.test.mjs
 
   rust:
     name: Rust (fmt, clippy, test)
