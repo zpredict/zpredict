@@ -48,11 +48,13 @@ const push = Easing.bezier(0.65, 0, 0.35, 1);
 function Footage({
 	clip,
 	at,
+	rate = 1,
 	cam,
 	stageH,
 }: {
 	clip: string;
 	at: number;
+	rate?: number;
 	cam?: Camera;
 	stageH: number;
 }) {
@@ -95,6 +97,7 @@ function Footage({
 			>
 				<OffthreadVideo
 					muted
+					playbackRate={rate}
 					src={staticFile(`footage/${clip}.mp4`)}
 					trimBefore={Math.round(at * fps)}
 				/>
@@ -232,6 +235,7 @@ function Scene({ shot }: { shot: Shot }) {
 				at={shot.at}
 				cam={shot.cam}
 				clip={shot.clip}
+				rate={shot.rate}
 				stageH={VIDEO.height - (shot.caption ? TOKENS.band : 0)}
 			/>
 			{shot.caption && <Caption skipped={shot.skipped} source={shot.source} text={shot.caption} />}
