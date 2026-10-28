@@ -11,8 +11,8 @@ import { useTip } from "@/hooks/useTip";
 
 /**
  * Markets home in Polymarket's layout: featured carousel with "closing soon" beside it (getting
- * started is the header button), then all mirrored markets by topic, then the hourly
- * demo-resolution markets with their history. Live from relayer 0.
+ * started is the header button), then all mirrored markets by topic, then the resolved ones.
+ * The hourly market is listed under "closing soon" only. Live from relayer 0.
  */
 export default function HomeScreen({ visual }: { visual: ReactNode }) {
 	const { markets, down } = useMarkets();
@@ -20,7 +20,6 @@ export default function HomeScreen({ visual }: { visual: ReactNode }) {
 	const groupKey = useGroupKey();
 	const all = markets ?? [];
 	const listed = all.filter((m) => !m.rolling);
-	const hourly = all.filter((m) => m.rolling);
 	return (
 		<>
 			<h1 className="sr-only">zPredict markets</h1>
@@ -40,12 +39,6 @@ export default function HomeScreen({ visual }: { visual: ReactNode }) {
 				groupKey={groupKey}
 				markets={listed.filter((m) => m.status === "resolved")}
 				title="Resolved"
-			/>
-			<ResolvedList
-				groupKey={groupKey}
-				markets={hourly}
-				sub="An hourly market on Zcash mainnet block data, so you can watch a market close, resolve and pay out today: the mirrored markets settle only when Polymarket does. Each relayer reads its own node; only outcomes all three agree on are signed, and your browser checks the signature."
-				title="Demo resolution"
 			/>
 		</>
 	);
