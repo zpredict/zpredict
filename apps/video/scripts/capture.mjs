@@ -4,8 +4,8 @@
 // goes through the live relayers.
 //   node scripts/capture.mjs <out dir> [shot ...]
 // Shots: home trade deposit account resolved threat evidence landing (default: all). Writes <shot>.mp4 and merges
-// the marks (seconds into each clip) into <out dir>/shots.json; copy the ones you use into
-// src/config.ts. APP / DOCS / LANDING override the hosts; MARKET picks the traded market id.
+// the marks (seconds into each clip) into src/marks.json, which src/config.ts cuts from.
+// APP / DOCS / LANDING override the hosts; MARKET picks the traded market id.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { launch, sleep } from "../../../scripts/video/cdp.mjs";
@@ -100,8 +100,9 @@ const shots = {
 		await b.evaluate(`document.querySelector(".dtabs")?.scrollIntoView({ behavior: "smooth" })`);
 		await sleep(3000);
 		r.mark("view");
-		await b
+		const filled = await b
 			.waitFor(`document.querySelector(".xor__fill.is-filled")`, FILL_WAIT * 1000)
+			.then(() => true)
 			.catch(() => console.error(`trade: no fill within ${FILL_WAIT} s`));
 		r.mark("fill");
 		await sleep(6000);
@@ -117,7 +118,9 @@ const shots = {
 		r.mark("close");
 		await sleep(7000);
 		const fillText = await b.evaluate(`document.querySelector(".xor__fill")?.textContent`);
-		return { ...(await r.stop()), fillText, url: await b.evaluate("location.href") };
+		const m = await r.stop();
+		// No fill: say so (the cut then refuses this take) rather than mark a fill that never came.
+		return { ...m, fill: filled ? m.fill : null, fillText, url: await b.evaluate("location.href") };
 	},
 	async deposit(b) {
 		await signIn(b);
@@ -140,6 +143,7 @@ const shots = {
 		await b.evaluate(
 			`document.querySelector(".qr").scrollIntoView({ behavior: "smooth", block: "center" })`,
 		);
+		await sleep(1500); // the smooth scroll settles: the shot opens on the QR, not mid-scroll
 		r.mark("qr");
 		await sleep(6000);
 		return r.stop();
@@ -227,7 +231,7 @@ const shots = {
 	},
 };
 
-const file = join(out, "shots.json");
+const file = new URL("../src/marks.json", import.meta.url).pathname;
 const meta = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {};
 for (const name of only.length ? only : Object.keys(shots)) {
 	const b = await launch();
@@ -236,7 +240,7 @@ for (const name of only.length ? only : Object.keys(shots)) {
 		await b.send("Emulation.setLocaleOverride", { locale: "en-US" });
 		meta[name] = await shots[name](b);
 		console.log(name, meta[name]);
-		writeFileSync(file, JSON.stringify(meta, null, 2));
+		writeFileSync(file, `${JSON.stringify(meta, null, "\t")}\n`);
 	} finally {
 		b.close();
 	}

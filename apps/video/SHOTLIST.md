@@ -36,9 +36,8 @@ Everything is the live app, site and docs. The trade take uses an account funded
 ```sh
 pnpm install
 cd apps/video
-pnpm capture                       # real footage of the live app into public/footage/ (~4 min)
+pnpm capture                       # real footage into public/footage/, marks into src/marks.json (~5 min)
 node --env-file=.env scripts/voice.mjs   # narration into public/voice/ (ELEVENLABS_API_KEY in .env, gitignored)
-# copy the "trade" marks from public/footage/shots.json into TRADE in src/config.ts
 pnpm studio                        # preview: npx remotion studio
 pnpm render                        # npx remotion render Demo out/zpredict-demo.mp4
 ```

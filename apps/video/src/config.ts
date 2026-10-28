@@ -1,7 +1,8 @@
 // The whole cut in one place: format, brand tokens and the shot list. Times are seconds.
 // Footage comes from scripts/capture.mjs (real headless-Chrome recordings of the live app);
-// `at` is where a shot starts in its clip, taken from the marks in public/footage/shots.json.
+// `at` is where a shot starts in its clip, from the marks capture.mjs writes to src/marks.json.
 
+import marks from "./marks.json" with { type: "json" };
 import voice from "./voice.json" with { type: "json" };
 
 export const VIDEO = { width: 1920, height: 1080, fps: 30 } as const;
@@ -38,6 +39,8 @@ export type Shot = { vo?: string } & (
 			dur: number;
 			clip: string;
 			at: number;
+			/** Playback speed of the footage, set by `fitClips`; below 1 only. */
+			rate?: number;
 			cam?: Camera;
 			/** Small label above the caption: where the footage comes from. */
 			source?: string;
@@ -48,18 +51,12 @@ export type Shot = { vo?: string } & (
 	| { kind: "end"; dur: number }
 );
 
-/** Marks in trade.mp4 (public/footage/shots.json, "trade"), seconds into the clip; null `fill`
- *  when a take has no fill, and then the fill shot is left out rather than faked. This take is an
- *  account funded by a real testnet deposit; the order filled 11 s after "Split & send". The
- *  shots run back to back through the clip, so no footage repeats. */
-const TRADE: Record<"start" | "send" | "shares" | "view" | "close", number> & {
-	fill: number | null;
-} = { start: 1.5, send: 8.81, shares: 9.76, view: 14.27, fill: 20.6, close: 27.3 };
-
-/** Marks in deposit.mp4 and account.mp4 (shots.json): typing the amount, the split and QR; the
- *  account page, its P&L crosshair and the positions table. */
-const DEPOSIT = { type: 1.5, split: 2.32, qr: 7.8 };
-const ACCOUNT = { chart: 3.51, table: 7.84 };
+/** Marks in each clip, seconds in, as capture.mjs recorded them: never copied by hand. The trade
+ *  take is an account funded by a real testnet deposit; a take without a fill (`fill` null) drops
+ *  the fill shot rather than faking it. The trade shots run back to back, so no footage repeats. */
+const TRADE = marks.trade as typeof marks.trade & { fill: number | null };
+const DEPOSIT = marks.deposit;
+const ACCOUNT = marks.account;
 
 /** The fill landing: each relayer's FILL row gets its share of the fill. */
 const fillShot = (fill: number): Shot => ({
@@ -70,7 +67,7 @@ const fillShot = (fill: number): Shot => ({
 	cam: { x: 500, y: 330, w: 980, at: 0 },
 	source: "relayer view · live",
 	caption: "Matched inside 3-party MPC. The fill comes back as three shares too.",
-	skipped: "Filled 11 s after send",
+	skipped: `Filled ${Math.round(fill - TRADE.send)} s after send`,
 	vo: "The fill comes back the same way, as three shares.",
 });
 
@@ -224,11 +221,63 @@ const VO_TAIL = 0.4;
 /** Shortest a narrated shot can be, so a quick line still leaves the picture time to read. */
 const MIN_SHOT = 3.2;
 
+/** voice/<i>.mp3 per narrated shot: the text it speaks and its length (scripts/voice.mjs). */
+const VOICE = voice as Record<string, { text: string; s: number }>;
+
 /** A narrated shot lasts as long as its line; a silent one keeps its own `dur`. */
-export const shotDur = (shot: Shot, i: number) => {
-	const line = (voice as Record<string, number>)[i];
-	return shot.vo && line ? Math.max(MIN_SHOT, VO_LEAD + line + VO_TAIL) : shot.dur;
-};
+export const shotDur = (shot: Shot, i: number) =>
+	shot.vo ? Math.max(MIN_SHOT, VO_LEAD + VOICE[i].s + VO_TAIL) : shot.dur;
+
+/** Seconds of footage a shot plays. */
+const used = (shot: Shot, i: number) =>
+	shot.kind === "clip" ? shotDur(shot, i) * (shot.rate ?? 1) : 0;
+
+/**
+ * Back-to-back shots from one clip never replay footage: when a narrated shot would run into the
+ * next one's start (the fill landing before its own shot, say), its mostly still footage plays
+ * a little slower so it ends where the next shot begins.
+ */
+SHOTS.forEach((shot, i) => {
+	const next = SHOTS[i + 1];
+	if (shot.kind !== "clip" || next?.kind !== "clip" || next.clip !== shot.clip) return;
+	const room = next.at - shot.at;
+	if (room > 0 && room < used(shot, i)) shot.rate = room / shotDur(shot, i);
+});
+
+/**
+ * Everything that would put the wrong voice or picture in the cut: a narrated shot whose
+ * voice file speaks another line (or none), a voice file no shot uses, a shot that runs past
+ * the end of its clip, footage replayed by the next shot or slowed below 0.6x, or a trade take
+ * without a fill. Root throws on any of them.
+ */
+export function cutProblems(): string[] {
+	const out = SHOTS.flatMap((shot, i) => [...voiceProblems(shot, i), ...clipProblems(shot, i)]);
+	for (const k of Object.keys(VOICE))
+		if (!SHOTS[Number(k)]?.vo) out.push(`voice/${k}.mp3 belongs to no narrated shot`);
+	if (TRADE.fill === null) out.push("trade take has no fill: capture it again");
+	return out;
+}
+
+const voiceProblems = (shot: Shot, i: number) =>
+	shot.vo && VOICE[i]?.text !== shot.vo
+		? [
+				`shot ${i}: voice/${i}.mp3 says "${VOICE[i]?.text}", not "${shot.vo}" (run scripts/voice.mjs)`,
+			]
+		: [];
+
+function clipProblems(shot: Shot, i: number): string[] {
+	if (shot.kind !== "clip") return [];
+	const out: string[] = [];
+	const end = shot.at + used(shot, i);
+	const next = SHOTS[i + 1];
+	if (next?.kind === "clip" && next.clip === shot.clip && end > next.at + 0.01)
+		out.push(`shot ${i}: ${shot.clip} runs to ${end.toFixed(2)} s, past shot ${i + 1}'s start`);
+	if ((shot.rate ?? 1) < 0.6) out.push(`shot ${i}: footage slowed to ${shot.rate?.toFixed(2)}x`);
+	const len = (marks as Record<string, { length: number }>)[shot.clip]?.length;
+	if (!(shot.at >= 0 && len && end <= len))
+		out.push(`shot ${i}: ${shot.clip} ${shot.at.toFixed(2)}-${end.toFixed(2)} s, clip is ${len} s`);
+	return out;
+}
 
 /** Frames a caption takes to fade in or out. */
 export const FADE = 8;

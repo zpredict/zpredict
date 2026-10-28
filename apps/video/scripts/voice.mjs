@@ -1,5 +1,6 @@
 // Speaks each shot's `vo` line (src/config.ts) with ElevenLabs into public/voice/<shot>.mp3 and
-// writes the lengths to src/voice.json, which stretches a shot when its line runs long.
+// writes each line's text and length to src/voice.json: the length stretches a shot when its line
+// runs long, and the text lets the render refuse a voice file that no longer matches its shot.
 //   node --env-file=.env scripts/voice.mjs   (ELEVENLABS_API_KEY; never put the key in code)
 // Each request gets the lines around it (request stitching), so the read flows across cuts.
 import { execFileSync } from "node:child_process";
@@ -14,6 +15,7 @@ const MODEL = process.env.MODEL_ID || "eleven_multilingual_v2";
 
 const client = new ElevenLabsClient();
 const lines = SHOTS.map((s, i) => [i, s.vo]).filter(([, vo]) => vo);
+rmSync("public/voice", { recursive: true, force: true });
 mkdirSync("public/voice", { recursive: true });
 const lengths = {};
 for (const [k, [i, text]] of lines.entries()) {
@@ -41,7 +43,8 @@ for (const [k, [i, text]] of lines.entries()) {
 	]);
 	rmSync(raw);
 	const probe = ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", out];
-	lengths[i] = Number(Number(execFileSync("ffprobe", probe)).toFixed(2));
-	console.log(`${i}: ${lengths[i]} s  ${text}`);
+	const s = Number(Number(execFileSync("ffprobe", probe)).toFixed(2));
+	lengths[i] = { text, s };
+	console.log(`${i}: ${s} s  ${text}`);
 }
 writeFileSync("src/voice.json", `${JSON.stringify(lengths, null, "\t")}\n`);
